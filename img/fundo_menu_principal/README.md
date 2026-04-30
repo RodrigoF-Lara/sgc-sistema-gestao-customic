@@ -15,7 +15,7 @@ O sistema de fundos do menu principal carrega **automaticamente** todas as image
    ```
 3. Faça commit e push:
    ```powershell
-   git add img/fundo_menu_principal/index.json
+   git add api/fundos.js
    git commit -m "chore: atualiza lista de fundos do menu"
    git push
    ```
@@ -23,7 +23,7 @@ O sistema de fundos do menu principal carrega **automaticamente** todas as image
 ### Opção 2: Manual
 
 1. Adicione suas imagens na pasta `img/fundo_menu_principal/`
-2. Edite o arquivo `img/fundo_menu_principal/index.json` manualmente
+2. Edite o arquivo `api/fundos.js` e atualize o array `IMAGENS_DISPONIVEIS`
 3. Faça commit e push
 
 ## Formatos Suportados
