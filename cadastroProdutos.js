@@ -194,11 +194,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Feedback visual de sucesso
                     linha.style.backgroundColor = '#d4edda'; // Verde = sucesso
+                    
+                    // Adiciona ícone de confirmação ao lado do select
+                    const iconeSucesso = document.createElement('span');
+                    iconeSucesso.innerHTML = ' ✅';
+                    iconeSucesso.style.cssText = 'color: #28a745; font-size: 20px; margin-left: 8px; animation: pulseSuccess 0.5s ease-in-out;';
+                    e.target.parentNode.appendChild(iconeSucesso);
+                    
                     setTimeout(() => {
                         linha.style.backgroundColor = '';
-                    }, 1500);
+                        iconeSucesso.remove();
+                    }, 2000);
 
-                    mostrarMensagem('✅ Salvo automaticamente!', 'success');
+                    mostrarMensagem('💾 Alteração salva com sucesso!', 'success');
 
                 } catch (error) {
                     console.error('Erro ao salvar:', error);
