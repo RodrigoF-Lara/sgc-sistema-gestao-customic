@@ -59,6 +59,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('🔍 ATIVO com Number():', Number(produtosCarregados[0].ATIVO));
                 console.log('🔍 ATIVO com parseInt():', parseInt(produtosCarregados[0].ATIVO));
             }
+            
+            // Converte ATIVO de Buffer para número
+            produtosCarregados.forEach(p => {
+                if (p.ATIVO && p.ATIVO.type === 'Buffer' && p.ATIVO.data) {
+                    p.ATIVO = p.ATIVO.data[0]; // Extrai o valor do Buffer
+                }
+            });
+            
+            console.log('✅ Após conversão - ATIVO do primeiro produto:', produtosCarregados[0]?.ATIVO);
 
             if (produtosCarregados.length === 0) {
                 mostrarMensagem('Nenhum produto encontrado com os filtros informados.', 'error');
@@ -100,19 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${produtosCarregados.map((produto) => {
                         const alteracao = produtosAlterados.get(produto.CODIGO);
                         const curvaAtual = alteracao?.curva || produto.CURVA_A_B_C || 'C';
+                        // ATIVO já foi convertido de Buffer para número
                         const ativoAtual = alteracao?.ativo !== undefined ? alteracao.ativo : (produto.ATIVO !== undefined ? produto.ATIVO : 1);
-                        
-                        // Debug - remover depois
-                        if (produto.CODIGO === '265561') {
-                            console.log(`🐛 Debug ${produto.CODIGO}:`, {
-                                ATIVO_original: produto.ATIVO,
-                                tipo: typeof produto.ATIVO,
-                                ativoAtual: ativoAtual,
-                                tipo_ativoAtual: typeof ativoAtual,
-                                comparacao_0: ativoAtual == 0,
-                                comparacao_1: ativoAtual == 1
-                            });
-                        }
                         
                         return `
                         <tr data-codigo="${produto.CODIGO}">
@@ -164,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Obtém ou cria alteração para este código
                 let alteracao = produtosAlterados.get(codigo) || { 
                     curva: produto.CURVA_A_B_C || 'C', 
-                    ativo: produto.ATIVO !== undefined ? produto.ATIVO : 1
+                    ativo: produto.ATIVO !== undefined ? produto.ATIVO : 1 // Já é número após conversão
                 };
 
                 // Atualiza o campo específico
