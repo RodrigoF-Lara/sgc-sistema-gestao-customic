@@ -52,6 +52,10 @@ document.addEventListener('DOMContentLoaded', function() {
             produtosCarregados = resultado.produtos;
 
             console.log('✅ Produtos encontrados:', produtosCarregados.length);
+            if (produtosCarregados.length > 0) {
+                console.log('🔍 Exemplo de produto:', produtosCarregados[0]);
+                console.log('🔍 ATIVO do primeiro produto:', produtosCarregados[0].ATIVO, 'tipo:', typeof produtosCarregados[0].ATIVO);
+            }
 
             if (produtosCarregados.length === 0) {
                 mostrarMensagem('Nenhum produto encontrado com os filtros informados.', 'error');
@@ -94,6 +98,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         const alteracao = produtosAlterados.get(produto.CODIGO);
                         const curvaAtual = alteracao?.curva || produto.CURVA_A_B_C || 'C';
                         const ativoAtual = alteracao?.ativo !== undefined ? alteracao.ativo : (produto.ATIVO !== undefined ? produto.ATIVO : 1);
+                        
+                        // Debug - remover depois
+                        if (produto.CODIGO === '265561') {
+                            console.log(`🐛 Debug ${produto.CODIGO}:`, {
+                                ATIVO_original: produto.ATIVO,
+                                tipo: typeof produto.ATIVO,
+                                ativoAtual: ativoAtual,
+                                tipo_ativoAtual: typeof ativoAtual,
+                                comparacao_0: ativoAtual == 0,
+                                comparacao_1: ativoAtual == 1
+                            });
+                        }
+                        
                         return `
                         <tr data-codigo="${produto.CODIGO}">
                             <td><strong>${produto.CODIGO}</strong></td>
