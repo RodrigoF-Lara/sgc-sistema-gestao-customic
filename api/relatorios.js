@@ -30,6 +30,10 @@ export default async function handler(req, res) {
             return await buscarTiposProduto(req, res);
         } else if (acao === 'saldoEstoque') {
             return await relatorioSaldoEstoque(req, res);
+        } else if (acao === 'acuracidade') {
+            return await relatorioAcuracidade(req, res);
+        } else if (acao === 'detalhesInventario') {
+            return await detalhesInventario(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -566,6 +570,178 @@ async function relatorioRequisicoes(req, res) {
         console.error("❌ Erro ao gerar relatório de requisições:", err);
         return res.status(500).json({ 
             message: "Erro ao gerar relatório", 
+            error: err.message,
+            stack: err.stack
+        });
+    }
+}
+
+async function relatorioAcuracidade(req, res) {
+    try {
+        const { dataInicio, dataFim, status } = req.query;
+
+        if (!dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                message: "Data de início e fim são obrigatórias" 
+            });
+        }
+
+        const pool = await getConnection();
+        
+        // Converte strings para Date corretamente
+        const dataInicioObj = new Date(dataInicio + 'T00:00:00Z');
+        const dataFimObj = new Date(dataFim + 'T00:00:00Z');
+        
+        // Adiciona 1 dia ao dataFim para incluir todo o último dia
+        const dataFimAjustada = new Date(dataFimObj);
+        dataFimAjustada.setDate(dataFimAjustada.getDate() + 1);
+        
+        console.log('📊 Relatório de Acuracidade - Data Início:', dataInicioObj.toISOString());
+        console.log('📊 Relatório de Acuracidade - Data Fim:', dataFimAjustada.toISOString());
+        
+        // Query principal para buscar inventários
+        const request = pool.request();
+        
+        request.input('dataInicio', sql.DateTime, dataInicioObj);
+        request.input('dataFim', sql.DateTime, dataFimAjustada);
+        
+        let query = `
+            SELECT 
+                ID_INVENTARIO,
+                DT_GERACAO,
+                DT_FINALIZACAO,
+                CRITERIO,
+                STATUS,
+                TOTAL_ITENS,
+                ACURACIDADE,
+                USUARIO_CRIACAO,
+                USUARIO_FINALIZACAO
+            FROM [dbo].[TB_INVENTARIO_CICLICO]
+            WHERE DT_GERACAO >= @dataInicio 
+                AND DT_GERACAO < @dataFim
+        `;
+        
+        if (status) {
+            request.input('status', sql.NVarChar, status);
+            query += ` AND STATUS = @status`;
+        }
+        
+        query += ` ORDER BY DT_GERACAO DESC`;
+
+        console.log('🔍 Query executada:', query);
+
+        const result = await request.query(query);
+
+        console.log('📋 Inventários encontrados:', result.recordset.length);
+
+        // Calcula totalizadores
+        const totalInventarios = result.recordset.length;
+        
+        const inventariosComAcuracidade = result.recordset.filter(i => i.ACURACIDADE !== null);
+        
+        const acuracidadeMedia = inventariosComAcuracidade.length > 0
+            ? inventariosComAcuracidade.reduce((acc, item) => acc + parseFloat(item.ACURACIDADE || 0), 0) / inventariosComAcuracidade.length
+            : null;
+        
+        const totalItens = result.recordset.reduce((acc, item) => acc + parseInt(item.TOTAL_ITENS || 0), 0);
+        
+        const acuracidadeMinima = inventariosComAcuracidade.length > 0
+            ? Math.min(...inventariosComAcuracidade.map(i => parseFloat(i.ACURACIDADE)))
+            : null;
+        
+        const acuracidadeMaxima = inventariosComAcuracidade.length > 0
+            ? Math.max(...inventariosComAcuracidade.map(i => parseFloat(i.ACURACIDADE)))
+            : null;
+
+        return res.status(200).json({
+            dados: result.recordset,
+            totalizadores: {
+                totalInventarios,
+                acuracidadeMedia,
+                totalItens,
+                acuracidadeMinima,
+                acuracidadeMaxima
+            }
+        });
+
+    } catch (err) {
+        console.error("❌ Erro ao gerar relatório de acuracidade:", err);
+        return res.status(500).json({ 
+            message: "Erro ao gerar relatório", 
+            error: err.message,
+            stack: err.stack
+        });
+    }
+}
+
+async function detalhesInventario(req, res) {
+    try {
+        const { idInventario } = req.query;
+
+        if (!idInventario) {
+            return res.status(400).json({ 
+                message: "ID do inventário é obrigatório" 
+            });
+        }
+
+        const pool = await getConnection();
+        
+        // Busca informações do inventário
+        const inventarioResult = await pool.request()
+            .input('idInventario', sql.Int, idInventario)
+            .query(`
+                SELECT 
+                    ID_INVENTARIO,
+                    DT_GERACAO,
+                    DT_FINALIZACAO,
+                    CRITERIO,
+                    STATUS,
+                    TOTAL_ITENS,
+                    ACURACIDADE,
+                    USUARIO_CRIACAO,
+                    DT_CRIACAO,
+                    USUARIO_FINALIZACAO
+                FROM [dbo].[TB_INVENTARIO_CICLICO]
+                WHERE ID_INVENTARIO = @idInventario
+            `);
+
+        if (inventarioResult.recordset.length === 0) {
+            return res.status(404).json({ 
+                message: "Inventário não encontrado" 
+            });
+        }
+
+        const inventario = inventarioResult.recordset[0];
+
+        // Busca itens do inventário
+        const itensResult = await pool.request()
+            .input('idInventario', sql.Int, idInventario)
+            .query(`
+                SELECT 
+                    ID_ITEM,
+                    CODIGO,
+                    DESCRICAO,
+                    SALDO_SISTEMA,
+                    CONTAGEM_FISICA,
+                    DIFERENCA,
+                    ACURACIDADE,
+                    TOTAL_MOVIMENTACOES
+                FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                WHERE ID_INVENTARIO = @idInventario
+                ORDER BY CODIGO
+            `);
+
+        console.log(`📦 Detalhes do inventário #${idInventario}: ${itensResult.recordset.length} itens`);
+
+        return res.status(200).json({
+            inventario,
+            itens: itensResult.recordset
+        });
+
+    } catch (err) {
+        console.error("❌ Erro ao buscar detalhes do inventário:", err);
+        return res.status(500).json({ 
+            message: "Erro ao buscar detalhes", 
             error: err.message,
             stack: err.stack
         });

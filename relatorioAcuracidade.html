@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Acuracidade - SGC Customic</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+      <div class="container">
+        <h1>
+          <i class="fa-solid fa-clipboard-check"></i>
+          Relatório de Acuracidade - Inventários Cíclicos
+        </h1>
+
+        <!-- Filtros -->
+        <div class="card">
+          <h2>Filtros do Relatório</h2>
+          <div class="filter-container">
+            <div class="form-group">
+              <label for="filtroPeriodoInicio" style="font-size: 16px; font-weight: bold;">Data Início:</label>
+              <input type="date" id="filtroPeriodoInicio" style="font-size: 16px; padding: 12px; height: 45px;" />
+            </div>
+            <div class="form-group">
+              <label for="filtroPeriodoFim" style="font-size: 16px; font-weight: bold;">Data Fim:</label>
+              <input type="date" id="filtroPeriodoFim" style="font-size: 16px; padding: 12px; height: 45px;" />
+            </div>
+            <div class="form-group">
+              <label for="filtroStatus" style="font-size: 16px; font-weight: bold;">Status:</label>
+              <select id="filtroStatus" style="font-size: 16px; padding: 12px; height: 45px;">
+                <option value="">Todos</option>
+                <option value="FINALIZADO" selected>Finalizados</option>
+                <option value="EM_ANDAMENTO">Em Andamento</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button id="gerarRelatorioBtn" class="btn-destaque">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                Gerar Relatório
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totalizadores -->
+        <div id="totalizadoresContainer" style="display: none">
+          <div class="estatisticas-inventario">
+            <div class="stat-card">
+              <i class="fa-solid fa-clipboard-list"></i>
+              <p>Total de Inventários</p>
+              <strong id="totalInventarios">0</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #28a745 0%, #218838 100%);">
+              <i class="fa-solid fa-check-circle"></i>
+              <p>Acuracidade Média</p>
+              <strong id="acuracidadeMedia">0%</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);">
+              <i class="fa-solid fa-boxes-stacked"></i>
+              <p>Total de Itens</p>
+              <strong id="totalItens">0</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);">
+              <i class="fa-solid fa-chart-line"></i>
+              <p>Acuracidade Mínima</p>
+              <strong id="acuracidadeMinima">0%</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);">
+              <i class="fa-solid fa-star"></i>
+              <p>Acuracidade Máxima</p>
+              <strong id="acuracidadeMaxima">0%</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de Resultados -->
+        <div id="resultadosContainer" style="display: none" class="card">
+          <div class="table-actions">
+            <h2>Inventários Realizados</h2>
+            <div>
+              <button id="imprimirBtn" class="btn-secundario">
+                <i class="fa-solid fa-print"></i> Imprimir
+              </button>
+              <button id="exportarExcelBtn" class="btn-success">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+              </button>
+            </div>
+          </div>
+          <div id="statusMessage" class="status-message"></div>
+          <div style="overflow-x: auto">
+            <table id="tabelaRelatorio">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Data Geração</th>
+                  <th>Data Finalização</th>
+                  <th>Critério</th>
+                  <th>Status</th>
+                  <th>Total Itens</th>
+                  <th>Acuracidade</th>
+                  <th>Usuário</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaRelatorioBody">
+                <!-- Dados serão inseridos via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Detalhes do Inventário -->
+    <div id="detalhesModal" class="modal">
+      <div class="modal-content" style="max-width: 1200px;">
+        <div class="modal-header">
+          <h2><i class="fa-solid fa-info-circle"></i> <span id="tituloDetalhes">Detalhes do Inventário</span></h2>
+          <span class="close-btn" data-modal="detalhesModal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="infoInventario" style="margin-bottom: 20px;"></div>
+          <h3>Itens do Inventário</h3>
+          <div style="overflow-x: auto; max-height: 500px;">
+            <table id="tabelaDetalhes" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Saldo Sistema</th>
+                  <th>Contagem Física</th>
+                  <th>Diferença</th>
+                  <th>Acuracidade</th>
+                  <th>Movimentações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaDetalhesBody">
+                <!-- Itens carregados via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="layout.js"></script>
+    <script src="relatorioAcuracidade.js"></script>
+  </body>
+</html>
