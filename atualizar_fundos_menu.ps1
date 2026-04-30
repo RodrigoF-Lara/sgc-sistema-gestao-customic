@@ -1,10 +1,10 @@
 # Script para atualizar automaticamente a lista de imagens de fundo
-# Executa: .\atualizar_fundos_menu.ps1
+# Executa: .\atualizar_fundos_menu_v2.ps1
 
 $pastaFundos = "img\fundo_menu_principal"
-$arquivoEndpoint = "api\fundos.js"
+$arquivoIndex = "$pastaFundos\index.json"
 
-Write-Output "🎨 Atualizando lista de fundos do menu..."
+Write-Output "Atualizando lista de fundos do menu..."
 
 # Buscar todas as imagens na pasta
 $imagens = Get-ChildItem -Path $pastaFundos -File | 
@@ -13,30 +13,25 @@ $imagens = Get-ChildItem -Path $pastaFundos -File |
     Sort-Object
 
 if ($imagens.Count -eq 0) {
-    Write-Warning "⚠️ Nenhuma imagem encontrada em $pastaFundos"
+    Write-Warning "Nenhuma imagem encontrada em $pastaFundos"
     exit 1
 }
 
-# Ler o arquivo do endpoint
-$conteudoEndpoint = Get-Content -Path $arquivoEndpoint -Raw
+# Criar JSON com a lista de imagens
+$jsonData = @{
+    imagens = @($imagens)
+} | ConvertTo-Json -Depth 3
 
-# Criar a lista de imagens no formato JavaScript
-$listaJS = $imagens | ForEach-Object { "  '$_'" }
-$listaFormatada = $listaJS -join ",`n"
+# Salvar no index.json
+$jsonData | Out-File -FilePath $arquivoIndex -Encoding UTF8 -NoNewline -Force
 
-# Substituir a constante IMAGENS_DISPONIVEIS
-$novoConteudo = $conteudoEndpoint -replace "(?s)(const IMAGENS_DISPONIVEIS = \[)[^\]]*(\];)", "`$1`n$listaFormatada`n`$2"
-
-# Salvar arquivo atualizado
-$novoConteudo | Out-File -FilePath $arquivoEndpoint -Encoding UTF8 -NoNewline -Force
-
-Write-Output "✓ Endpoint atualizado: $arquivoEndpoint"
-Write-Output "✓ Total de imagens: $($imagens.Count)"
+Write-Output "Arquivo atualizado: $arquivoIndex"
+Write-Output "Total de imagens: $($imagens.Count)"
 Write-Output ""
 Write-Output "Imagens encontradas:"
 $imagens | ForEach-Object { Write-Output "  - $_" }
 Write-Output ""
-Write-Output "📌 Próximos passos:"
-Write-Output "   git add $arquivoEndpoint"
+Write-Output "Proximos passos:"
+Write-Output "   git add $arquivoIndex"
 Write-Output "   git commit -m 'chore: atualiza lista de fundos do menu'"
 Write-Output "   git push"

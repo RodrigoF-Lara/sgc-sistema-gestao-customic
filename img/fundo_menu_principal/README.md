@@ -42,25 +42,26 @@ O sistema aplica automaticamente:
 
 ## Adicionar Novas Imagens
 
-### Opção 1: Automática (Recomendado)
+### 🎉 Fluxo Totalmente Automático
 
-1. Adicione suas imagens na pasta `img/fundo_menu_principal/`
-2. Execute o script PowerShell:
+1. **Adicione suas imagens** na pasta `img/fundo_menu_principal/`
+2. **Execute o script** para atualizar o index.json:
    ```powershell
    .\atualizar_fundos_menu.ps1
    ```
-3. Faça commit e push:
+3. **Faça commit e push**:
    ```powershell
-   git add api/fundos.js
-   git commit -m "chore: atualiza lista de fundos do menu"
+   git add img/fundo_menu_principal/index.json img/fundo_menu_principal/sua_nova_imagem.*
+   git commit -m "feat: adiciona novas imagens de fundo"
    git push
    ```
 
-### Opção 2: Manual
+**Pronto!** A API detecta automaticamente através do `index.json`. Não precisa editar nenhum código!
 
-1. Adicione suas imagens na pasta `img/fundo_menu_principal/`
-2. Edite o arquivo `api/fundos.js` e atualize o array `IMAGENS_DISPONIVEIS`
-3. Faça commit e push
+### O Que Mudou?
+- ✅ API agora lê `index.json` dinamicamente
+- ✅ Script atualiza apenas o JSON (não o código da API)
+- ✅ Detecção 100% automática após deploy
 
 ## Formatos Suportados
 
