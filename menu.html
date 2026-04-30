@@ -71,7 +71,8 @@
     </script>
     <!-- Script para troca suave de fundos -->
     <script>
-      (async function() {
+      document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🎨 Iniciando carregamento de fundos...');
         let fundosDisponiveis = [];
         
         try {
@@ -81,55 +82,42 @@
           
           if (data.success && data.imagens.length > 0) {
             fundosDisponiveis = data.imagens;
-            console.log(`✓ Carregadas ${data.total} imagens de fundo`);
+            console.log(`✓ Carregadas ${data.total} imagens de fundo:`, fundosDisponiveis);
           } else {
             throw new Error('Nenhuma imagem encontrada');
           }
         } catch (error) {
-          console.warn('Erro ao carregar fundos da API, usando padrão:', error);
+          console.warn('⚠️ Erro ao carregar fundos da API:', error);
           // Fallback: usar lista padrão
-          fundosDisponiveis = ['fundo_1.jpeg'];
+          fundosDisponiveis = ['fundo_1.jpeg', 'fundo_2.jpeg', 'fundo_3.gif'];
+          console.log('Usando lista padrão:', fundosDisponiveis);
         }
         
         // Embaralhar imagens para começar em ordem aleatória
         fundosDisponiveis.sort(() => Math.random() - 0.5);
+        console.log('Ordem de exibição:', fundosDisponiveis);
         
         let indiceAtual = 0;
         let usandoBefore = true;
         const body = document.body;
         
-        // Define a primeira imagem
-        body.style.setProperty('--fundo-atual', `url('img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}')`);
+        // Define as imagens iniciais via CSS inline
+        const primeiraImagem = `img/fundo_menu_principal/${fundosDisponiveis[0]}`;
+        const segundaImagem = fundosDisponiveis.length > 1 
+          ? `img/fundo_menu_principal/${fundosDisponiveis[1]}` 
+          : primeiraImagem;
         
-        function trocarFundo() {
-          // Próximo índice
-          indiceAtual = (indiceAtual + 1) % fundosDisponiveis.length;
-          const proximoFundo = `url('img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}')`;
-          
-          if (usandoBefore) {
-            // Troca para ::after
-            body.style.setProperty('--fundo-proximo', proximoFundo);
-            // Fade out ::before, fade in ::after
-            body.classList.add('fade-to-after');
-          } else {
-            // Troca para ::before
-            body.style.setProperty('--fundo-atual', proximoFundo);
-            // Fade in ::before, fade out ::after
-            body.classList.remove('fade-to-after');
-          }
-          
-          usandoBefore = !usandoBefore;
-        }
+        console.log('Primeira imagem:', primeiraImagem);
+        console.log('Segunda imagem:', segundaImagem);
         
-        // Define as imagens iniciais
+        // Cria o style com as imagens
         const style = document.createElement('style');
-        const segundaImagem = fundosDisponiveis.length > 1 ? fundosDisponiveis[1] : fundosDisponiveis[0];
         style.textContent = `
           body.menu-body::before {
-            background-image: var(--fundo-atual, url('img/fundo_menu_principal/${fundosDisponiveis[0]}'));
+            background-image: url('${primeiraImagem}');
           }
           body.menu-body::after {
-            background-image: var(--fundo-proximo, url('img/fundo_menu_principal/${segundaImagem}'));
+            background-image: url('${segundaImagem}');
           }
           body.menu-body.fade-to-after::before {
             opacity: 0;
@@ -139,12 +127,40 @@
           }
         `;
         document.head.appendChild(style);
+        console.log('✓ CSS de fundo aplicado');
+        
+        function trocarFundo() {
+          // Próximo índice
+          indiceAtual = (indiceAtual + 1) % fundosDisponiveis.length;
+          const proximaImagem = `img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}`;
+          
+          console.log(`🔄 Trocando para: ${proximaImagem}`);
+          
+          if (usandoBefore) {
+            // Atualiza ::after e faz fade
+            const novoStyle = document.createElement('style');
+            novoStyle.textContent = `body.menu-body::after { background-image: url('${proximaImagem}'); }`;
+            document.head.appendChild(novoStyle);
+            body.classList.add('fade-to-after');
+          } else {
+            // Atualiza ::before e remove fade
+            const novoStyle = document.createElement('style');
+            novoStyle.textContent = `body.menu-body::before { background-image: url('${proximaImagem}'); }`;
+            document.head.appendChild(novoStyle);
+            body.classList.remove('fade-to-after');
+          }
+          
+          usandoBefore = !usandoBefore;
+        }
         
         // Troca a cada 30 segundos (só se houver mais de uma imagem)
         if (fundosDisponiveis.length > 1) {
+          console.log(`✓ Troca automática ativada (${fundosDisponiveis.length} imagens, intervalo: 30s)`);
           setInterval(trocarFundo, 30000);
+        } else {
+          console.log('⚠️ Apenas 1 imagem, troca automática desativada');
         }
-      })();
+      });
     </script>
   </body>
 </html>
