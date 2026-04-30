@@ -44,6 +44,15 @@ body {
     background-repeat: no-repeat;
     z-index: 0;
     transition: opacity 2s ease-in-out;
+    /* Melhorias de qualidade de renderização */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    filter: contrast(1.05) brightness(1.02);
+    will-change: opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .main-content::before {
