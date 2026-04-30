@@ -424,7 +424,7 @@ async function relatorioSaldoEstoque(req, res) {
                     AND KARDEX = 2026
                 GROUP BY CODIGO
             ) k ON cp.CODIGO = k.CODIGO
-            WHERE 1=1`;
+            WHERE ISNULL(cp.ATIVO, 'S') = 'S'`;
         
         const request = pool.request();
         

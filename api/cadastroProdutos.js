@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
 async function listarProdutos(req, res) {
     try {
-        const { acao, codigo, descricao, curva } = req.query;
+        const { acao, codigo, descricao, curva, ativo } = req.query;
 
         if (acao !== 'listar') {
             return res.status(400).json({ message: "Ação inválida" });
@@ -40,7 +40,8 @@ async function listarProdutos(req, res) {
                 CODIGO,
                 DESCRICAO,
                 TIPO,
-                CURVA_A_B_C
+                CURVA_A_B_C,
+                ISNULL(ATIVO, 'S') AS ATIVO
             FROM [dbo].[CAD_PROD]
             WHERE 1=1
         `;
@@ -66,6 +67,11 @@ async function listarProdutos(req, res) {
                 query += ` AND CURVA_A_B_C = @CURVA`;
                 request.input('CURVA', sql.NVarChar(1), curva.trim());
             }
+        }
+
+        if (ativo && ativo.trim()) {
+            query += ` AND ISNULL(ATIVO, 'S') = @ATIVO`;
+            request.input('ATIVO', sql.NVarChar(1), ativo.trim());
         }
 
         query += ` ORDER BY CODIGO`;
@@ -112,31 +118,53 @@ async function atualizarProdutos(req, res) {
             let atualizados = 0;
 
             for (const item of alteracoes) {
-                const { codigo, curva } = item;
+                const { codigo, curva, ativo } = item;
 
-                if (!codigo || !curva) {
-                    console.warn('⚠️ Item inválido ignorado:', item);
+                if (!codigo) {
+                    console.warn('⚠️ Item inválido ignorado (sem código):', item);
                     continue;
                 }
 
-                // Valida valor da curva
-                if (!['A', 'B', 'C'].includes(curva)) {
+                // Valida valor da curva (se fornecido)
+                if (curva && !['A', 'B', 'C'].includes(curva)) {
                     console.warn('⚠️ Valor de curva inválido:', curva);
                     continue;
                 }
 
+                // Valida valor do ativo (se fornecido)
+                if (ativo && !['S', 'N'].includes(ativo)) {
+                    console.warn('⚠️ Valor de ativo inválido:', ativo);
+                    continue;
+                }
+
                 const request = new sql.Request(transaction);
-                await request
-                    .input('CODIGO', sql.NVarChar, codigo)
-                    .input('CURVA', sql.NVarChar(1), curva)
-                    .query(`
-                        UPDATE [dbo].[CAD_PROD]
-                        SET CURVA_A_B_C = @CURVA
-                        WHERE CODIGO = @CODIGO
-                    `);
+                
+                // Monta UPDATE dinâmico
+                let setClauses = [];
+                if (curva) {
+                    setClauses.push('CURVA_A_B_C = @CURVA');
+                    request.input('CURVA', sql.NVarChar(1), curva);
+                }
+                if (ativo) {
+                    setClauses.push('ATIVO = @ATIVO');
+                    request.input('ATIVO', sql.NVarChar(1), ativo);
+                }
+
+                if (setClauses.length === 0) {
+                    console.warn('⚠️ Nenhum campo para atualizar:', item);
+                    continue;
+                }
+
+                request.input('CODIGO', sql.NVarChar, codigo);
+                
+                await request.query(`
+                    UPDATE [dbo].[CAD_PROD]
+                    SET ${setClauses.join(', ')}
+                    WHERE CODIGO = @CODIGO
+                `);
 
                 atualizados++;
-                console.log(`✅ Produto ${codigo} atualizado para curva ${curva}`);
+                console.log(`✅ Produto ${codigo} atualizado${curva ? ` (curva: ${curva})` : ''}${ativo ? ` (ativo: ${ativo})` : ''}`);
             }
 
             await transaction.commit();

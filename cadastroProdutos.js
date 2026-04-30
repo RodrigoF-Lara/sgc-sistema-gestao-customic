@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const filtroCodigo = document.getElementById('filtroCodigo');
     const filtroDescricao = document.getElementById('filtroDescricao');
     const filtroCurva = document.getElementById('filtroCurva');
+    const filtroAtivo = document.getElementById('filtroAtivo');
     const buscarBtn = document.getElementById('buscarBtn');
     const salvarAlteracoesBtn = document.getElementById('salvarAlteracoesBtn');
     const resultadosContainer = document.getElementById('resultadosContainer');
@@ -9,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('statusMessage');
 
     let produtosCarregados = [];
-    let produtosAlterados = new Map(); // Map para rastrear alterações
+    let produtosAlterados = new Map(); // Map para rastrear alterações { codigo: { curva, ativo } }
 
     buscarBtn.addEventListener('click', buscarProdutos);
     salvarAlteracoesBtn.addEventListener('click', salvarAlteracoes);
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const codigo = filtroCodigo.value.trim();
         const descricao = filtroDescricao.value.trim();
         const curva = filtroCurva.value;
+        const ativo = filtroAtivo.value;
 
         mostrarMensagem('Buscando produtos...', 'info');
         buscarBtn.disabled = true;
@@ -35,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (codigo) url += `&codigo=${encodeURIComponent(codigo)}`;
             if (descricao) url += `&descricao=${encodeURIComponent(descricao)}`;
             if (curva) url += `&curva=${curva}`;
+            if (ativo) url += `&ativo=${ativo}`;
 
             console.log('🔍 URL da requisição:', url);
 
@@ -83,11 +86,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Descrição</th>
                         <th>Tipo</th>
                         <th style="width: 200px;">Curva ABC</th>
+                        <th style="width: 150px;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${produtosCarregados.map((produto) => {
-                        const curvaAtual = produtosAlterados.get(produto.CODIGO) || produto.CURVA_A_B_C || 'C';
+                        const alteracao = produtosAlterados.get(produto.CODIGO);
+                        const curvaAtual = alteracao?.curva || produto.CURVA_A_B_C || 'C';
+                        const ativoAtual = alteracao?.ativo || produto.ATIVO || 'S';
                         return `
                         <tr data-codigo="${produto.CODIGO}">
                             <td><strong>${produto.CODIGO}</strong></td>
@@ -105,6 +111,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <option value="C" ${curvaAtual === 'C' ? 'selected' : ''}>C - Baixa prioridade</option>
                                 </select>
                             </td>
+                            <td>
+                                <select 
+                                    class="select-ativo" 
+                                    data-codigo="${produto.CODIGO}"
+                                    data-original="${produto.ATIVO || 'S'}"
+                                    style="width: 100%; padding: 8px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;"
+                                >
+                                    <option value="S" ${ativoAtual === 'S' ? 'selected' : ''}>✅ Ativo</option>
+                                    <option value="N" ${ativoAtual === 'N' ? 'selected' : ''}>❌ Inativo</option>
+                                </select>
+                            </td>
                         </tr>
                     `}).join('')}
                 </tbody>
@@ -114,18 +131,36 @@ document.addEventListener('DOMContentLoaded', function() {
         tabelaProdutos.innerHTML = html;
 
         // Adiciona event listeners para os selects
-        document.querySelectorAll('.select-curva').forEach(select => {
+        document.querySelectorAll('.select-curva, .select-ativo').forEach(select => {
             select.addEventListener('change', (e) => {
                 const codigo = e.target.dataset.codigo;
                 const valorOriginal = e.target.dataset.original;
                 const novoValor = e.target.value;
+                const tipoCampo = e.target.classList.contains('select-curva') ? 'curva' : 'ativo';
 
-                if (novoValor !== valorOriginal) {
-                    produtosAlterados.set(codigo, novoValor);
-                    e.target.parentElement.parentElement.style.backgroundColor = '#fff3cd'; // Destaca linha alterada
+                const produto = produtosCarregados.find(p => p.CODIGO === codigo);
+                if (!produto) return;
+
+                // Obtém ou cria alteração para este código
+                let alteracao = produtosAlterados.get(codigo) || { 
+                    curva: produto.CURVA_A_B_C || 'C', 
+                    ativo: produto.ATIVO || 'S' 
+                };
+
+                // Atualiza o campo específico
+                alteracao[tipoCampo] = novoValor;
+
+                // Verifica se há alterações em relação ao original
+                const curvaOriginal = produto.CURVA_A_B_C || 'C';
+                const ativoOriginal = produto.ATIVO || 'S';
+                const temAlteracao = alteracao.curva !== curvaOriginal || alteracao.ativo !== ativoOriginal;
+
+                if (temAlteracao) {
+                    produtosAlterados.set(codigo, alteracao);
+                    e.target.closest('tr').style.backgroundColor = '#fff3cd'; // Destaca linha alterada
                 } else {
                     produtosAlterados.delete(codigo);
-                    e.target.parentElement.parentElement.style.backgroundColor = '';
+                    e.target.closest('tr').style.backgroundColor = '';
                 }
 
                 // Mostra/esconde botão de salvar
@@ -140,9 +175,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const alteracoes = Array.from(produtosAlterados.entries()).map(([codigo, curva]) => ({
+        const alteracoes = Array.from(produtosAlterados.entries()).map(([codigo, dados]) => ({
             codigo,
-            curva
+            curva: dados.curva,
+            ativo: dados.ativo
         }));
 
         console.log('💾 Salvando alterações:', alteracoes);
@@ -175,7 +211,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Atualiza os dados originais e limpa as alterações
             produtosCarregados.forEach(produto => {
                 if (produtosAlterados.has(produto.CODIGO)) {
-                    produto.CURVA_A_B_C = produtosAlterados.get(produto.CODIGO);
+                    const dados = produtosAlterados.get(produto.CODIGO);
+                    produto.CURVA_A_B_C = dados.curva;
+                    produto.ATIVO = dados.ativo;
                 }
             });
 
