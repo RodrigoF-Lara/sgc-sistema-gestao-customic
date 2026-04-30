@@ -71,16 +71,21 @@ async function listarProdutos(req, res) {
             }
         }
 
+        console.log(`🧪 Debug ATIVO: valor="${ativo}", type=${typeof ativo}, undefined=${ativo === undefined}, empty=${ativo === ''}`);
+        
         if (ativo !== undefined && ativo !== '') {
             const ativoInt = parseInt(ativo);
             console.log(`📌 Filtrando por ATIVO = ${ativoInt} (tipo: ${typeof ativoInt})`);
             query += ` AND ISNULL(ATIVO, 1) = @ATIVO`;
             request.input('ATIVO', sql.Int, ativoInt);
+        } else {
+            console.log('⚠️ Filtro ATIVO NÃO aplicado!');
         }
 
         query += ` ORDER BY CODIGO`;
 
         console.log('📦 Query de busca de produtos:', query);
+        console.log('📦 Parâmetros:', request.parameters);
 
         const result = await request.query(query);
 
