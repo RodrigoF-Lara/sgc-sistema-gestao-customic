@@ -28,6 +28,8 @@ export default async function handler(req, res) {
             return await relatorioRequisicoes(req, res);
         } else if (acao === 'tiposProduto') {
             return await buscarTiposProduto(req, res);
+        } else if (acao === 'saldoEstoque') {
+            return await relatorioSaldoEstoque(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -388,6 +390,94 @@ async function buscarTiposProduto(req, res) {
         return res.status(500).json({ 
             message: "Erro ao buscar tipos de produto", 
             error: err.message
+        });
+    }
+}
+
+async function relatorioSaldoEstoque(req, res) {
+    try {
+        const { curvaABC, tipoProduto, incluirSaldoZero } = req.query;
+
+        const pool = await getConnection();
+        
+        console.log('📊 Relatório de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', incluirSaldoZero });
+        
+        // Query principal
+        let query = `
+            SELECT 
+                cp.CODIGO,
+                cp.DESCRICAO,
+                cp.TIPO,
+                ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
+                ISNULL(k.SALDO, 0) AS SALDO
+            FROM [dbo].[CAD_PROD] cp
+            LEFT JOIN (
+                SELECT 
+                    CODIGO,
+                    SUM(SALDO) AS SALDO
+                FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                WHERE D_E_L_E_T_ <> '*'
+                    AND KARDEX = 2026
+                GROUP BY CODIGO
+            ) k ON cp.CODIGO = k.CODIGO
+            WHERE 1=1`;
+        
+        const request = pool.request();
+        
+        // Filtro por curva ABC
+        if (curvaABC && curvaABC.trim()) {
+            if (curvaABC === 'C') {
+                // C inclui NULL, '', e 'C'
+                query += ` AND (cp.CURVA_A_B_C IS NULL OR cp.CURVA_A_B_C = '' OR cp.CURVA_A_B_C = 'C')`;
+            } else {
+                query += ` AND cp.CURVA_A_B_C = @CURVA_ABC`;
+                request.input('CURVA_ABC', sql.NVarChar(1), curvaABC.trim());
+            }
+        }
+        
+        // Filtro por tipo de produto
+        if (tipoProduto && tipoProduto.trim()) {
+            query += ` AND cp.TIPO = @TIPO_PRODUTO`;
+            request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
+        }
+        
+        // Filtro por saldo
+        if (incluirSaldoZero !== 'sim') {
+            query += ` AND ISNULL(k.SALDO, 0) > 0`;
+        }
+        
+        query += ` ORDER BY CURVA_A_B_C, cp.CODIGO`;
+
+        console.log('🔍 Query executada:', query);
+
+        const result = await request.query(query);
+
+        console.log('📦 Produtos encontrados:', result.recordset.length);
+
+        // Calcula totalizadores
+        const totalProdutos = result.recordset.length;
+        const totalCurvaA = result.recordset.filter(p => p.CURVA_A_B_C === 'A').length;
+        const totalCurvaB = result.recordset.filter(p => p.CURVA_A_B_C === 'B').length;
+        const totalCurvaC = result.recordset.filter(p => p.CURVA_A_B_C === 'C').length;
+        const totalSaldo = result.recordset.reduce((acc, item) => acc + parseFloat(item.SALDO || 0), 0);
+
+        return res.status(200).json({
+            dados: result.recordset,
+            totalizadores: {
+                totalProdutos,
+                totalCurvaA,
+                totalCurvaB,
+                totalCurvaC,
+                totalSaldo
+            }
+        });
+
+    } catch (err) {
+        console.error("❌ Erro ao gerar relatório de saldo:", err);
+        return res.status(500).json({ 
+            message: "Erro ao gerar relatório", 
+            error: err.message,
+            stack: err.stack
         });
     }
 }

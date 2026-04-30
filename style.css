@@ -1091,6 +1091,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #212529;
 }
 
+/* Curva ABC */
+.curva-a {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.curva-b {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.curva-c {
+    background-color: #28a745;
+    color: #fff;
+}
+
 /* Barra de Progresso */
 .progress-bar-container {
     position: relative;

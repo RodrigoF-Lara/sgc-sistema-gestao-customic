@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Saldo em Estoque - SGC Customic</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+      <div class="container">
+        <h1>
+          <i class="fa-solid fa-boxes-stacked"></i>
+          Relatório de Saldo em Estoque
+        </h1>
+
+        <!-- Filtros -->
+        <div class="card">
+          <h2>Filtros do Relatório</h2>
+          <div class="filter-container">
+            <div class="form-group">
+              <label for="filtroCurvaABC" style="font-size: 16px; font-weight: bold;">Curva ABC:</label>
+              <select id="filtroCurvaABC" style="font-size: 16px; padding: 12px; height: 45px;">
+                <option value="">Todas as curvas</option>
+                <option value="A">A - Alta prioridade</option>
+                <option value="B">B - Média prioridade</option>
+                <option value="C">C - Baixa prioridade</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filtroTipoProduto" style="font-size: 16px; font-weight: bold;">Tipo de Produto:</label>
+              <select id="filtroTipoProduto" style="font-size: 16px; padding: 12px; height: 45px;">
+                <option value="">Todos os tipos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filtroSaldoZero" style="font-size: 16px; font-weight: bold;">Exibir:</label>
+              <select id="filtroSaldoZero" style="font-size: 16px; padding: 12px; height: 45px;">
+                <option value="nao">Apenas com saldo</option>
+                <option value="sim">Incluir saldo zero</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button id="gerarRelatorioBtn" class="btn-destaque">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                Gerar Relatório
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totalizadores -->
+        <div id="totalizadoresContainer" style="display: none">
+          <div class="estatisticas-inventario">
+            <div class="stat-card">
+              <i class="fa-solid fa-boxes-stacked"></i>
+              <p>Total de Produtos</p>
+              <strong id="totalProdutos">0</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+              <i class="fa-solid fa-star"></i>
+              <p>Curva A</p>
+              <strong id="totalCurvaA">0</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);">
+              <i class="fa-solid fa-circle"></i>
+              <p>Curva B</p>
+              <strong id="totalCurvaB">0</strong>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #28a745 0%, #218838 100%);">
+              <i class="fa-solid fa-minus"></i>
+              <p>Curva C</p>
+              <strong id="totalCurvaC">0</strong>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-box"></i>
+              <p>Total em Estoque</p>
+              <strong id="totalSaldo">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de Resultados -->
+        <div id="resultadosContainer" style="display: none" class="card">
+          <div class="table-actions">
+            <h2>Saldo por Produto</h2>
+            <div>
+              <button id="imprimirBtn" class="btn-secundario">
+                <i class="fa-solid fa-print"></i> Imprimir
+              </button>
+              <button id="exportarExcelBtn" class="btn-success">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+              </button>
+            </div>
+          </div>
+          <div id="tabelaRelatorio"></div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+      </div>
+    </div>
+
+    <!-- Biblioteca para exportar Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="relatorioSaldo.js"></script>
+    <script src="layout.js"></script>
+  </body>
+</html>
