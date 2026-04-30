@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body class="login-body">
-    <div class="login-container">
+    <div class="login-container" id="loginContainer">
       <div class="login-card">
         <h2>SGC - Sistema de Gestão Customic</h2>
         <form id="loginForm">
@@ -23,6 +23,16 @@
       </div>
     </div>
     <script>
+      // Selecionar GIF de fundo aleatório
+      const fundosDisponiveis = [
+        'customic_fundo.gif',
+        'customic_fundo_2.gif',
+        'customic_fundo_3.gif',
+        'customic_fundo_4.gif'
+      ];
+      const fundoAleatorio = fundosDisponiveis[Math.floor(Math.random() * fundosDisponiveis.length)];
+      document.getElementById('loginContainer').style.backgroundImage = `url('img/fundo_login/${fundoAleatorio}')`;
+
       document
         .getElementById("loginForm")
         .addEventListener("submit", async function (e) {

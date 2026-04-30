@@ -246,14 +246,13 @@ tbody tr:hover {
 /* =================================================================== */
 
 /* --- Página de Login --- */
-.login-body { display: block; padding: 0; }
+.login-body { display: block; padding: 0; margin: 0; }
 .login-container { 
     min-height: 100vh; 
     display: flex; 
-    align-items: flex-end; 
-    justify-content: center; 
-    padding-bottom: 60px;
-    background-image: url('customic_fundo.gif');
+    align-items: flex-start; 
+    justify-content: flex-start; 
+    padding: 30px;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
