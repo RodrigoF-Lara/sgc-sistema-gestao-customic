@@ -1,7 +1,9 @@
 ﻿{
-    "imagens":  [
-                    "fundo_2.jpeg",
-                    "fundo_3.gif",
-                    "Gemini_Generated_Image_z5r3q9z5r3q9z5r3.png"
-                ]
+    "imagens": [
+        "fundo_1.png",
+        "fundo_2.png",
+        "fundo_3.png",
+        "fundo_4.png",
+        "fundo_5.png"
+    ]
 }
