@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const filtroCurva = document.getElementById('filtroCurva');
     const filtroAtivo = document.getElementById('filtroAtivo');
     const buscarBtn = document.getElementById('buscarBtn');
-    const salvarAlteracoesBtn = document.getElementById('salvarAlteracoesBtn');
     const resultadosContainer = document.getElementById('resultadosContainer');
     const tabelaProdutos = document.getElementById('tabelaProdutos');
     const statusMessage = document.getElementById('statusMessage');
@@ -105,10 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 </thead>
                 <tbody>
                     ${produtosCarregados.map((produto) => {
-                        const alteracao = produtosAlterados.get(produto.CODIGO);
-                        const curvaAtual = alteracao?.curva || produto.CURVA_A_B_C || 'C';
+                        const curvaAtual = produto.CURVA_A_B_C || 'C';
                         // ATIVO já foi convertido de Buffer para número
-                        const ativoAtual = alteracao?.ativo !== undefined ? alteracao.ativo : (produto.ATIVO !== undefined ? produto.ATIVO : 1);
+                        const ativoAtual = produto.ATIVO !== undefined ? produto.ATIVO : 1;
                         
                         return `
                         <tr data-codigo="${produto.CODIGO}">
@@ -215,68 +213,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
-    }
-
-    async function salvarAlteracoes() {
-        if (produtosAlterados.size === 0) {
-            mostrarMensagem('Nenhuma alteração para salvar.', 'error');
-            return;
-        }
-
-        const alteracoes = Array.from(produtosAlterados.entries()).map(([codigo, dados]) => ({
-            codigo,
-            curva: dados.curva,
-            ativo: dados.ativo
-        }));
-
-        console.log('💾 Salvando alterações:', alteracoes);
-
-        mostrarMensagem('Salvando alterações...', 'info');
-        salvarAlteracoesBtn.disabled = true;
-
-        try {
-            const response = await fetch('/api/cadastroProdutos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    acao: 'atualizar',
-                    alteracoes: alteracoes
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Erro ao salvar alterações');
-            }
-
-            const resultado = await response.json();
-            console.log('✅ Alterações salvas:', resultado);
-
-            mostrarMensagem(`${alteracoes.length} produto(s) atualizado(s) com sucesso!`, 'success');
-
-            // Atualiza os dados originais e limpa as alterações
-            produtosCarregados.forEach(produto => {
-                if (produtosAlterados.has(produto.CODIGO)) {
-                    const dados = produtosAlterados.get(produto.CODIGO);
-                    produto.CURVA_A_B_C = dados.curva;
-                    produto.ATIVO = dados.ativo;
-                }
-            });
-
-            produtosAlterados.clear();
-            salvarAlteracoesBtn.style.display = 'none';
-
-            // Re-renderiza a tabela sem o destaque
-            renderizarTabela();
-
-        } catch (error) {
-            console.error('❌ Erro ao salvar alterações:', error);
-            mostrarMensagem(`Erro ao salvar: ${error.message}`, 'error');
-        } finally {
-            salvarAlteracoesBtn.disabled = false;
-        }
     }
 
     function mostrarMensagem(mensagem, tipo) {
