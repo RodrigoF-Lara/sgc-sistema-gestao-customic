@@ -41,6 +41,7 @@ async function handleGet(req, res) {
 async function handlePost(req, res) {
     const { action } = req.body;
     const pool = await getConnection();
+    
     if (action === 'createHeader') {
         const { dtNecessidade, prioridade, solicitante } = req.body;
         const result = await pool.request().input('SOLICITANTE', sql.NVarChar, solicitante).input('DT_REQUISICAO', sql.Date, new Date()).input('HR_REQUSICAO', sql.NVarChar, new Date().toLocaleTimeString()).input('STATUS', sql.NVarChar, 'Pendente').input('DT_NECESSIDADE', sql.Date, dtNecessidade).input('PRIORIDADE', sql.NVarChar, prioridade).query("INSERT INTO [dbo].[TB_REQUISICOES] (SOLICITANTE, DT_REQUISICAO, HR_REQUSICAO, STATUS, DT_NECESSIDADE, PRIORIDADE) OUTPUT INSERTED.ID_REQ VALUES (@SOLICITANTE, @DT_REQUISICAO, @HR_REQUSICAO, @STATUS, @DT_NECESSIDADE, @PRIORIDADE);");
@@ -54,6 +55,8 @@ async function handlePost(req, res) {
             await pool.request().input('ID_REQ', sql.Int, idReq).input('ID_REQ_ITEM', sql.Int, idReqItem++).input('CODIGO', sql.NVarChar, CODIGO).input('QNT_REQ', sql.Float, QNT_REQ).input('QNT_PAGA', sql.Float, 0).input('SALDO', sql.Float, QNT_REQ).input('STATUS_ITEM', sql.NVarChar, 'Pendente').query("INSERT INTO [dbo].[TB_REQ_ITEM] (ID_REQ, ID_REQ_ITEM, CODIGO, QNT_REQ, QNT_PAGA, SALDO, STATUS_ITEM) VALUES (@ID_REQ, @ID_REQ_ITEM, @CODIGO, @QNT_REQ, @QNT_PAGA, @SALDO, @STATUS_ITEM)");
         }
         return res.status(201).json({ message: "Itens inseridos com sucesso" });
+    } else if (action === 'atender') {
+        return await atenderRequisicao(req, res);
     }
     return res.status(400).json({ message: "Ação POST inválida." });
 }
@@ -129,4 +132,61 @@ async function updateHeaderStatus(transaction, idReq) {
         novoStatusHeader = 'Parcial';
     }
     await request.input('STATUS_HEADER', sql.NVarChar, novoStatusHeader).query("UPDATE TB_REQUISICOES SET STATUS = @STATUS_HEADER WHERE ID_REQ = @ID_REQ_HEADER");
+}
+
+async function atenderRequisicao(req, res) {
+    const { idReqItem, idReq, quantidadeAtendida, usuario } = req.body;
+
+    if (!idReqItem || !idReq || quantidadeAtendida === undefined || !usuario) {
+        return res.status(400).json({ message: "Todos os campos (ID do Item, ID da Requisição, Quantidade, Usuário) são obrigatórios." });
+    }
+
+    const pool = await getConnection();
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        await transaction.begin();
+
+        // 1. Atualiza o item específico
+        const itemRequest = new sql.Request(transaction);
+        await itemRequest
+            .input('ID_REQ_ITEM', sql.Int, idReqItem)
+            .input('QNT_PAGA', sql.Decimal(10, 2), quantidadeAtendida)
+            .query(`
+                UPDATE TB_REQ_ITEM
+                SET 
+                    QNT_PAGA = @QNT_PAGA,
+                    SALDO = QNT_REQ - @QNT_PAGA,
+                    STATUS_ITEM = CASE 
+                                    WHEN (QNT_REQ - @QNT_PAGA) <= 0 THEN 'PAGO'
+                                    ELSE 'PARCIAL'
+                                END
+                WHERE ID_REQ_ITEM = @ID_REQ_ITEM;
+            `);
+
+        // 2. Verifica o status de todos os outros itens da mesma requisição
+        const checkStatusRequest = new sql.Request(transaction);
+        const allItemsResult = await checkStatusRequest
+            .input('ID_REQ', sql.Int, idReq)
+            .query("SELECT COUNT(*) as total, SUM(CASE WHEN STATUS_ITEM = 'PAGO' THEN 1 ELSE 0 END) as pagos FROM TB_REQ_ITEM WHERE ID_REQ = @ID_REQ");
+
+        const { total, pagos } = allItemsResult.recordset[0];
+
+        // 3. Se todos os itens estiverem pagos, atualiza o cabeçalho da requisição
+        if (total === pagos) {
+            const updateHeaderRequest = new sql.Request(transaction);
+            await updateHeaderRequest
+                .input('ID_REQ', sql.Int, idReq)
+                .input('STATUS', sql.NVarChar, 'CONCLUIDO')
+                .query("UPDATE TB_REQUISICOES SET STATUS = @STATUS WHERE ID_REQ = @ID_REQ");
+        }
+
+        await transaction.commit();
+        return res.status(200).json({ message: "Item atualizado com sucesso!" });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error("Erro na transação de atendimento:", err);
+        return res.status(500).json({ message: "Erro no servidor ao tentar atender o item.", error: err.message });
+    }
 }

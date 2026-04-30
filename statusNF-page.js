@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchAndDisplayLog(nf, codigo) {
         logContent.innerHTML = `<div class="loader"></div>`;
         try {
-            const response = await fetch(`/api/logNF?nf=${nf}&codigo=${codigo}`);
+            const response = await fetch(`/api/statusNF?acao=log&nf=${nf}&codigo=${codigo}`);
             if (!response.ok) throw new Error((await response.json()).message || 'Falha ao buscar log.');
             const logData = await response.json();
 
@@ -247,10 +247,10 @@ document.addEventListener('DOMContentLoaded', function() {
         modalStatus.textContent = "Salvando...";
         modalStatus.style.color = "#222";
         try {
-            const response = await fetch('/api/atualizarStatusNF', {
+            const response = await fetch('/api/statusNF', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nf, codigo, processo, usuario, id_nf: idNf, id_nf_prod: idNfProd })
+                body: JSON.stringify({ acao: 'atualizarStatus', nf, codigo, processo, usuario, id_nf: idNf, id_nf_prod: idNfProd })
             });
 
             // tenta parsear JSON; se falhar, usa texto bruto para erro
