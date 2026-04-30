@@ -10,7 +10,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     />
   </head>
-  <body>
+  <body class="menu-body">
     <!-- O novo menu lateral será carregado aqui pelo layout.js -->
     <div id="sidebar-container" class="sidebar"></div>
 
@@ -68,6 +68,66 @@
           welcomeMessage.textContent = `Olá, ${userName}! Selecione uma opção para começar.`;
         }
       });
+    </script>
+    <!-- Script para troca suave de fundos -->
+    <script>
+      (function() {
+        // Lista de imagens disponíveis na pasta fundo_menu_principal
+        const fundosDisponiveis = [
+          'fundo_1.jpeg',
+          'fundo_2.jpeg',
+          'fundo_3.jpeg',
+          'fundo_4.jpeg'
+        ];
+        
+        let indiceAtual = 0;
+        let usandoBefore = true;
+        const body = document.body;
+        
+        // Define a primeira imagem
+        body.style.setProperty('--fundo-atual', `url('img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}')`);
+        
+        function trocarFundo() {
+          // Próximo índice
+          indiceAtual = (indiceAtual + 1) % fundosDisponiveis.length;
+          const proximoFundo = `url('img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}')`;
+          
+          if (usandoBefore) {
+            // Troca para ::after
+            body.style.setProperty('--fundo-proximo', proximoFundo);
+            // Fade out ::before, fade in ::after
+            body.classList.add('fade-to-after');
+          } else {
+            // Troca para ::before
+            body.style.setProperty('--fundo-atual', proximoFundo);
+            // Fade in ::before, fade out ::after
+            body.classList.remove('fade-to-after');
+          }
+          
+          usandoBefore = !usandoBefore;
+        }
+        
+        // Define as imagens iniciais
+        const style = document.createElement('style');
+        style.textContent = `
+          body.menu-body::before {
+            background-image: var(--fundo-atual, url('img/fundo_menu_principal/${fundosDisponiveis[0]}'));
+          }
+          body.menu-body::after {
+            background-image: var(--fundo-proximo, url('img/fundo_menu_principal/${fundosDisponiveis[1]}'));
+          }
+          body.menu-body.fade-to-after::before {
+            opacity: 0;
+          }
+          body.menu-body.fade-to-after::after {
+            opacity: 1;
+          }
+        `;
+        document.head.appendChild(style);
+        
+        // Troca a cada 30 segundos
+        setInterval(trocarFundo, 30000);
+      })();
     </script>
   </body>
 </html>

@@ -28,6 +28,31 @@ body {
     overflow: hidden;
     background-color: var(--cor-fundo);
     color: var(--cor-texto);
+    position: relative;
+}
+
+/* Transição suave de background para o menu principal */
+body.menu-body::before,
+body.menu-body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+    transition: opacity 2s ease-in-out;
+}
+
+body.menu-body::before {
+    opacity: 1;
+}
+
+body.menu-body::after {
+    opacity: 0;
 }
 
 h1, h2 {
