@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastro de Produtos - SGC Customic</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+      <div class="container">
+        <h1>
+          <i class="fa-solid fa-box-open"></i>
+          Cadastro de Produtos - Classificação ABC
+        </h1>
+
+        <p class="info-message">
+          <i class="fa-solid fa-info-circle"></i>
+          Gerencie a classificação ABC dos produtos. Produtos não classificados são considerados tipo C.
+        </p>
+
+        <!-- Filtros -->
+        <div class="card">
+          <h2>Filtros de Busca</h2>
+          <div class="filter-container">
+            <div class="form-group">
+              <label for="filtroCodigo" style="font-size: 16px; font-weight: bold;">Código:</label>
+              <input 
+                type="text" 
+                id="filtroCodigo" 
+                placeholder="Digite o código do produto"
+                style="font-size: 16px; padding: 12px; height: 45px;" 
+              />
+            </div>
+            <div class="form-group">
+              <label for="filtroDescricao" style="font-size: 16px; font-weight: bold;">Descrição:</label>
+              <input 
+                type="text" 
+                id="filtroDescricao" 
+                placeholder="Digite a descrição do produto"
+                style="font-size: 16px; padding: 12px; height: 45px;" 
+              />
+            </div>
+            <div class="form-group">
+              <label for="filtroCurva" style="font-size: 16px; font-weight: bold;">Curva ABC:</label>
+              <select id="filtroCurva" style="font-size: 16px; padding: 12px; height: 45px;">
+                <option value="">Todas</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button id="buscarBtn" class="btn-destaque">
+                <i class="fa-solid fa-search"></i>
+                Buscar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de Produtos -->
+        <div id="resultadosContainer" style="display: none" class="card">
+          <div class="table-actions">
+            <h2>Produtos Encontrados</h2>
+            <div>
+              <button id="salvarAlteracoesBtn" class="btn-success" style="display: none;">
+                <i class="fa-solid fa-save"></i> Salvar Alterações
+              </button>
+            </div>
+          </div>
+          <div id="tabelaProdutos"></div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+      </div>
+    </div>
+
+    <script src="cadastroProdutos.js"></script>
+    <script src="layout.js"></script>
+  </body>
+</html>
