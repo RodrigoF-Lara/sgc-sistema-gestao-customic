@@ -26,6 +26,8 @@ export default async function handler(req, res) {
             return await movimentacoesProduto(req, res);
         } else if (acao === 'requisicoes') {
             return await relatorioRequisicoes(req, res);
+        } else if (acao === 'tiposProduto') {
+            return await buscarTiposProduto(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
 
 async function relatorioBaixaPorPeriodo(req, res) {
     try {
-        const { dataInicio, dataFim } = req.query;
+        const { dataInicio, dataFim, tipoProduto } = req.query;
 
         if (!dataInicio || !dataFim) {
             return res.status(400).json({ 
@@ -55,46 +57,72 @@ async function relatorioBaixaPorPeriodo(req, res) {
         
         console.log('📅 Data Início (recebida):', dataInicio);
         console.log('📅 Data Fim (recebida):', dataFim);
+        console.log('🏷️ Tipo de Produto:', tipoProduto || 'Todos');
         console.log('📅 Data Início (processada):', dataInicioObj.toISOString());
         console.log('📅 Data Fim Ajustada (processada):', dataFimAjustada.toISOString());
         
-        // Primeiro, vamos verificar se há dados na tabela
-        const verificacao = await pool.request()
+        // Query base para verificação
+        let queryVerificacao = `
+            SELECT COUNT(*) as TOTAL
+            FROM [dbo].[KARDEX_2026] k
+            LEFT JOIN [dbo].[CAD_PROD] cp ON k.CODIGO = cp.CODIGO
+            WHERE k.OPERACAO = 'SAÍDA'
+                AND k.USUARIO <> 'BEATRIZ JULHAO'
+                AND k.DT >= @DATA_INICIO
+                AND k.DT < @DATA_FIM`;
+        
+        // Adiciona filtro de tipo se especificado
+        if (tipoProduto && tipoProduto.trim()) {
+            queryVerificacao += ` AND cp.TIPO = @TIPO_PRODUTO`;
+        }
+        
+        const requestVerificacao = pool.request()
             .input('DATA_INICIO', sql.Date, dataInicioObj)
-            .input('DATA_FIM', sql.Date, dataFimAjustada)
-            .query(`
-                SELECT COUNT(*) as TOTAL
-                FROM [dbo].[KARDEX_2026] k
-                -- WHERE k.D_E_L_E_T_ <> '*'
-                WHERE k.OPERACAO = 'SAÍDA'
-                    AND k.USUARIO <> 'BEATRIZ JULHAO'
-                    AND k.DT >= @DATA_INICIO
-                    AND k.DT < @DATA_FIM
-            `);
+            .input('DATA_FIM', sql.Date, dataFimAjustada);
+        
+        if (tipoProduto && tipoProduto.trim()) {
+            requestVerificacao.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto);
+        }
+        
+        const verificacao = await requestVerificacao.query(queryVerificacao);
 
         console.log('📊 Total de registros encontrados:', verificacao.recordset[0].TOTAL);
         
-        const result = await pool.request()
-            .input('DATA_INICIO', sql.Date, dataInicioObj)
-            .input('DATA_FIM', sql.Date, dataFimAjustada)
-            .query(`
+        // Query principal
+        let query = `
                 SELECT 
                     k.CODIGO,
                     ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
+                    ISNULL(cp.TIPO, 'NÃO INFORMADO') AS TIPO,
                     SUM(ABS(k.QNT)) AS TOTAL_SAIDAS,
                     COUNT(*) AS QUANTIDADE_MOVIMENTACOES,
                     MIN(k.DT) AS PRIMEIRA_BAIXA,
                     MAX(k.DT) AS ULTIMA_BAIXA
                 FROM [dbo].[KARDEX_2026] k
                 LEFT JOIN [dbo].[CAD_PROD] cp ON k.CODIGO = cp.CODIGO
-                -- WHERE k.D_E_L_E_T_ <> '*'
                 WHERE k.OPERACAO = 'SAÍDA'
                     AND k.USUARIO <> 'BEATRIZ JULHAO'
                     AND k.DT >= @DATA_INICIO
-                    AND k.DT < @DATA_FIM
-                GROUP BY k.CODIGO, cp.DESCRICAO
-                ORDER BY TOTAL_SAIDAS DESC
-            `);
+                    AND k.DT < @DATA_FIM`;
+        
+        // Adiciona filtro de tipo se especificado
+        if (tipoProduto && tipoProduto.trim()) {
+            query += ` AND cp.TIPO = @TIPO_PRODUTO`;
+        }
+        
+        query += `
+                GROUP BY k.CODIGO, cp.DESCRICAO, cp.TIPO
+                ORDER BY TOTAL_SAIDAS DESC`;
+        
+        const request = pool.request()
+            .input('DATA_INICIO', sql.Date, dataInicioObj)
+            .input('DATA_FIM', sql.Date, dataFimAjustada);
+        
+        if (tipoProduto && tipoProduto.trim()) {
+            request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto);
+        }
+        
+        const result = await request.query(query);
 
         console.log('📦 Produtos agrupados:', result.recordset.length);
 
@@ -334,6 +362,33 @@ async function movimentacoesProduto(req, res) {
     } catch (error) {
         console.error('❌ Erro ao buscar movimentações:', error);
         return res.status(500).json({ message: `Erro: ${error.message}` });
+    }
+}
+
+async function buscarTiposProduto(req, res) {
+    try {
+        const pool = await getConnection();
+        
+        const result = await pool.request()
+            .query(`
+                SELECT DISTINCT TIPO
+                FROM [dbo].[CAD_PROD]
+                WHERE TIPO IS NOT NULL AND TIPO <> ''
+                ORDER BY TIPO
+            `);
+
+        console.log('🏷️ Tipos de produto encontrados:', result.recordset.length);
+
+        return res.status(200).json({
+            tipos: result.recordset.map(r => r.TIPO)
+        });
+
+    } catch (err) {
+        console.error("❌ Erro ao buscar tipos de produto:", err);
+        return res.status(500).json({ 
+            message: "Erro ao buscar tipos de produto", 
+            error: err.message
+        });
     }
 }
 

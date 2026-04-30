@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const dataInicio = document.getElementById('dataInicio');
     const dataFim = document.getElementById('dataFim');
+    const tipoProduto = document.getElementById('tipoProduto');
     const gerarRelatorioBtn = document.getElementById('gerarRelatorioBtn');
     const totalizadoresContainer = document.getElementById('totalizadoresContainer');
     const resultadosContainer = document.getElementById('resultadosContainer');
@@ -20,13 +21,38 @@ document.addEventListener('DOMContentLoaded', function() {
     dataFim.valueAsDate = hoje;
     dataInicio.valueAsDate = trintaDiasAtras;
 
+    // Carrega os tipos de produto
+    carregarTiposProduto();
+
     gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
     imprimirBtn.addEventListener('click', imprimirRelatorio);
     exportarExcelBtn.addEventListener('click', exportarParaExcel);
 
+    async function carregarTiposProduto() {
+        try {
+            const response = await fetch('/api/relatorios?acao=tiposProduto');
+            if (!response.ok) throw new Error('Erro ao carregar tipos');
+            
+            const data = await response.json();
+            
+            // Preenche o select com os tipos
+            data.tipos.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo;
+                tipoProduto.appendChild(option);
+            });
+            
+            console.log('✅ Tipos de produto carregados:', data.tipos.length);
+        } catch (error) {
+            console.error('❌ Erro ao carregar tipos de produto:', error);
+        }
+    }
+
     async function gerarRelatorio() {
         const inicio = dataInicio.value;
         const fim = dataFim.value;
+        const tipo = tipoProduto.value;
 
         if (!inicio || !fim) {
             mostrarMensagem('Por favor, selecione as datas de início e fim', 'error');
@@ -42,9 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
 
         try {
-            const url = `/api/relatorios?acao=baixaPorPeriodo&dataInicio=${inicio}&dataFim=${fim}`;
+            let url = `/api/relatorios?acao=baixaPorPeriodo&dataInicio=${inicio}&dataFim=${fim}`;
+            if (tipo) {
+                url += `&tipoProduto=${encodeURIComponent(tipo)}`;
+            }
             console.log('🔍 URL da requisição:', url);
-            console.log('📅 Período:', { inicio, fim });
+            console.log('📅 Período:', { inicio, fim, tipo: tipo || 'Todos' });
 
             const response = await fetch(url);
 
@@ -123,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>#</th>
                         <th>Código (SKU)</th>
                         <th>Descrição do Produto</th>
+                        <th>Tipo</th>
                         <th>Total de Saídas</th>
                         <th>Qtd Movimentações</th>
                         <th>Primeira Baixa</th>
@@ -135,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>${index + 1}</td>
                             <td><strong>${item.CODIGO}</strong></td>
                             <td>${item.DESCRICAO}</td>
+                            <td><span class="badge" style="background-color: #6c757d;">${item.TIPO || 'N/A'}</span></td>
                             <td><strong>${item.TOTAL_SAIDAS.toLocaleString('pt-BR')}</strong></td>
                             <td>${item.QUANTIDADE_MOVIMENTACOES}</td>
                             <td>${formatarData(item.PRIMEIRA_BAIXA)}</td>
@@ -144,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </tbody>
                 <tfoot>
                     <tr class="total-row">
-                        <td colspan="3" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
+                        <td colspan="4" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
                         <td><strong>${totalizadores.totalSaidas.toLocaleString('pt-BR')}</strong></td>
                         <td><strong>${totalizadores.totalMovimentacoes.toLocaleString('pt-BR')}</strong></td>
                         <td colspan="2"></td>
