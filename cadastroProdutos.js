@@ -55,6 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (produtosCarregados.length > 0) {
                 console.log('🔍 Exemplo de produto:', produtosCarregados[0]);
                 console.log('🔍 ATIVO do primeiro produto:', produtosCarregados[0].ATIVO, 'tipo:', typeof produtosCarregados[0].ATIVO);
+                console.log('🔍 ATIVO stringified:', JSON.stringify(produtosCarregados[0].ATIVO));
+                console.log('🔍 ATIVO com Number():', Number(produtosCarregados[0].ATIVO));
+                console.log('🔍 ATIVO com parseInt():', parseInt(produtosCarregados[0].ATIVO));
             }
 
             if (produtosCarregados.length === 0) {
