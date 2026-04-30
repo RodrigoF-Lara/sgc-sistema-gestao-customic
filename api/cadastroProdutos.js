@@ -41,7 +41,7 @@ async function listarProdutos(req, res) {
                 DESCRICAO,
                 TIPO,
                 CURVA_A_B_C,
-                ISNULL(ATIVO, 'S') AS ATIVO
+                ISNULL(ATIVO, 1) AS ATIVO
             FROM [dbo].[CAD_PROD]
             WHERE 1=1
         `;
@@ -69,9 +69,9 @@ async function listarProdutos(req, res) {
             }
         }
 
-        if (ativo && ativo.trim()) {
-            query += ` AND ISNULL(ATIVO, 'S') = @ATIVO`;
-            request.input('ATIVO', sql.NVarChar(1), ativo.trim());
+        if (ativo !== undefined && ativo !== '') {
+            query += ` AND ISNULL(ATIVO, 1) = @ATIVO`;
+            request.input('ATIVO', sql.Int, parseInt(ativo));
         }
 
         query += ` ORDER BY CODIGO`;
@@ -132,7 +132,7 @@ async function atualizarProdutos(req, res) {
                 }
 
                 // Valida valor do ativo (se fornecido)
-                if (ativo && !['S', 'N'].includes(ativo)) {
+                if (ativo !== undefined && ![0, 1, '0', '1'].includes(ativo)) {
                     console.warn('⚠️ Valor de ativo inválido:', ativo);
                     continue;
                 }
@@ -145,9 +145,9 @@ async function atualizarProdutos(req, res) {
                     setClauses.push('CURVA_A_B_C = @CURVA');
                     request.input('CURVA', sql.NVarChar(1), curva);
                 }
-                if (ativo) {
+                if (ativo !== undefined) {
                     setClauses.push('ATIVO = @ATIVO');
-                    request.input('ATIVO', sql.NVarChar(1), ativo);
+                    request.input('ATIVO', sql.Int, parseInt(ativo));
                 }
 
                 if (setClauses.length === 0) {

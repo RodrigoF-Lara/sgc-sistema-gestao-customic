@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${produtosCarregados.map((produto) => {
                         const alteracao = produtosAlterados.get(produto.CODIGO);
                         const curvaAtual = alteracao?.curva || produto.CURVA_A_B_C || 'C';
-                        const ativoAtual = alteracao?.ativo || produto.ATIVO || 'S';
+                        const ativoAtual = alteracao?.ativo !== undefined ? alteracao.ativo : (produto.ATIVO !== undefined ? produto.ATIVO : 1);
                         return `
                         <tr data-codigo="${produto.CODIGO}">
                             <td><strong>${produto.CODIGO}</strong></td>
@@ -115,11 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <select 
                                     class="select-ativo" 
                                     data-codigo="${produto.CODIGO}"
-                                    data-original="${produto.ATIVO || 'S'}"
+                                    data-original="${produto.ATIVO !== undefined ? produto.ATIVO : 1}"
                                     style="width: 100%; padding: 8px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;"
                                 >
-                                    <option value="S" ${ativoAtual === 'S' ? 'selected' : ''}>✅ Ativo</option>
-                                    <option value="N" ${ativoAtual === 'N' ? 'selected' : ''}>❌ Inativo</option>
+                                    <option value="1" ${ativoAtual == 1 ? 'selected' : ''}>✅ Ativo</option>
+                                    <option value="0" ${ativoAtual == 0 ? 'selected' : ''}>❌ Inativo</option>
                                 </select>
                             </td>
                         </tr>
@@ -144,15 +144,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Obtém ou cria alteração para este código
                 let alteracao = produtosAlterados.get(codigo) || { 
                     curva: produto.CURVA_A_B_C || 'C', 
-                    ativo: produto.ATIVO || 'S' 
+                    ativo: produto.ATIVO !== undefined ? produto.ATIVO : 1
                 };
 
                 // Atualiza o campo específico
-                alteracao[tipoCampo] = novoValor;
+                alteracao[tipoCampo] = tipoCampo === 'ativo' ? parseInt(novoValor) : novoValor;
 
                 // Verifica se há alterações em relação ao original
                 const curvaOriginal = produto.CURVA_A_B_C || 'C';
-                const ativoOriginal = produto.ATIVO || 'S';
+                const ativoOriginal = produto.ATIVO !== undefined ? produto.ATIVO : 1;
                 const temAlteracao = alteracao.curva !== curvaOriginal || alteracao.ativo !== ativoOriginal;
 
                 if (temAlteracao) {
