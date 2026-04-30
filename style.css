@@ -28,14 +28,13 @@ body {
     overflow: hidden;
     background-color: var(--cor-fundo);
     color: var(--cor-texto);
-    position: relative;
 }
 
 /* Transição suave de background para o menu principal */
-body.menu-body::before,
-body.menu-body::after {
+.main-content::before,
+.main-content::after {
     content: '';
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
@@ -43,16 +42,24 @@ body.menu-body::after {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    z-index: -1;
+    z-index: 0;
     transition: opacity 2s ease-in-out;
 }
 
-body.menu-body::before {
+.main-content::before {
     opacity: 1;
 }
 
-body.menu-body::after {
+.main-content::after {
     opacity: 0;
+}
+
+.main-content.fade-to-after::before {
+    opacity: 0;
+}
+
+.main-content.fade-to-after::after {
+    opacity: 1;
 }
 
 h1, h2 {
@@ -161,6 +168,12 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
     padding: 30px;
     overflow-y: auto;
     height: 100vh;
+    position: relative;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 .container {

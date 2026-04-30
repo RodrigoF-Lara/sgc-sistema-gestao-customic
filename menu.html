@@ -99,12 +99,17 @@
         
         let indiceAtual = 0;
         let usandoBefore = true;
-        const body = document.body;
+        const mainContent = document.querySelector('.main-content');
+        
+        if (!mainContent) {
+          console.error('❌ Elemento .main-content não encontrado!');
+          return;
+        }
         
         // Define as imagens iniciais via CSS inline
-        const primeiraImagem = `img/fundo_menu_principal/${fundosDisponiveis[0]}`;
+        const primeiraImagem = `/img/fundo_menu_principal/${fundosDisponiveis[0]}`;
         const segundaImagem = fundosDisponiveis.length > 1 
-          ? `img/fundo_menu_principal/${fundosDisponiveis[1]}` 
+          ? `/img/fundo_menu_principal/${fundosDisponiveis[1]}` 
           : primeiraImagem;
         
         console.log('Primeira imagem:', primeiraImagem);
@@ -113,41 +118,35 @@
         // Cria o style com as imagens
         const style = document.createElement('style');
         style.textContent = `
-          body.menu-body::before {
+          .main-content::before {
             background-image: url('${primeiraImagem}');
           }
-          body.menu-body::after {
+          .main-content::after {
             background-image: url('${segundaImagem}');
-          }
-          body.menu-body.fade-to-after::before {
-            opacity: 0;
-          }
-          body.menu-body.fade-to-after::after {
-            opacity: 1;
           }
         `;
         document.head.appendChild(style);
-        console.log('✓ CSS de fundo aplicado');
+        console.log('✓ CSS de fundo aplicado na .main-content');
         
         function trocarFundo() {
           // Próximo índice
           indiceAtual = (indiceAtual + 1) % fundosDisponiveis.length;
-          const proximaImagem = `img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}`;
+          const proximaImagem = `/img/fundo_menu_principal/${fundosDisponiveis[indiceAtual]}`;
           
           console.log(`🔄 Trocando para: ${proximaImagem}`);
           
           if (usandoBefore) {
             // Atualiza ::after e faz fade
             const novoStyle = document.createElement('style');
-            novoStyle.textContent = `body.menu-body::after { background-image: url('${proximaImagem}'); }`;
+            novoStyle.textContent = `.main-content::after { background-image: url('${proximaImagem}'); }`;
             document.head.appendChild(novoStyle);
-            body.classList.add('fade-to-after');
+            mainContent.classList.add('fade-to-after');
           } else {
             // Atualiza ::before e remove fade
             const novoStyle = document.createElement('style');
-            novoStyle.textContent = `body.menu-body::before { background-image: url('${proximaImagem}'); }`;
+            novoStyle.textContent = `.main-content::before { background-image: url('${proximaImagem}'); }`;
             document.head.appendChild(novoStyle);
-            body.classList.remove('fade-to-after');
+            mainContent.classList.remove('fade-to-after');
           }
           
           usandoBefore = !usandoBefore;

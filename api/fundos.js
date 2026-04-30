@@ -1,10 +1,5 @@
-// Lista de imagens disponíveis na pasta img/fundo_menu_principal
-// Atualize esta lista quando adicionar ou remover imagens
-const imagensDisponiveis = [
-  'fundo_1.jpeg',
-  'fundo_2.jpeg',
-  'fundo_3.gif'
-];
+const fs = require('fs');
+const path = require('path');
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -12,10 +7,25 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Tenta ler o arquivo JSON com a lista de imagens
+    const jsonPath = path.join(process.cwd(), 'img', 'fundo_menu_principal', 'index.json');
+    
+    if (fs.existsSync(jsonPath)) {
+      const conteudo = fs.readFileSync(jsonPath, 'utf-8');
+      const dados = JSON.parse(conteudo);
+      
+      return res.status(200).json({ 
+        success: true, 
+        imagens: dados.imagens,
+        total: dados.imagens.length
+      });
+    }
+    
+    // Fallback se o JSON não existir
     return res.status(200).json({ 
       success: true, 
-      imagens: imagensDisponiveis,
-      total: imagensDisponiveis.length
+      imagens: ['fundo_1.jpeg', 'fundo_2.jpeg', 'fundo_3.gif'],
+      total: 3
     });
   } catch (error) {
     console.error('Erro ao listar fundos:', error);
