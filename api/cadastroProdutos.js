@@ -32,6 +32,8 @@ async function listarProdutos(req, res) {
             return res.status(400).json({ message: "Ação inválida" });
         }
 
+        console.log('🔍 Filtros recebidos:', { codigo, descricao, curva, ativo });
+
         const pool = await getConnection();
 
         // Query base
@@ -70,8 +72,10 @@ async function listarProdutos(req, res) {
         }
 
         if (ativo !== undefined && ativo !== '') {
+            const ativoInt = parseInt(ativo);
+            console.log(`📌 Filtrando por ATIVO = ${ativoInt} (tipo: ${typeof ativoInt})`);
             query += ` AND ISNULL(ATIVO, 1) = @ATIVO`;
-            request.input('ATIVO', sql.Int, parseInt(ativo));
+            request.input('ATIVO', sql.Int, ativoInt);
         }
 
         query += ` ORDER BY CODIGO`;

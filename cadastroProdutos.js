@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Verifica se há alterações em relação ao original
                 const curvaOriginal = produto.CURVA_A_B_C || 'C';
                 const ativoOriginal = produto.ATIVO !== undefined ? produto.ATIVO : 1;
-                const temAlteracao = alteracao.curva !== curvaOriginal || alteracao.ativo !== ativoOriginal;
+                const temAlteracao = alteracao.curva !== curvaOriginal || alteracao.ativo != ativoOriginal;
 
                 if (temAlteracao) {
                     produtosAlterados.set(codigo, alteracao);
