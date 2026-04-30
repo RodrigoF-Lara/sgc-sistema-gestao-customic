@@ -550,6 +550,11 @@ async function relatorioRequisicoes(req, res) {
         const totalConcluidas = result.recordset.filter(r => r.STATUS === 'Concluído').length;
         const totalPendentes = result.recordset.filter(r => r.STATUS === 'Pendente').length;
         const totalParciais = result.recordset.filter(r => r.STATUS === 'Parcial').length;
+        
+        // Totalizadores por prioridade
+        const totalPrioridadeAlta = result.recordset.filter(r => r.PRIORIDADE === 'Alta').length;
+        const totalPrioridadeNormal = result.recordset.filter(r => r.PRIORIDADE === 'Normal').length;
+        const totalPrioridadeBaixa = result.recordset.filter(r => r.PRIORIDADE === 'Baixa').length;
 
         return res.status(200).json({
             dados: result.recordset,
@@ -559,6 +564,9 @@ async function relatorioRequisicoes(req, res) {
                 totalConcluidas,
                 totalPendentes,
                 totalParciais,
+                totalPrioridadeAlta,
+                totalPrioridadeNormal,
+                totalPrioridadeBaixa,
                 periodo: {
                     inicio: dataInicio,
                     fim: dataFim

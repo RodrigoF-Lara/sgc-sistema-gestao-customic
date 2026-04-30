@@ -113,6 +113,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('totalParciais').textContent = 
             totalizadores.totalParciais.toLocaleString('pt-BR');
         
+        document.getElementById('totalPrioridadeAlta').textContent = 
+            totalizadores.totalPrioridadeAlta.toLocaleString('pt-BR');
+        
+        document.getElementById('totalPrioridadeNormal').textContent = 
+            totalizadores.totalPrioridadeNormal.toLocaleString('pt-BR');
+        
+        document.getElementById('totalPrioridadeBaixa').textContent = 
+            totalizadores.totalPrioridadeBaixa.toLocaleString('pt-BR');
+        
         const inicioFormatado = formatarData(dataInicio.value);
         const fimFormatado = formatarData(dataFim.value);
         document.getElementById('periodoInfo').textContent = 
@@ -198,6 +207,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Prepara dados de totalizadores
+        const dadosTotalizadores = [
+            { 'Indicador': 'Total de Requisições', 'Valor': totalizadores.totalRequisicoes },
+            { 'Indicador': 'Total de Itens', 'Valor': totalizadores.totalItens },
+            { 'Indicador': 'Concluídas', 'Valor': totalizadores.totalConcluidas },
+            { 'Indicador': 'Pendentes', 'Valor': totalizadores.totalPendentes },
+            { 'Indicador': 'Parciais', 'Valor': totalizadores.totalParciais },
+            { 'Indicador': '', 'Valor': '' }, // Linha em branco
+            { 'Indicador': '🔴 Prioridade Alta', 'Valor': totalizadores.totalPrioridadeAlta },
+            { 'Indicador': '🟡 Prioridade Normal', 'Valor': totalizadores.totalPrioridadeNormal },
+            { 'Indicador': '🟢 Prioridade Baixa', 'Valor': totalizadores.totalPrioridadeBaixa },
+            { 'Indicador': '', 'Valor': '' }, // Linha em branco
+            { 'Indicador': 'Período', 'Valor': `${formatarData(dataInicio.value)} a ${formatarData(dataFim.value)}` }
+        ];
+
         // Prepara dados para exportação
         const dadosExcel = dadosRelatorio.map((item, index) => {
             const percentualConcluido = item.TOTAL_ITENS > 0 
@@ -218,9 +242,15 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         });
 
-        // Cria worksheet e workbook
-        const ws = XLSX.utils.json_to_sheet(dadosExcel);
+        // Cria workbook
         const wb = XLSX.utils.book_new();
+        
+        // Adiciona aba de totalizadores
+        const wsTotalizadores = XLSX.utils.json_to_sheet(dadosTotalizadores);
+        XLSX.utils.book_append_sheet(wb, wsTotalizadores, 'Resumo');
+        
+        // Adiciona aba de detalhamento
+        const ws = XLSX.utils.json_to_sheet(dadosExcel);
         XLSX.utils.book_append_sheet(wb, ws, 'Requisições');
 
         // Gera nome do arquivo com data
