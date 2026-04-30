@@ -24,6 +24,8 @@ export default async function handler(req, res) {
             return await gerarRelatorioConsumo(req, res);
         } else if (acao === 'movimentacoesProduto') {
             return await movimentacoesProduto(req, res);
+        } else if (acao === 'requisicoes') {
+            return await relatorioRequisicoes(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -334,3 +336,94 @@ async function movimentacoesProduto(req, res) {
         return res.status(500).json({ message: `Erro: ${error.message}` });
     }
 }
+
+async function relatorioRequisicoes(req, res) {
+    try {
+        const { dataInicio, dataFim, status } = req.query;
+
+        if (!dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                message: "Data de início e fim são obrigatórias" 
+            });
+        }
+
+        const pool = await getConnection();
+        
+        // Converte strings para Date corretamente
+        const dataInicioObj = new Date(dataInicio + 'T00:00:00Z');
+        const dataFimObj = new Date(dataFim + 'T00:00:00Z');
+        
+        // Adiciona 1 dia ao dataFim para incluir todo o último dia
+        const dataFimAjustada = new Date(dataFimObj);
+        dataFimAjustada.setDate(dataFimAjustada.getDate() + 1);
+        
+        console.log('📅 Relatório de Requisições - Data Início:', dataInicioObj.toISOString());
+        console.log('📅 Relatório de Requisições - Data Fim:', dataFimAjustada.toISOString());
+        
+        // Query principal para buscar requisições
+        let query = `
+            SELECT 
+                R.ID_REQ,
+                R.DT_REQUISICAO,
+                R.DT_NECESSIDADE,
+                R.STATUS,
+                R.PRIORIDADE,
+                R.SOLICITANTE,
+                (SELECT COUNT(*) FROM [dbo].[TB_REQ_ITEM] I WHERE I.ID_REQ = R.ID_REQ) AS TOTAL_ITENS,
+                (SELECT COUNT(*) FROM [dbo].[TB_REQ_ITEM] I WHERE I.ID_REQ = R.ID_REQ AND I.STATUS_ITEM = 'Finalizado') AS ITENS_FINALIZADOS
+            FROM [dbo].[TB_REQUISICOES] R
+            WHERE R.DT_REQUISICAO >= @DATA_INICIO
+                AND R.DT_REQUISICAO < @DATA_FIM
+        `;
+
+        // Adiciona filtro de status se especificado
+        if (status && status.trim()) {
+            query += ` AND R.STATUS = @STATUS`;
+        }
+
+        query += ` ORDER BY R.DT_REQUISICAO DESC, R.ID_REQ DESC`;
+
+        const request = pool.request()
+            .input('DATA_INICIO', sql.Date, dataInicioObj)
+            .input('DATA_FIM', sql.Date, dataFimAjustada);
+        
+        if (status && status.trim()) {
+            request.input('STATUS', sql.NVarChar, status);
+        }
+
+        const result = await request.query(query);
+
+        console.log('📦 Requisições encontradas:', result.recordset.length);
+
+        // Calcula totalizadores
+        const totalRequisicoes = result.recordset.length;
+        const totalItens = result.recordset.reduce((acc, item) => acc + (item.TOTAL_ITENS || 0), 0);
+        const totalConcluidas = result.recordset.filter(r => r.STATUS === 'Concluído').length;
+        const totalPendentes = result.recordset.filter(r => r.STATUS === 'Pendente').length;
+        const totalParciais = result.recordset.filter(r => r.STATUS === 'Parcial').length;
+
+        return res.status(200).json({
+            dados: result.recordset,
+            totalizadores: {
+                totalRequisicoes,
+                totalItens,
+                totalConcluidas,
+                totalPendentes,
+                totalParciais,
+                periodo: {
+                    inicio: dataInicio,
+                    fim: dataFim
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error("❌ Erro ao gerar relatório de requisições:", err);
+        return res.status(500).json({ 
+            message: "Erro ao gerar relatório", 
+            error: err.message,
+            stack: err.stack
+        });
+    }
+}
+

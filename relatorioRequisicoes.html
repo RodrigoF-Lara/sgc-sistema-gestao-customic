@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Requisições - SGC Customic</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+      <div class="container">
+        <h1>
+          <i class="fa-solid fa-clipboard-list"></i>
+          Relatório de Requisições
+        </h1>
+
+        <!-- Filtros -->
+        <div class="card">
+          <h2>Filtros do Relatório</h2>
+          <div class="filter-container">
+            <div class="form-group">
+              <label for="dataInicio" style="font-size: 16px; font-weight: bold;">Data Início:</label>
+              <input type="date" id="dataInicio" style="font-size: 16px; padding: 12px; height: 45px;" required />
+            </div>
+            <div class="form-group">
+              <label for="dataFim" style="font-size: 16px; font-weight: bold;">Data Fim:</label>
+              <input type="date" id="dataFim" style="font-size: 16px; padding: 12px; height: 45px;" required />
+            </div>
+            <div class="form-group">
+              <label for="filtroStatus" style="font-size: 16px; font-weight: bold;">Status:</label>
+              <select id="filtroStatus" style="font-size: 16px; padding: 12px; height: 45px;">
+                <option value="">Todos</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Parcial">Parcial</option>
+                <option value="Concluído">Concluído</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button id="gerarRelatorioBtn" class="btn-destaque">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                Gerar Relatório
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totalizadores -->
+        <div id="totalizadoresContainer" style="display: none">
+          <div class="estatisticas-inventario">
+            <div class="stat-card">
+              <i class="fa-solid fa-clipboard-list"></i>
+              <p>Total de Requisições</p>
+              <strong id="totalRequisicoes">0</strong>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-cubes"></i>
+              <p>Total de Itens</p>
+              <strong id="totalItens">0</strong>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-check-circle"></i>
+              <p>Concluídas</p>
+              <strong id="totalConcluidas">0</strong>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-clock"></i>
+              <p>Pendentes</p>
+              <strong id="totalPendentes">0</strong>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-hourglass-half"></i>
+              <p>Parciais</p>
+              <strong id="totalParciais">0</strong>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa="calendar-days"></i>
+              <p>Período Selecionado</p>
+              <strong id="periodoInfo">-</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de Resultados -->
+        <div id="resultadosContainer" style="display: none" class="card">
+          <div class="table-actions">
+            <h2>Detalhamento de Requisições</h2>
+            <div>
+              <button id="imprimirBtn" class="btn-secundario">
+                <i class="fa-solid fa-print"></i> Imprimir
+              </button>
+              <button id="exportarExcelBtn" class="btn-success">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+              </button>
+            </div>
+          </div>
+          <div id="tabelaRelatorio"></div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+      </div>
+    </div>
+
+    <!-- Biblioteca para exportar Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="relatorioRequisicoes.js"></script>
+    <script src="layout.js"></script>
+  </body>
+</html>
