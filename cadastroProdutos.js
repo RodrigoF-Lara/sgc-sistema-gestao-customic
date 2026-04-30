@@ -10,10 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('statusMessage');
 
     let produtosCarregados = [];
-    let produtosAlterados = new Map(); // Map para rastrear alterações { codigo: { curva, ativo } }
 
     buscarBtn.addEventListener('click', buscarProdutos);
-    salvarAlteracoesBtn.addEventListener('click', salvarAlteracoes);
 
     // Permite buscar ao pressionar Enter nos campos de filtro
     filtroCodigo.addEventListener('keypress', (e) => {
@@ -148,41 +146,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
         tabelaProdutos.innerHTML = html;
 
-        // Adiciona event listeners para os selects
+        // Adiciona event listeners para os selects - salvamento automático
         document.querySelectorAll('.select-curva, .select-ativo').forEach(select => {
-            select.addEventListener('change', (e) => {
+            select.addEventListener('change', async (e) => {
                 const codigo = e.target.dataset.codigo;
-                const valorOriginal = e.target.dataset.original;
                 const novoValor = e.target.value;
                 const tipoCampo = e.target.classList.contains('select-curva') ? 'curva' : 'ativo';
+                const linha = e.target.closest('tr');
 
                 const produto = produtosCarregados.find(p => p.CODIGO === codigo);
                 if (!produto) return;
 
-                // Obtém ou cria alteração para este código
-                let alteracao = produtosAlterados.get(codigo) || { 
-                    curva: produto.CURVA_A_B_C || 'C', 
-                    ativo: produto.ATIVO !== undefined ? produto.ATIVO : 1 // Já é número após conversão
-                };
+                // Desabilita o select durante o salvamento
+                e.target.disabled = true;
+                linha.style.backgroundColor = '#e3f2fd'; // Azul claro = salvando
 
-                // Atualiza o campo específico
-                alteracao[tipoCampo] = tipoCampo === 'ativo' ? parseInt(novoValor) : novoValor;
+                try {
+                    // Prepara os dados para salvar
+                    const alteracao = {
+                        codigo: codigo,
+                        curva: tipoCampo === 'curva' ? novoValor : (produto.CURVA_A_B_C || 'C'),
+                        ativo: tipoCampo === 'ativo' ? parseInt(novoValor) : (produto.ATIVO !== undefined ? produto.ATIVO : 1)
+                    };
 
-                // Verifica se há alterações em relação ao original
-                const curvaOriginal = produto.CURVA_A_B_C || 'C';
-                const ativoOriginal = produto.ATIVO !== undefined ? produto.ATIVO : 1;
-                const temAlteracao = alteracao.curva !== curvaOriginal || alteracao.ativo != ativoOriginal;
+                    // Salva automaticamente
+                    const response = await fetch('/api/cadastroProdutos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            acao: 'atualizar',
+                            alteracoes: [alteracao]
+                        })
+                    });
 
-                if (temAlteracao) {
-                    produtosAlterados.set(codigo, alteracao);
-                    e.target.closest('tr').style.backgroundColor = '#fff3cd'; // Destaca linha alterada
-                } else {
-                    produtosAlterados.delete(codigo);
-                    e.target.closest('tr').style.backgroundColor = '';
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Erro ao salvar');
+                    }
+
+                    // Atualiza o produto na memória
+                    if (tipoCampo === 'curva') {
+                        produto.CURVA_A_B_C = novoValor;
+                    } else {
+                        produto.ATIVO = parseInt(novoValor);
+                    }
+
+                    // Atualiza o data-original
+                    e.target.dataset.original = novoValor;
+
+                    // Feedback visual de sucesso
+                    linha.style.backgroundColor = '#d4edda'; // Verde = sucesso
+                    setTimeout(() => {
+                        linha.style.backgroundColor = '';
+                    }, 1500);
+
+                    mostrarMensagem('✅ Salvo automaticamente!', 'success');
+
+                } catch (error) {
+                    console.error('Erro ao salvar:', error);
+                    mostrarMensagem('❌ Erro ao salvar: ' + error.message, 'error');
+                    linha.style.backgroundColor = '#f8d7da'; // Vermelho = erro
+                    
+                    // Reverte o valor em caso de erro
+                    e.target.value = e.target.dataset.original;
+                } finally {
+                    // Reabilita o select
+                    e.target.disabled = false;
                 }
-
-                // Mostra/esconde botão de salvar
-                salvarAlteracoesBtn.style.display = produtosAlterados.size > 0 ? 'inline-block' : 'none';
             });
         });
     }
