@@ -247,8 +247,37 @@ tbody tr:hover {
 
 /* --- Página de Login --- */
 .login-body { display: block; padding: 0; }
-.login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(120deg, var(--cor-principal) 0%, #90caf9 100%); }
-.login-card { background: var(--cor-branco); border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); padding: 40px; min-width: 380px; text-align: center; }
+.login-container { 
+    min-height: 100vh; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    background-image: url('customic_fundo.gif');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(25, 118, 210, 0.15);
+    z-index: 1;
+}
+.login-card { 
+    background: var(--cor-branco); 
+    border-radius: 12px; 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); 
+    padding: 40px; 
+    min-width: 380px; 
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
 .login-card h2 { color: var(--cor-principal); }
 
 /* --- Página de Menu --- */
