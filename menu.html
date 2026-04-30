@@ -71,14 +71,28 @@
     </script>
     <!-- Script para troca suave de fundos -->
     <script>
-      (function() {
-        // Lista de imagens disponíveis na pasta fundo_menu_principal
-        const fundosDisponiveis = [
-          'fundo_1.jpeg',
-          'fundo_2.jpeg',
-          'fundo_3.jpeg',
-          'fundo_4.jpeg'
-        ];
+      (async function() {
+        let fundosDisponiveis = [];
+        
+        try {
+          // Buscar lista de imagens da API
+          const response = await fetch('/api/fundos');
+          const data = await response.json();
+          
+          if (data.success && data.imagens.length > 0) {
+            fundosDisponiveis = data.imagens;
+            console.log(`✓ Carregadas ${data.total} imagens de fundo`);
+          } else {
+            throw new Error('Nenhuma imagem encontrada');
+          }
+        } catch (error) {
+          console.warn('Erro ao carregar fundos da API, usando padrão:', error);
+          // Fallback: usar lista padrão
+          fundosDisponiveis = ['fundo_1.jpeg'];
+        }
+        
+        // Embaralhar imagens para começar em ordem aleatória
+        fundosDisponiveis.sort(() => Math.random() - 0.5);
         
         let indiceAtual = 0;
         let usandoBefore = true;
@@ -109,12 +123,13 @@
         
         // Define as imagens iniciais
         const style = document.createElement('style');
+        const segundaImagem = fundosDisponiveis.length > 1 ? fundosDisponiveis[1] : fundosDisponiveis[0];
         style.textContent = `
           body.menu-body::before {
             background-image: var(--fundo-atual, url('img/fundo_menu_principal/${fundosDisponiveis[0]}'));
           }
           body.menu-body::after {
-            background-image: var(--fundo-proximo, url('img/fundo_menu_principal/${fundosDisponiveis[1]}'));
+            background-image: var(--fundo-proximo, url('img/fundo_menu_principal/${segundaImagem}'));
           }
           body.menu-body.fade-to-after::before {
             opacity: 0;
@@ -125,8 +140,10 @@
         `;
         document.head.appendChild(style);
         
-        // Troca a cada 30 segundos
-        setInterval(trocarFundo, 30000);
+        // Troca a cada 30 segundos (só se houver mais de uma imagem)
+        if (fundosDisponiveis.length > 1) {
+          setInterval(trocarFundo, 30000);
+        }
       })();
     </script>
   </body>
