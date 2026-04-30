@@ -250,8 +250,9 @@ tbody tr:hover {
 .login-container { 
     min-height: 100vh; 
     display: flex; 
-    align-items: center; 
+    align-items: flex-end; 
     justify-content: center; 
+    padding-bottom: 60px;
     background-image: url('customic_fundo.gif');
     background-size: cover;
     background-position: center;
