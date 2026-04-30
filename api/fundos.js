@@ -7,22 +7,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Lê o index.json da pasta de fundos
-    const indexPath = path.join(process.cwd(), 'img', 'fundo_menu_principal', 'index.json');
+    // Lê a pasta de fundos diretamente
+    const fundosDir = path.join(process.cwd(), 'img', 'fundo_menu_principal');
     
-    // Verifica se o arquivo existe
-    if (!fs.existsSync(indexPath)) {
+    // Verifica se a pasta existe
+    if (!fs.existsSync(fundosDir)) {
       return res.status(404).json({ 
         success: false, 
-        error: 'index.json não encontrado',
+        error: 'Pasta de fundos não encontrada',
         imagens: [],
         total: 0
       });
     }
 
-    // Lê e parseia o JSON
-    const indexData = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    const imagens = indexData.imagens || [];
+    // Lê todos os arquivos da pasta
+    const arquivos = fs.readdirSync(fundosDir);
+    
+    // Filtra apenas arquivos de imagem (ignora index.json, README.md, etc)
+    const extensoesValidas = /\.(jpg|jpeg|png|gif|webp)$/i;
+    const imagens = arquivos
+      .filter(arquivo => extensoesValidas.test(arquivo))
+      .sort(); // Ordena alfabeticamente
 
     return res.status(200).json({ 
       success: true, 

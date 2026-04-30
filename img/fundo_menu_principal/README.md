@@ -42,26 +42,23 @@ O sistema aplica automaticamente:
 
 ## Adicionar Novas Imagens
 
-### 🎉 Fluxo Totalmente Automático
+### 🎉 100% Automático - Sem Scripts!
 
-1. **Adicione suas imagens** na pasta `img/fundo_menu_principal/`
-2. **Execute o script** para atualizar o index.json:
+1. **Adicione/remova imagens** na pasta `img/fundo_menu_principal/`
+2. **Faça commit e push**:
    ```powershell
-   .\atualizar_fundos_menu.ps1
-   ```
-3. **Faça commit e push**:
-   ```powershell
-   git add img/fundo_menu_principal/index.json img/fundo_menu_principal/sua_nova_imagem.*
+   git add img/fundo_menu_principal/
    git commit -m "feat: adiciona novas imagens de fundo"
    git push
    ```
 
-**Pronto!** A API detecta automaticamente através do `index.json`. Não precisa editar nenhum código!
+**Pronto!** A API detecta automaticamente ao ler a pasta. **Zero configuração!**
 
-### O Que Mudou?
-- ✅ API agora lê `index.json` dinamicamente
-- ✅ Script atualiza apenas o JSON (não o código da API)
-- ✅ Detecção 100% automática após deploy
+### Como Funciona?
+- ✅ API lê a pasta `img/fundo_menu_principal/` diretamente
+- ✅ Filtra automaticamente apenas arquivos de imagem
+- ✅ **Sem scripts, sem index.json, sem editar código**
+- ✅ Basta adicionar arquivo e fazer push!
 
 ## Formatos Suportados
 
