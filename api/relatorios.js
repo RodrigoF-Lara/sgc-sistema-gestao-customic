@@ -428,17 +428,18 @@ async function relatorioSaldoEstoque(req, res) {
             LEFT JOIN (
                 SELECT 
                     np.PROD_COD_PROD AS CODIGO,
-                    nc.CAB_RAZAO AS ULTIMO_FORNECEDOR
+                    cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR
                 FROM [dbo].[NF_PRODUTOS] np
                 INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
+                INNER JOIN [dbo].[CAD_FORNECEDOR] cf ON nc.CAB_NUM_FORN = cf.COD_FORNECEDOR
                 INNER JOIN (
                     SELECT 
                         PROD_COD_PROD,
-                        MAX(PROD_DT_EMISSAO) AS ULTIMA_DATA
+                        MAX(PROD_ID_NF) AS ULTIMA_NF
                     FROM [dbo].[NF_PRODUTOS]
                     GROUP BY PROD_COD_PROD
                 ) ultima ON np.PROD_COD_PROD = ultima.PROD_COD_PROD 
-                    AND np.PROD_DT_EMISSAO = ultima.ULTIMA_DATA
+                    AND np.PROD_ID_NF = ultima.ULTIMA_NF
             ) uf ON cp.CODIGO = uf.CODIGO
             WHERE ISNULL(cp.ATIVO, 1) = 1`;
         
