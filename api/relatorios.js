@@ -551,10 +551,27 @@ async function relatorioRequisicoes(req, res) {
         const totalPendentes = result.recordset.filter(r => r.STATUS === 'Pendente').length;
         const totalParciais = result.recordset.filter(r => r.STATUS === 'Parcial').length;
         
-        // Totalizadores por prioridade
-        const totalPrioridadeAlta = result.recordset.filter(r => r.PRIORIDADE === 'Alta').length;
-        const totalPrioridadeNormal = result.recordset.filter(r => r.PRIORIDADE === 'Normal').length;
-        const totalPrioridadeBaixa = result.recordset.filter(r => r.PRIORIDADE === 'Baixa').length;
+        // Totalizadores por prioridade (os valores no banco estão em MAIÚSCULAS)
+        const totalPrioridadeAlta = result.recordset.filter(r => 
+            r.PRIORIDADE === 'ALTA' || r.PRIORIDADE === 'Alta'
+        ).length;
+        const totalPrioridadeNormal = result.recordset.filter(r => 
+            r.PRIORIDADE === 'NORMAL' || r.PRIORIDADE === 'Normal'
+        ).length;
+        const totalPrioridadeBaixa = result.recordset.filter(r => 
+            r.PRIORIDADE === 'BAIXA' || r.PRIORIDADE === 'Baixa'
+        ).length;
+
+        console.log('📊 Totalizadores calculados:', {
+            totalRequisicoes,
+            totalItens,
+            totalConcluidas,
+            totalPendentes,
+            totalParciais,
+            totalPrioridadeAlta,
+            totalPrioridadeNormal,
+            totalPrioridadeBaixa
+        });
 
         return res.status(200).json({
             dados: result.recordset,
