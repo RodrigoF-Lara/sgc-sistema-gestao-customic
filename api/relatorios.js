@@ -413,7 +413,8 @@ async function relatorioSaldoEstoque(req, res) {
                 cp.DESCRICAO,
                 cp.TIPO,
                 ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
-                ISNULL(k.SALDO, 0) AS SALDO
+                ISNULL(k.SALDO, 0) AS SALDO,
+                uf.ULTIMO_FORNECEDOR
             FROM [dbo].[CAD_PROD] cp
             LEFT JOIN (
                 SELECT 
@@ -424,6 +425,21 @@ async function relatorioSaldoEstoque(req, res) {
                     AND KARDEX = 2026
                 GROUP BY CODIGO
             ) k ON cp.CODIGO = k.CODIGO
+            LEFT JOIN (
+                SELECT 
+                    np.PROD_COD_PROD AS CODIGO,
+                    nc.CAB_RAZAO AS ULTIMO_FORNECEDOR
+                FROM [dbo].[NF_PRODUTOS] np
+                INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
+                INNER JOIN (
+                    SELECT 
+                        PROD_COD_PROD,
+                        MAX(PROD_DT_EMISSAO) AS ULTIMA_DATA
+                    FROM [dbo].[NF_PRODUTOS]
+                    GROUP BY PROD_COD_PROD
+                ) ultima ON np.PROD_COD_PROD = ultima.PROD_COD_PROD 
+                    AND np.PROD_DT_EMISSAO = ultima.ULTIMA_DATA
+            ) uf ON cp.CODIGO = uf.CODIGO
             WHERE ISNULL(cp.ATIVO, 1) = 1`;
         
         const request = pool.request();

@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Tipo</th>
                         <th>Curva ABC</th>
                         <th>Saldo</th>
+                        <th>Último Fornecedor</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -156,12 +157,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td><span class="badge" style="background-color: #6c757d;">${item.TIPO || 'N/A'}</span></td>
                             <td><span class="badge ${curvaClass}">${curva}</span></td>
                             <td><strong>${parseFloat(item.SALDO || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                            <td>${item.ULTIMO_FORNECEDOR || 'Não informado'}</td>
                         </tr>
                     `}).join('')}
                 </tbody>
                 <tfoot>
                     <tr class="total-row">
-                        <td colspan="5" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
+                        <td colspan="6" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
                         <td><strong>${totalizadores.totalSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
                     </tr>
                 </tfoot>
@@ -189,7 +191,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Descrição': item.DESCRICAO || 'SEM DESCRIÇÃO',
                 'Tipo': item.TIPO || 'N/A',
                 'Curva ABC': item.CURVA_A_B_C || 'C',
-                'Saldo': parseFloat(item.SALDO || 0)
+                'Saldo': parseFloat(item.SALDO || 0),
+                'Último Fornecedor': item.ULTIMO_FORNECEDOR || 'Não informado'
             };
         });
 
