@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1976d2" />
+    <title>Saída Rápida - SGC Customic</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://unpkg.com/html5-qrcode" defer></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f0f2f5;
+            color: #222;
+            min-height: 100vh;
+            padding-bottom: 30px;
+        }
+        .topbar {
+            background: linear-gradient(135deg, #1976d2, #1565c0);
+            color: white;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .topbar h1 { font-size: 17px; font-weight: 600; }
+        .topbar .user { font-size: 12px; opacity: 0.9; }
+        .topbar .voltar {
+            color: white; text-decoration: none; font-size: 18px; padding: 4px 10px;
+        }
+        .container { padding: 16px; max-width: 600px; margin: 0 auto; }
+        .card {
+            background: white; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 16px; margin-bottom: 16px;
+        }
+        .btn {
+            display: block; width: 100%;
+            padding: 16px; font-size: 17px; font-weight: bold;
+            border: none; border-radius: 10px; cursor: pointer;
+            color: white; transition: opacity .15s;
+        }
+        .btn:active { opacity: 0.8; }
+        .btn-primary { background: linear-gradient(135deg, #1976d2, #1565c0); }
+        .btn-success { background: linear-gradient(135deg, #2e7d32, #1b5e20); }
+        .btn-danger  { background: linear-gradient(135deg, #c62828, #b71c1c); }
+        .btn-outline {
+            background: white; color: #1976d2; border: 2px solid #1976d2;
+        }
+        .btn + .btn { margin-top: 10px; }
+
+        #reader {
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #reader video { border-radius: 10px; }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #1976d2;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .info-row {
+            display: flex; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #666; font-weight: 600; }
+        .info-value { color: #111; font-weight: 700; text-align: right; }
+        .destaque .info-value { color: #1976d2; font-size: 18px; }
+
+        .qnt-input {
+            width: 100%;
+            padding: 14px;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            border: 2px solid #1976d2;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .label-form {
+            font-size: 13px; font-weight: 600; color: #555;
+            margin-top: 12px; margin-bottom: 4px;
+            display: block;
+        }
+        .obs-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .titulo-secao {
+            font-size: 14px; color: #666;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 8px; font-weight: 600;
+        }
+        .descricao-produto {
+            font-size: 18px; font-weight: bold;
+            color: #111; margin: 6px 0;
+        }
+        .codigo-produto {
+            font-size: 14px; color: #666;
+        }
+
+        .alerta {
+            padding: 12px; border-radius: 8px;
+            margin-bottom: 12px; font-weight: 600;
+        }
+        .alerta-erro    { background: #ffebee; color: #b71c1c; border-left: 4px solid #c62828; }
+        .alerta-ok      { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #2e7d32; }
+        .alerta-info    { background: #fff3e0; color: #e65100; border-left: 4px solid #ff9800; }
+
+        .scan-hint {
+            text-align: center; color: #555; font-size: 13px;
+            margin-top: 8px;
+        }
+
+        /* Login simples inline */
+        #loginBox input {
+            width: 100%; padding: 12px; font-size: 15px;
+            border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+        .pulse { animation: pulse 1.2s infinite; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <a href="menu.html" class="voltar" title="Voltar"><i class="fa fa-arrow-left"></i></a>
+        <h1><i class="fa fa-qrcode"></i> Saída Rápida</h1>
+        <span class="user" id="userBadge">—</span>
+    </div>
+
+    <div class="container">
+        <!-- LOGIN (se não houver userName) -->
+        <div id="loginBox" class="card" style="display:none;">
+            <div class="titulo-secao">Faça login para continuar</div>
+            <input type="text" id="inpUsuario" placeholder="Usuário" autocomplete="username" />
+            <input type="password" id="inpSenha" placeholder="Senha" autocomplete="current-password" />
+            <button class="btn btn-primary" id="btnLogin">
+                <i class="fa fa-sign-in-alt"></i> Entrar
+            </button>
+            <div id="loginMsg" class="scan-hint" style="color:#c62828;"></div>
+        </div>
+
+        <!-- TELA INICIAL -->
+        <div id="telaInicial" style="display:none;">
+            <div class="card">
+                <div class="titulo-secao">Bem-vindo</div>
+                <div style="font-size:18px; font-weight:bold; margin-top:6px;" id="nomeUsuario">—</div>
+                <div class="scan-hint" style="margin-top:10px;">Aponte a câmera para o QR code da etiqueta para registrar uma saída.</div>
+            </div>
+            <button class="btn btn-primary pulse" id="btnIniciarScan">
+                <i class="fa fa-camera"></i> Ler QR Code
+            </button>
+            <button class="btn btn-outline" id="btnDigitarId" style="margin-top:10px;">
+                <i class="fa fa-keyboard"></i> Digitar ID manualmente
+            </button>
+        </div>
+
+        <!-- SCANNER -->
+        <div id="telaScanner" style="display:none;">
+            <div class="card">
+                <div id="reader"></div>
+                <div class="scan-hint">Posicione o QR code dentro do quadro</div>
+            </div>
+            <button class="btn btn-danger" id="btnCancelarScan">
+                <i class="fa fa-times"></i> Cancelar
+            </button>
+        </div>
+
+        <!-- DETALHES + CONFIRMAÇÃO -->
+        <div id="telaDetalhes" style="display:none;">
+            <div id="alertaArea"></div>
+            <div class="card">
+                <div class="titulo-secao">Item Identificado</div>
+                <div class="descricao-produto" id="detDescricao">—</div>
+                <div class="codigo-produto">Código: <strong id="detCodigo">—</strong> · ID: <strong id="detId">—</strong></div>
+                <div style="height:12px;"></div>
+                <div class="info-row destaque">
+                    <span class="info-label">SALDO ATUAL:</span>
+                    <span class="info-value" id="detSaldo">0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Endereço:</span>
+                    <span class="info-value" id="detEndereco">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Armazém:</span>
+                    <span class="info-value" id="detArmazem">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Tam. Lote:</span>
+                    <span class="info-value" id="detTamLote">—</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <label class="label-form" for="qntSaida">Quantidade a retirar</label>
+                <input type="number" inputmode="numeric" min="1" step="1" class="qnt-input" id="qntSaida" value="1" />
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-outline" type="button" id="btnQntMenos" style="margin-top:0;">−</button>
+                    <button class="btn btn-outline" type="button" id="btnQntMais" style="margin-top:0;">+</button>
+                    <button class="btn btn-outline" type="button" id="btnQntTudo" style="margin-top:0;">Tudo</button>
+                </div>
+                <label class="label-form" for="obsSaida">Observação (opcional)</label>
+                <input type="text" class="obs-input" id="obsSaida" placeholder="Ex: requisição #123" />
+            </div>
+
+            <button class="btn btn-success" id="btnConfirmarSaida">
+                <i class="fa fa-check"></i> Confirmar Saída
+            </button>
+            <button class="btn btn-outline" id="btnNovoScan">
+                <i class="fa fa-redo"></i> Ler outro QR
+            </button>
+        </div>
+
+        <!-- TELA SUCESSO -->
+        <div id="telaSucesso" style="display:none;">
+            <div class="card" style="text-align:center; padding:30px 16px;">
+                <i class="fa fa-circle-check" style="font-size:64px; color:#2e7d32;"></i>
+                <div style="font-size:20px; font-weight:bold; margin-top:12px;">Saída registrada!</div>
+                <div id="sucessoDetalhe" style="margin-top:8px; color:#555;"></div>
+            </div>
+            <button class="btn btn-primary pulse" id="btnLerOutro">
+                <i class="fa fa-camera"></i> Ler outro QR
+            </button>
+            <button class="btn btn-outline" onclick="window.location.href='menu.html'">
+                <i class="fa fa-home"></i> Voltar ao Menu
+            </button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        // ── Estado ─────────────────────────────────
+        let usuario = localStorage.getItem('userName') || '';
+        let scanner = null;
+        let loteAtual = null;
+
+        const $ = id => document.getElementById(id);
+
+        // ── Telas ──────────────────────────────────
+        function show(telaId) {
+            ['loginBox','telaInicial','telaScanner','telaDetalhes','telaSucesso']
+                .forEach(t => { const el = $(t); if (el) el.style.display = 'none'; });
+            const target = $(telaId);
+            if (target) target.style.display = 'block';
+        }
+
+        function init() {
+            if (!usuario) {
+                show('loginBox');
+            } else {
+                $('userBadge').textContent = usuario;
+                $('nomeUsuario').textContent = usuario;
+                show('telaInicial');
+            }
+        }
+
+        // ── Login ──────────────────────────────────
+        $('btnLogin').addEventListener('click', async () => {
+            const u = $('inpUsuario').value.trim();
+            const p = $('inpSenha').value;
+            const msg = $('loginMsg');
+            if (!u || !p) { msg.textContent = 'Preencha usuário e senha.'; return; }
+            msg.textContent = 'Verificando...';
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: u, pw: p })
+                });
+                const data = await res.json();
+                if (res.ok && data.usuario) {
+                    usuario = `${data.usuario.F_NAME} ${data.usuario.L_NAME}`;
+                    localStorage.setItem('userName', usuario);
+                    localStorage.setItem('loginTime', new Date().toLocaleString('pt-BR'));
+                    msg.textContent = '';
+                    init();
+                } else {
+                    msg.textContent = data.message || 'Usuário ou senha inválidos.';
+                }
+            } catch (e) {
+                msg.textContent = 'Erro de conexão.';
+            }
+        });
+
+        // ── Scanner ────────────────────────────────
+        $('btnIniciarScan').addEventListener('click', iniciarScanner);
+        $('btnLerOutro').addEventListener('click', iniciarScanner);
+        $('btnNovoScan').addEventListener('click', iniciarScanner);
+        $('btnCancelarScan').addEventListener('click', pararScannerEVoltar);
+
+        async function iniciarScanner() {
+            if (typeof Html5Qrcode === 'undefined') {
+                alert('Biblioteca de leitura ainda carregando, tente novamente em 2s.');
+                return;
+            }
+            show('telaScanner');
+            scanner = new Html5Qrcode('reader');
+            const config = { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 };
+            try {
+                await scanner.start(
+                    { facingMode: 'environment' },
+                    config,
+                    onScanSuccess,
+                    () => {} // ignora erros de leitura por frame
+                );
+            } catch (err) {
+                console.error('Erro ao iniciar câmera:', err);
+                alert('Não foi possível acessar a câmera. Verifique as permissões.');
+                show('telaInicial');
+            }
+        }
+
+        async function pararScanner() {
+            if (scanner) {
+                try { await scanner.stop(); } catch(e) {}
+                try { scanner.clear(); } catch(e) {}
+                scanner = null;
+            }
+        }
+
+        function pararScannerEVoltar() {
+            pararScanner().then(() => show('telaInicial'));
+        }
+
+        async function onScanSuccess(decodedText) {
+            // Evita múltiplas chamadas
+            if (loteAtual && loteAtual._processing) return;
+            await pararScanner();
+            processarConteudoQR(decodedText);
+        }
+
+        // ── Botão para digitar ID manualmente ──────
+        $('btnDigitarId').addEventListener('click', () => {
+            const id = prompt('Digite o ID do lote (ex: 21078):');
+            if (id && /^\d+$/.test(id.trim())) {
+                processarConteudoQR('ID: ' + id.trim());
+            } else if (id) {
+                alert('ID inválido. Deve ser apenas números.');
+            }
+        });
+
+        // ── Parse QR + busca lote ──────────────────
+        async function processarConteudoQR(texto) {
+            // Tenta extrair o ID. Aceita "ID: 123 | COD: 456", "123|456", "123", etc.
+            let idLote = null;
+            const matchId = texto.match(/ID[:\s]*(\d+)/i);
+            if (matchId) {
+                idLote = matchId[1];
+            } else {
+                // primeiro número grande no texto
+                const m = texto.match(/(\d{2,})/);
+                if (m) idLote = m[1];
+            }
+
+            if (!idLote) {
+                mostrarAlerta('QR Code inválido: não foi possível identificar o ID do lote.', 'erro');
+                show('telaInicial');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/inventory?action=loteById&id=${idLote}`);
+                const data = await res.json();
+                if (!res.ok) {
+                    mostrarAlerta(data.message || 'Lote não encontrado.', 'erro');
+                    show('telaInicial');
+                    return;
+                }
+                loteAtual = data.lote;
+                preencherDetalhes(loteAtual);
+                show('telaDetalhes');
+            } catch (e) {
+                mostrarAlerta('Erro ao buscar lote: ' + e.message, 'erro');
+                show('telaInicial');
+            }
+        }
+
+        function preencherDetalhes(lote) {
+            $('detDescricao').textContent = lote.DESCRICAO || 'Sem descrição';
+            $('detCodigo').textContent = lote.CODIGO;
+            $('detId').textContent = lote.ID;
+            $('detSaldo').textContent = lote.SALDO;
+            $('detEndereco').textContent = lote.ENDERECO || '-';
+            $('detArmazem').textContent = lote.ARMAZEM ? String(lote.ARMAZEM).padStart(2,'0') : '-';
+            $('detTamLote').textContent = lote.TAM_LOTE || '-';
+            $('qntSaida').value = 1;
+            $('qntSaida').max = lote.SALDO;
+            $('obsSaida').value = '';
+            $('alertaArea').innerHTML = '';
+
+            if ((lote.SALDO || 0) <= 0) {
+                mostrarAlerta('Este lote não possui saldo disponível.', 'erro');
+                $('btnConfirmarSaida').disabled = true;
+                $('btnConfirmarSaida').style.opacity = 0.5;
+            } else {
+                $('btnConfirmarSaida').disabled = false;
+                $('btnConfirmarSaida').style.opacity = 1;
+            }
+        }
+
+        // ── Quantidade ─────────────────────────────
+        $('btnQntMenos').addEventListener('click', () => {
+            const inp = $('qntSaida');
+            inp.value = Math.max(1, (parseInt(inp.value,10) || 1) - 1);
+        });
+        $('btnQntMais').addEventListener('click', () => {
+            const inp = $('qntSaida');
+            const max = loteAtual ? loteAtual.SALDO : 9999;
+            inp.value = Math.min(max, (parseInt(inp.value,10) || 0) + 1);
+        });
+        $('btnQntTudo').addEventListener('click', () => {
+            if (loteAtual) $('qntSaida').value = loteAtual.SALDO;
+        });
+
+        // ── Confirmar saída ────────────────────────
+        $('btnConfirmarSaida').addEventListener('click', async () => {
+            if (!loteAtual) return;
+            const qnt = parseInt($('qntSaida').value, 10);
+            if (!qnt || qnt < 1) { mostrarAlerta('Informe uma quantidade válida.', 'erro'); return; }
+            if (qnt > loteAtual.SALDO) { mostrarAlerta(`Saldo insuficiente. Disponível: ${loteAtual.SALDO}`, 'erro'); return; }
+
+            const obs = $('obsSaida').value.trim();
+            const btn = $('btnConfirmarSaida');
+            btn.disabled = true; btn.style.opacity = 0.6;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Registrando...';
+
+            try {
+                const res = await fetch('/api/inventory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo: loteAtual.CODIGO,
+                        tipo: 'SAIDA',
+                        quantidade: qnt,
+                        usuario: usuario,
+                        idTbResumo: loteAtual.ID,
+                        observacao: obs
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Erro ao registrar saída');
+
+                $('sucessoDetalhe').innerHTML =
+                    `<strong>${qnt}</strong> un. de <strong>${loteAtual.CODIGO}</strong><br>` +
+                    `${loteAtual.DESCRICAO || ''}<br>` +
+                    `<small>Lote ID ${loteAtual.ID} · ${loteAtual.ENDERECO || '-'}</small>`;
+                show('telaSucesso');
+            } catch (e) {
+                mostrarAlerta('Erro: ' + e.message, 'erro');
+                btn.disabled = false; btn.style.opacity = 1;
+                btn.innerHTML = '<i class="fa fa-check"></i> Confirmar Saída';
+            }
+        });
+
+        function mostrarAlerta(msg, tipo) {
+            const cls = tipo === 'erro' ? 'alerta-erro' : tipo === 'ok' ? 'alerta-ok' : 'alerta-info';
+            $('alertaArea').innerHTML = `<div class="alerta ${cls}">${msg}</div>`;
+        }
+
+        // Inicializa
+        init();
+    })();
+    </script>
+</body>
+</html>

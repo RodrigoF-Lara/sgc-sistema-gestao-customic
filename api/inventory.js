@@ -29,6 +29,30 @@ export default async function handler(req, res) {
         return res.status(200).json({ locais: result.recordset });
       }
 
+      // Ação para buscar info de um lote específico pelo ID (usado no scan de QR)
+      if (action === 'loteById' && req.query.id) {
+        const result = await pool.request()
+          .input('ID', sql.Int, parseInt(req.query.id, 10))
+          .query(`
+            SELECT TOP 1 
+              k.ID,
+              k.CODIGO,
+              k.ARMAZEM,
+              k.ENDERECO,
+              k.QNT AS TAM_LOTE,
+              k.SALDO,
+              k.QNT_SAIDA,
+              cp.DESCRICAO
+            FROM [dbo].[KARDEX_2026_EMBALAGEM] k
+            LEFT JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = k.CODIGO
+            WHERE k.ID = @ID AND k.D_E_L_E_T_ <> '*'
+          `);
+        if (result.recordset.length === 0) {
+          return res.status(404).json({ message: 'Lote não encontrado' });
+        }
+        return res.status(200).json({ lote: result.recordset[0] });
+      }
+
       // Nova ação para buscar saldo individual por lote
       if (action === 'saldoPorLote' && codigo) {
         const result = await pool.request()

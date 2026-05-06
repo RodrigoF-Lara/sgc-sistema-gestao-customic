@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <a href="novaRequisicao.html" id="nav-nova-requisicao"><i class="fa fa-plus-square"></i> Nova Requisição</a>
           <a href="consulta.html" id="nav-consultar"><i class="fa fa-search"></i> Consultar</a>
           <a href="estoque.html" id="nav-estoque"><i class="fa fa-archive"></i> Gerenciar Estoque</a>
+          <a href="saidaRapida.html" id="nav-saida-rapida"><i class="fa fa-qrcode"></i> Saída Rápida (QR)</a>
           <a href="statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
           <a href="inventarioCiclico.html" id="nav-inventario-ciclico"><i class="fa fa-clipboard-check"></i> Inventário Cíclico</a>
           <a href="relatorios.html" id="nav-relatorios"><i class="fa fa-chart-bar"></i> Relatórios</a>
@@ -48,6 +49,7 @@ function inicializarSidebar() {
     'consultar': 'nav-consultar',
     'consulta': 'nav-consultar',
     'estoque': 'nav-estoque',
+    'saidarapida': 'nav-saida-rapida',
     'status-nf': 'nav-status-nf',
     'statusnf': 'nav-status-nf',
     'inventariociclico': 'nav-inventario-ciclico',
