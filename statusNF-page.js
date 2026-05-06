@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <button class="btn-detalhes btn-update" 
                             data-nf="${item.NF}" data-codigo="${item.CODIGO}" 
                             data-id-nf="${item.ID_NF}" data-id-nf-prod="${item.ID_NF_PROD}" 
+                            data-qnt="${item.QNT}" 
                             title="Alterar Status">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
@@ -180,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateForm.dataset.codigo = data.codigo;
             updateForm.dataset.idNf = data.idNf;
             updateForm.dataset.idNfProd = data.idNfProd;
+            updateForm.dataset.qnt = data.qnt;
             modalStatus.textContent = '';
             updateForm.reset();
         } else if (modalId === 'logModal') {
@@ -236,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
    // ...existing code...
     async function handleUpdateSubmit(e) {
         e.preventDefault();
-        const { nf, codigo, idNf, idNfProd } = updateForm.dataset;
+        const { nf, codigo, idNf, idNfProd, qnt } = updateForm.dataset;
         const processo = document.getElementById('novoProcesso').value;
         const usuario = localStorage.getItem('userName');
         if (!processo) {
@@ -250,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('/api/statusNF', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ acao: 'atualizarStatus', nf, codigo, processo, usuario, id_nf: idNf, id_nf_prod: idNfProd })
+                body: JSON.stringify({ acao: 'atualizarStatus', nf, codigo, processo, usuario, id_nf: idNf, id_nf_prod: idNfProd, qnt })
             });
 
             // tenta parsear JSON; se falhar, usa texto bruto para erro
