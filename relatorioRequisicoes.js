@@ -160,9 +160,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             : item.STATUS === 'Pendente' ? 'status-pendente' 
                             : 'status-parcial';
                         
-                        const prioridadeClass = item.PRIORIDADE === 'Alta' ? 'prioridade-alta' 
-                            : item.PRIORIDADE === 'Média' ? 'prioridade-media' 
-                            : 'prioridade-baixa';
+                        const priorNorm = (item.PRIORIDADE || '').toUpperCase();
+                        const prioridadeClass = priorNorm === 'ALTA' ? 'prioridade-alta' 
+                            : priorNorm === 'NORMAL' ? 'prioridade-normal'
+                            : priorNorm === 'BAIXA' ? 'prioridade-baixa'
+                            : 'prioridade-normal';
                         
                         return `
                         <tr>
