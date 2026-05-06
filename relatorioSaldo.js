@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>${item.DESCRICAO || 'SEM DESCRIÇÃO'}</td>
                             <td><span class="badge" style="background-color: #6c757d;">${item.TIPO || 'N/A'}</span></td>
                             <td><span class="badge ${curvaClass}">${curva}</span></td>
-                            <td><strong>${parseFloat(item.SALDO || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                            <td><strong>${parseFloat(item.SALDO || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></td>
                             <td>${item.ULTIMO_FORNECEDOR || 'Não informado'}</td>
                         </tr>
                     `}).join('')}
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <tfoot>
                     <tr class="total-row">
                         <td colspan="6" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
-                        <td><strong>${totalizadores.totalSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                        <td><strong>${totalizadores.totalSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></td>
                     </tr>
                 </tfoot>
             </table>
