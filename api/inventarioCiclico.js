@@ -423,14 +423,19 @@ async function gerarListaInventario(req, res) {
             try {
                 const codigosParam = todosCodigosUnicos.map(c => `'${c.replace(/'/g, "''")}'`).join(',');
                 const locResult = await pool.request().query(`
+                    WITH SaldoPorEndereco AS (
+                        SELECT CODIGO, ARMAZEM, ENDERECO, SUM(SALDO) AS SALDO_END
+                        FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                        WHERE D_E_L_E_T_ <> '*'
+                          AND CODIGO IN (${codigosParam})
+                          AND ISNULL(ENDERECO,'') <> ''
+                        GROUP BY CODIGO, ARMAZEM, ENDERECO
+                        HAVING SUM(SALDO) > 0
+                    )
                     SELECT CODIGO,
                            STRING_AGG(CAST(ARMAZEM AS NVARCHAR(MAX)) + ' / ' + CAST(ENDERECO AS NVARCHAR(MAX)), ' | ')
                                WITHIN GROUP (ORDER BY ARMAZEM, ENDERECO) AS LOCALIZACAO
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*'
-                      AND CODIGO IN (${codigosParam})
-                      AND ISNULL(ENDERECO,'') <> ''
-                      AND SALDO > 0
+                    FROM SaldoPorEndereco
                     GROUP BY CODIGO
                 `);
                 locResult.recordset.forEach(r => {
@@ -625,14 +630,19 @@ async function abrirInventario(req, res) {
             try {
                 const codigosParam = codigos.map(c => `'${String(c).replace(/'/g, "''")}'`).join(',');
                 const locResult = await pool.request().query(`
+                    WITH SaldoPorEndereco AS (
+                        SELECT CODIGO, ARMAZEM, ENDERECO, SUM(SALDO) AS SALDO_END
+                        FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                        WHERE D_E_L_E_T_ <> '*'
+                          AND CODIGO IN (${codigosParam})
+                          AND ISNULL(ENDERECO,'') <> ''
+                        GROUP BY CODIGO, ARMAZEM, ENDERECO
+                        HAVING SUM(SALDO) > 0
+                    )
                     SELECT CODIGO,
                            STRING_AGG(CAST(ARMAZEM AS NVARCHAR(MAX)) + ' / ' + CAST(ENDERECO AS NVARCHAR(MAX)), ' | ')
                                WITHIN GROUP (ORDER BY ARMAZEM, ENDERECO) AS LOCALIZACAO
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*'
-                      AND CODIGO IN (${codigosParam})
-                      AND ISNULL(ENDERECO,'') <> ''
-                      AND SALDO > 0
+                    FROM SaldoPorEndereco
                     GROUP BY CODIGO
                 `);
                 locResult.recordset.forEach(r => {
