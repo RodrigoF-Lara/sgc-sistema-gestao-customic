@@ -25,6 +25,14 @@
           Gerencie a classificação ABC dos produtos. Produtos não classificados são considerados tipo C.
         </p>
 
+        <!-- Ações -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button id="btnNovoProduto" class="btn-destaque" style="background: linear-gradient(135deg, #2e7d32, #1b5e20);">
+            <i class="fa-solid fa-plus"></i>
+            Novo Produto
+          </button>
+        </div>
+
         <!-- Filtros -->
         <div class="card">
           <h2>Filtros de Busca</h2>
@@ -85,6 +93,38 @@
         </div>
 
         <div id="statusMessage" class="status-message"></div>
+      </div>
+    </div>
+
+    <!-- Modal Novo Produto -->
+    <div id="modalNovoProduto" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+      <div style="background:white; border-radius:10px; padding:24px; width:90%; max-width:520px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:12px; margin-bottom:16px;">
+          <h2 style="margin:0;"><i class="fa-solid fa-plus-circle"></i> Criar Produto</h2>
+          <button id="btnFecharModal" style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">&times;</button>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label for="novoCodigo" style="font-weight:bold;">Código:</label>
+          <input type="text" id="novoCodigo" maxlength="50" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;" />
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label for="novoDescricao" style="font-weight:bold;">Descrição:</label>
+          <input type="text" id="novoDescricao" maxlength="200" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;" />
+        </div>
+        <div class="form-group" style="margin-bottom:18px;">
+          <label for="novoTipo" style="font-weight:bold;">Tipo:</label>
+          <select id="novoTipo" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;">
+            <option value="OUTROS">OUTROS</option>
+            <option value="EMBALAGEM">EMBALAGEM</option>
+          </select>
+        </div>
+        <div id="modalMsg" style="margin-bottom:12px; font-size:14px;"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button id="btnCancelarNovo" class="btn-destaque" style="background:#777;">Cancelar</button>
+          <button id="btnSalvarNovo" class="btn-destaque" style="background: linear-gradient(135deg, #2e7d32, #1b5e20);">
+            <i class="fa-solid fa-check"></i> Criar Produto
+          </button>
+        </div>
       </div>
     </div>
 

@@ -20,6 +20,84 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') buscarProdutos();
     });
 
+    // ── Modal Novo Produto ─────────────────────────────
+    const modalNovoProduto = document.getElementById('modalNovoProduto');
+    const btnNovoProduto = document.getElementById('btnNovoProduto');
+    const btnFecharModal = document.getElementById('btnFecharModal');
+    const btnCancelarNovo = document.getElementById('btnCancelarNovo');
+    const btnSalvarNovo = document.getElementById('btnSalvarNovo');
+    const novoCodigo = document.getElementById('novoCodigo');
+    const novoDescricao = document.getElementById('novoDescricao');
+    const novoTipo = document.getElementById('novoTipo');
+    const modalMsg = document.getElementById('modalMsg');
+
+    function abrirModal() {
+        novoCodigo.value = '';
+        novoDescricao.value = '';
+        novoTipo.value = 'OUTROS';
+        modalMsg.textContent = '';
+        modalMsg.style.color = '';
+        modalNovoProduto.style.display = 'flex';
+        setTimeout(() => novoCodigo.focus(), 50);
+    }
+    function fecharModal() {
+        modalNovoProduto.style.display = 'none';
+    }
+    if (btnNovoProduto) btnNovoProduto.addEventListener('click', abrirModal);
+    if (btnFecharModal) btnFecharModal.addEventListener('click', fecharModal);
+    if (btnCancelarNovo) btnCancelarNovo.addEventListener('click', fecharModal);
+    modalNovoProduto.addEventListener('click', (e) => {
+        if (e.target === modalNovoProduto) fecharModal();
+    });
+
+    async function salvarNovoProduto() {
+        const codigo = novoCodigo.value.trim();
+        const descricao = novoDescricao.value.trim();
+        const tipo = novoTipo.value;
+
+        if (!codigo || !descricao || !tipo) {
+            modalMsg.style.color = '#c62828';
+            modalMsg.textContent = 'Preencha todos os campos.';
+            return;
+        }
+
+        btnSalvarNovo.disabled = true;
+        modalMsg.style.color = '#1976d2';
+        modalMsg.textContent = 'Criando produto...';
+
+        try {
+            const res = await fetch('/api/cadastroProdutos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ acao: 'criar', codigo, descricao, tipo })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                modalMsg.style.color = '#c62828';
+                modalMsg.textContent = data.message || 'Erro ao criar produto.';
+                return;
+            }
+            modalMsg.style.color = '#2e7d32';
+            modalMsg.textContent = data.message || 'Produto criado com sucesso!';
+            mostrarMensagem(`Produto ${codigo} criado com sucesso!`, 'success');
+            setTimeout(() => {
+                fecharModal();
+                // Recarrega a busca para mostrar o novo item
+                filtroCodigo.value = codigo;
+                buscarProdutos();
+            }, 800);
+        } catch (err) {
+            modalMsg.style.color = '#c62828';
+            modalMsg.textContent = 'Erro: ' + err.message;
+        } finally {
+            btnSalvarNovo.disabled = false;
+        }
+    }
+    if (btnSalvarNovo) btnSalvarNovo.addEventListener('click', salvarNovoProduto);
+    [novoCodigo, novoDescricao].forEach(inp => {
+        inp.addEventListener('keypress', (e) => { if (e.key === 'Enter') salvarNovoProduto(); });
+    });
+
     async function buscarProdutos() {
         const codigo = filtroCodigo.value.trim();
         const descricao = filtroDescricao.value.trim();

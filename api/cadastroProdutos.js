@@ -18,10 +18,85 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
         return await listarProdutos(req, res);
     } else if (req.method === 'POST') {
+        const acao = req.body && req.body.acao;
+        if (acao === 'criar') {
+            return await criarProduto(req, res);
+        }
         return await atualizarProdutos(req, res);
     }
 
     return res.status(405).json({ message: "Método não permitido" });
+}
+
+async function criarProduto(req, res) {
+    try {
+        const { codigo, descricao, tipo } = req.body;
+
+        if (!codigo || !descricao || !tipo) {
+            return res.status(400).json({ message: "Preencha todos os campos (código, descrição e tipo)" });
+        }
+
+        const tiposValidos = ['OUTROS', 'EMBALAGEM'];
+        const tipoUpper = String(tipo).toUpperCase().trim();
+        if (!tiposValidos.includes(tipoUpper)) {
+            return res.status(400).json({ message: "Tipo inválido. Use OUTROS ou EMBALAGEM" });
+        }
+
+        const codigoTrim = String(codigo).trim();
+        const descricaoTrim = String(descricao).trim();
+
+        const pool = await getConnection();
+
+        // Verifica se já existe
+        const checkResult = await pool.request()
+            .input('CODIGO', sql.NVarChar, codigoTrim)
+            .query('SELECT CODIGO FROM [dbo].[CAD_PROD] WHERE CODIGO = @CODIGO');
+
+        if (checkResult.recordset.length > 0) {
+            return res.status(409).json({ message: "Este código já existe! Use outro número." });
+        }
+
+        const transaction = new sql.Transaction(pool);
+        try {
+            await transaction.begin();
+
+            // Insere em CAD_PROD
+            await new sql.Request(transaction)
+                .input('CODIGO', sql.NVarChar, codigoTrim)
+                .input('DESCRICAO', sql.NVarChar, descricaoTrim)
+                .input('TIPO', sql.NVarChar, tipoUpper)
+                .query(`
+                    INSERT INTO [dbo].[CAD_PROD] ([CODIGO], [DESCRICAO], [DEPOSITO], [TIPO])
+                    VALUES (@CODIGO, @DESCRICAO, 'CUSTOMIC-01', @TIPO)
+                `);
+
+            // Insere em BOM (auto-relacionamento PAI=FILHO=1)
+            await new sql.Request(transaction)
+                .input('CODIGO', sql.NVarChar, codigoTrim)
+                .query(`
+                    INSERT INTO [dbo].[BOM] ([COD_PAI], [COD_FILHO], [QNT_FILHO])
+                    VALUES (@CODIGO, @CODIGO, 1)
+                `);
+
+            await transaction.commit();
+
+            console.log(`✅ Produto criado: ${codigoTrim} - ${descricaoTrim} (${tipoUpper})`);
+
+            return res.status(201).json({
+                message: "Item incluído com sucesso!",
+                produto: { codigo: codigoTrim, descricao: descricaoTrim, tipo: tipoUpper }
+            });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (err) {
+        console.error("❌ Erro ao criar produto:", err);
+        return res.status(500).json({
+            message: "Erro ao criar produto",
+            error: err.message
+        });
+    }
 }
 
 async function listarProdutos(req, res) {
