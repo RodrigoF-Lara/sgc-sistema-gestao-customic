@@ -618,6 +618,31 @@ async function abrirInventario(req, res) {
         // Calcula o total a partir dos itens para garantir consistência com as linhas exibidas
         const valorTotalGeralCalculado = itemsResult.recordset.reduce((sum, item) => sum + (item.VALOR_TOTAL_ESTOQUE || 0), 0);
 
+        // Busca localizações com saldo > 0 para os itens do inventário
+        let localizacoesPorCodigo = {};
+        const codigos = itemsResult.recordset.map(i => i.CODIGO);
+        if (codigos.length > 0) {
+            try {
+                const codigosParam = codigos.map(c => `'${String(c).replace(/'/g, "''")}'`).join(',');
+                const locResult = await pool.request().query(`
+                    SELECT CODIGO,
+                           STRING_AGG(CAST(ARMAZEM AS NVARCHAR(MAX)) + ' / ' + CAST(ENDERECO AS NVARCHAR(MAX)), ' | ')
+                               WITHIN GROUP (ORDER BY ARMAZEM, ENDERECO) AS LOCALIZACAO
+                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                    WHERE D_E_L_E_T_ <> '*'
+                      AND CODIGO IN (${codigosParam})
+                      AND ISNULL(ENDERECO,'') <> ''
+                      AND SALDO > 0
+                    GROUP BY CODIGO
+                `);
+                locResult.recordset.forEach(r => {
+                    localizacoesPorCodigo[r.CODIGO] = r.LOCALIZACAO;
+                });
+            } catch (err) {
+                console.warn('Aviso: não foi possível buscar localizações:', err.message);
+            }
+        }
+
         // Monta o objeto inventário
         const inventario = {
             id: header.ID_INVENTARIO,
@@ -636,7 +661,8 @@ async function abrirInventario(req, res) {
                 DT_CONTAGEM: item.DT_CONTAGEM,
                 BLOCO: item.BLOCO,
                 CUSTO_UNITARIO: item.CUSTO_UNITARIO || 0,
-                VALOR_TOTAL_ESTOQUE: item.VALOR_TOTAL_ESTOQUE || 0
+                VALOR_TOTAL_ESTOQUE: item.VALOR_TOTAL_ESTOQUE || 0,
+                LOCALIZACAO: localizacoesPorCodigo[item.CODIGO] || ''
             }))
         };
 

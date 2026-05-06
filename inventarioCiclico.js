@@ -390,6 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <th>Bloco</th>
                     <th>Código</th>
                     <th>Descrição</th>
+                    <th>Localização</th>
                     <th>Saldo Sistema</th>
                     <th>Valor Unit.</th>
                     <th>Valor Total</th>
@@ -439,6 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td><span class="bloco-badge ${blocoClass}">${blocoTexto}</span></td>
                         <td><strong>${item.CODIGO}</strong></td>
                         <td>${item.DESCRICAO || 'N/A'}</td>
+                        <td style="font-size:0.82em; color:#555;">${item.LOCALIZACAO || '-'}</td>
                         <td>${saldoSistema}</td>
                         <td>R$ ${custoUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         <td><strong>R$ ${valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
@@ -476,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ${valorTotalGeral !== undefined ? `
             <tfoot>
                 <tr class="total-row">
-                    <td colspan="${podeEditar ? '6' : '6'}" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
+                    <td colspan="${podeEditar ? '7' : '7'}" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
                     <td><strong>R$ ${valorTotalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
                     <td colspan="${podeEditar ? '5' : '4'}"></td>
                 </tr>
