@@ -944,6 +944,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Bloco': blocoTexto,
                 'Código': item.CODIGO,
                 'Descrição': item.DESCRICAO || 'N/A',
+                'Localização': item.LOCALIZACAO || '',
                 'Saldo Sistema': saldoSistema,
                 'Custo Unitário': item.CUSTO_UNITARIO || 0,
                 'Valor Total': item.VALOR_TOTAL_ESTOQUE || 0,
@@ -975,18 +976,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const ws = XLSX.utils.json_to_sheet(dadosExcel);
 
         const colWidths = [
-            { wch: 5 }, { wch: 18 }, { wch: 12 }, { wch: 40 }, { wch: 12 }, { wch: 14 },
+            { wch: 5 }, { wch: 18 }, { wch: 12 }, { wch: 40 }, { wch: 25 }, { wch: 12 }, { wch: 14 },
             { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }
         ];
         ws['!cols'] = colWidths;
 
         const range = XLSX.utils.decode_range(ws['!ref']);
         for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-            const cellRefF = XLSX.utils.encode_cell({ r: R, c: 5 });
+            // Custo Unitário agora na coluna 6 (índice), Valor Total na 7
+            const cellRefF = XLSX.utils.encode_cell({ r: R, c: 6 });
             if (ws[cellRefF] && typeof ws[cellRefF].v === 'number') {
                 ws[cellRefF].z = 'R$ #,##0.00';
             }
-            const cellRefG = XLSX.utils.encode_cell({ r: R, c: 6 });
+            const cellRefG = XLSX.utils.encode_cell({ r: R, c: 7 });
             if (ws[cellRefG] && typeof ws[cellRefG].v === 'number') {
                 ws[cellRefG].z = 'R$ #,##0.00';
             }

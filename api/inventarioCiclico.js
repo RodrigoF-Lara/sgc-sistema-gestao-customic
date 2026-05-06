@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 async function gerarListaInventario(req, res) {
     try {
         const pool = await getConnection();
-        const todosItens = [];
+        let todosItens = [];
         
         // BUSCA AS CONFIGURAÇÕES SALVAS
         const configResult = await pool.request().query(`
@@ -415,6 +415,36 @@ async function gerarListaInventario(req, res) {
                 message: "Nenhum item encontrado para inventário. Verifique se há dados no sistema." 
             });
         }
+
+        // Busca localizações (ARMAZEM + ENDERECO) de todos os itens de uma vez
+        const todosCodigosUnicos = [...new Set(todosItens.map(i => i.CODIGO))];
+        let localizacoesPorCodigo = {};
+        if (todosCodigosUnicos.length > 0) {
+            try {
+                const codigosParam = todosCodigosUnicos.map(c => `'${c.replace(/'/g, "''")}'`).join(',');
+                const locResult = await pool.request().query(`
+                    SELECT CODIGO,
+                           STRING_AGG(CAST(ARMAZEM AS NVARCHAR(MAX)) + ' / ' + CAST(ENDERECO AS NVARCHAR(MAX)), ' | ')
+                               WITHIN GROUP (ORDER BY ARMAZEM, ENDERECO) AS LOCALIZACAO
+                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                    WHERE D_E_L_E_T_ <> '*'
+                      AND CODIGO IN (${codigosParam})
+                      AND ISNULL(ENDERECO,'') <> ''
+                    GROUP BY CODIGO
+                `);
+                locResult.recordset.forEach(r => {
+                    localizacoesPorCodigo[r.CODIGO] = r.LOCALIZACAO;
+                });
+            } catch (err) {
+                console.warn('Aviso: não foi possível buscar localizações:', err.message);
+            }
+        }
+
+        // Mescla localização em cada item
+        todosItens = todosItens.map(item => ({
+            ...item,
+            LOCALIZACAO: localizacoesPorCodigo[item.CODIGO] || ''
+        }));
 
         // Calcula valor total geral
         const valorTotalGeral = todosItens.reduce((sum, item) => sum + (item.VALOR_TOTAL_ESTOQUE || 0), 0);
