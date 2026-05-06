@@ -130,7 +130,26 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const statusClass = inv.STATUS === 'FINALIZADO' ? 'badge-concluido' : 'badge-pendente';
             const acuracidadeClass = getAcuracidadeClass(inv.ACURACIDADE);
-            
+
+            // Maior divergência percentual (menor acuracidade)
+            let maiorDivPercHtml = '-';
+            if (inv.MAIOR_DIV_PERC_CODIGO && inv.MAIOR_DIV_PERC_ACURACIDADE !== null && inv.MAIOR_DIV_PERC_ACURACIDADE !== undefined) {
+                const acurItem = parseFloat(inv.MAIOR_DIV_PERC_ACURACIDADE);
+                const divPerc = (100 - acurItem).toFixed(2);
+                const tituloDesc = (inv.MAIOR_DIV_PERC_DESCRICAO || '').replace(/"/g, '&quot;');
+                maiorDivPercHtml = `<span title="${tituloDesc}"><strong>${inv.MAIOR_DIV_PERC_CODIGO}</strong><br><small style="color:#dc3545;font-weight:bold;">${divPerc}% div.</small></span>`;
+            }
+
+            // Maior divergência em quantidade (maior |DIFERENCA|)
+            let maiorDivQtdHtml = '-';
+            if (inv.MAIOR_DIV_QTD_CODIGO && inv.MAIOR_DIV_QTD_VALOR !== null && inv.MAIOR_DIV_QTD_VALOR !== undefined) {
+                const dif = parseFloat(inv.MAIOR_DIV_QTD_VALOR);
+                const sinal = dif > 0 ? '+' : '';
+                const cor = dif > 0 ? '#28a745' : dif < 0 ? '#dc3545' : '#666';
+                const tituloDesc = (inv.MAIOR_DIV_QTD_DESCRICAO || '').replace(/"/g, '&quot;');
+                maiorDivQtdHtml = `<span title="${tituloDesc}"><strong>${inv.MAIOR_DIV_QTD_CODIGO}</strong><br><small style="color:${cor};font-weight:bold;">${sinal}${dif.toFixed(2)}</small></span>`;
+            }
+
             row.innerHTML = `
                 <td>${inv.ID_INVENTARIO}</td>
                 <td>${formatarDataUTC(inv.DT_GERACAO)}</td>
@@ -140,6 +159,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td><span class="badge ${statusClass}">${inv.STATUS}</span></td>
                 <td>${inv.TOTAL_ITENS || 0}</td>
                 <td><span class="badge ${acuracidadeClass}">${inv.ACURACIDADE !== null ? inv.ACURACIDADE.toFixed(2) + '%' : 'N/A'}</span></td>
+                <td style="text-align:center;">${maiorDivPercHtml}</td>
+                <td style="text-align:center;">${maiorDivQtdHtml}</td>
                 <td>${inv.USUARIO_FINALIZACAO || inv.USUARIO_CRIACAO || '-'}</td>
                 <td>
                     <button class="btn-secundario btn-small" onclick="verDetalhes(${inv.ID_INVENTARIO})" 
@@ -254,6 +275,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Status': inv.STATUS,
                 'Total Itens': inv.TOTAL_ITENS || 0,
                 'Acuracidade (%)': inv.ACURACIDADE !== null ? inv.ACURACIDADE.toFixed(2) : 'N/A',
+                'Maior Div. % - Código': inv.MAIOR_DIV_PERC_CODIGO || '-',
+                'Maior Div. % - Descrição': inv.MAIOR_DIV_PERC_DESCRICAO || '-',
+                'Maior Div. % - Divergência (%)': inv.MAIOR_DIV_PERC_ACURACIDADE !== null && inv.MAIOR_DIV_PERC_ACURACIDADE !== undefined
+                    ? (100 - parseFloat(inv.MAIOR_DIV_PERC_ACURACIDADE)).toFixed(2)
+                    : '-',
+                'Maior Div. Qtd - Código': inv.MAIOR_DIV_QTD_CODIGO || '-',
+                'Maior Div. Qtd - Descrição': inv.MAIOR_DIV_QTD_DESCRICAO || '-',
+                'Maior Div. Qtd - Diferença': inv.MAIOR_DIV_QTD_VALOR !== null && inv.MAIOR_DIV_QTD_VALOR !== undefined
+                    ? parseFloat(inv.MAIOR_DIV_QTD_VALOR).toFixed(2)
+                    : '-',
                 'Usuário Criação': inv.USUARIO_CRIACAO || '-',
                 'Usuário Finalização': inv.USUARIO_FINALIZACAO || '-'
             }));

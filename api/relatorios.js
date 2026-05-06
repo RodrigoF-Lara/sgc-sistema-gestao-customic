@@ -649,26 +649,46 @@ async function relatorioAcuracidade(req, res) {
         
         let query = `
             SELECT 
-                ID_INVENTARIO,
-                DT_GERACAO,
-                DT_FINALIZACAO,
-                CRITERIO,
-                STATUS,
-                TOTAL_ITENS,
-                ACURACIDADE,
-                USUARIO_CRIACAO,
-                USUARIO_FINALIZACAO
-            FROM [dbo].[TB_INVENTARIO_CICLICO]
-            WHERE DT_GERACAO >= @dataInicio 
-                AND DT_GERACAO < @dataFim
+                inv.ID_INVENTARIO,
+                inv.DT_GERACAO,
+                inv.DT_FINALIZACAO,
+                inv.CRITERIO,
+                inv.STATUS,
+                inv.TOTAL_ITENS,
+                inv.ACURACIDADE,
+                inv.USUARIO_CRIACAO,
+                inv.USUARIO_FINALIZACAO,
+                maiorDivPerc.CODIGO       AS MAIOR_DIV_PERC_CODIGO,
+                maiorDivPerc.DESCRICAO    AS MAIOR_DIV_PERC_DESCRICAO,
+                maiorDivPerc.ACURACIDADE  AS MAIOR_DIV_PERC_ACURACIDADE,
+                maiorDivQtd.CODIGO        AS MAIOR_DIV_QTD_CODIGO,
+                maiorDivQtd.DESCRICAO     AS MAIOR_DIV_QTD_DESCRICAO,
+                maiorDivQtd.DIFERENCA     AS MAIOR_DIV_QTD_VALOR
+            FROM [dbo].[TB_INVENTARIO_CICLICO] inv
+            OUTER APPLY (
+                SELECT TOP 1 CODIGO, DESCRICAO, ACURACIDADE
+                FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                WHERE ID_INVENTARIO = inv.ID_INVENTARIO
+                  AND ACURACIDADE IS NOT NULL
+                ORDER BY ACURACIDADE ASC
+            ) maiorDivPerc
+            OUTER APPLY (
+                SELECT TOP 1 CODIGO, DESCRICAO, DIFERENCA
+                FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                WHERE ID_INVENTARIO = inv.ID_INVENTARIO
+                  AND DIFERENCA IS NOT NULL
+                ORDER BY ABS(DIFERENCA) DESC
+            ) maiorDivQtd
+            WHERE inv.DT_GERACAO >= @dataInicio 
+                AND inv.DT_GERACAO < @dataFim
         `;
         
         if (status) {
             request.input('status', sql.NVarChar, status);
-            query += ` AND STATUS = @status`;
+            query += ` AND inv.STATUS = @status`;
         }
         
-        query += ` ORDER BY DT_GERACAO DESC`;
+        query += ` ORDER BY inv.DT_GERACAO DESC`;
 
         console.log('🔍 Query executada:', query);
 
