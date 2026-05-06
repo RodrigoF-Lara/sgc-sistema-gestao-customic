@@ -430,6 +430,7 @@ async function gerarListaInventario(req, res) {
                     WHERE D_E_L_E_T_ <> '*'
                       AND CODIGO IN (${codigosParam})
                       AND ISNULL(ENDERECO,'') <> ''
+                      AND SALDO > 0
                     GROUP BY CODIGO
                 `);
                 locResult.recordset.forEach(r => {
