@@ -1183,6 +1183,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: inline-block;
 }
 
+/* Variantes de status/acuracidade */
+.badge-concluido {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.badge-pendente {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.badge-parcial {
+    background-color: #ffc107;
+    color: #212529;
+}
+
 /* Prioridade Média */
 .prioridade-media {
     background-color: #ffc107;
