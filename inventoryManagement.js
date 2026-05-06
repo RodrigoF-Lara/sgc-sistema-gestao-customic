@@ -248,7 +248,6 @@
             <div class="header-top">
                 <span class="id-badge">ID: ${dados.idMovimento || "N/A"}</span>
                 <h1>KARDEX SYSTEM</h1>
-        <div id="qr-${dados.idMovimento}" class="qr-code"></div>
             </div>
         </div>
         
@@ -259,8 +258,9 @@
             </div>
         </div>
         
-        <div class="codigo-barras">
-            <svg id="barcode-${dados.idMovimento}"></svg>
+        <div class="qr-grande-container">
+            <div id="qr-${dados.idMovimento}" class="qr-grande"></div>
+            <div class="codigo-texto">${dados.codigo}</div>
         </div>
         
         <div class="info-principal">
@@ -397,6 +397,28 @@
             height: 18mm !important;
         }
         
+        .qr-grande-container {
+            text-align: center;
+            margin: 2mm 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .qr-grande {
+            width: 60mm;
+            height: 60mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-grande img, .qr-grande canvas {
+            width: 60mm !important;
+            height: 60mm !important;
+        }
+        
         .codigo-barras {
             text-align: center;
             margin: 2mm 0;
@@ -492,10 +514,11 @@
         }
 
         .codigo-texto {
-            font-size: 20pt;
+            font-size: 18pt;
             font-weight: bold;
             letter-spacing: 2px;
             color: #111;
+            margin-top: 2mm;
         }
         
         .btn-imprimir {
@@ -525,23 +548,12 @@
         const etiquetasData = ${JSON.stringify(etiquetas)};
         window.onload = function() {
             etiquetasData.forEach(dados => {
-                if (dados.idMovimento && document.getElementById('barcode-' + dados.idMovimento)) {
-                    JsBarcode("#barcode-" + dados.idMovimento, dados.codigo, {
-                        format: "CODE128",
-                        width: 3,
-                        height: 55,
-                        displayValue: true,
-                        fontSize: 21,
-                        margin: 2,
-                        fontOptions: "bold"
-                    });
-                }
                 if (dados.idMovimento && document.getElementById('qr-' + dados.idMovimento)) {
                     new QRCode(document.getElementById('qr-' + dados.idMovimento), {
-                        text: String(dados.idMovimento),
-                        width: 68,
-                        height: 68,
-                        correctLevel: QRCode.CorrectLevel.L
+                        text: String(dados.codigo),
+                        width: 227,
+                        height: 227,
+                        correctLevel: QRCode.CorrectLevel.M
                     });
                 }
             });
