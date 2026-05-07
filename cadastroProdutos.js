@@ -178,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Tipo</th>
                         <th style="width: 200px;">Curva ABC</th>
                         <th style="width: 150px;">Status</th>
+                        <th style="width: 60px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -214,7 +215,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <option value="0" ${ativoAtual == 0 ? 'selected' : ''}>❌ Inativo</option>
                                 </select>
                             </td>
-                        </tr>
+                            <td style="text-align:center;">
+                                <button class="btn-editar-produto" data-codigo="${produto.CODIGO}" title="Editar produto"
+                                    style="background:none; border:1px solid #1976d2; color:#1976d2; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:15px;">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                            </td>
                     `}).join('')}
                 </tbody>
             </table>
@@ -298,10 +304,91 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.target.disabled = false;
                 }
             });
+        // Botoes editar
+        document.querySelectorAll('.btn-editar-produto').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const codigo = btn.dataset.codigo;
+                const produto = produtosCarregados.find(p => p.CODIGO === codigo);
+                if (produto) abrirModalEditar(produto);
+            });
         });
     }
 
-    function mostrarMensagem(mensagem, tipo) {
+    // ── Modal Editar Produto ─────────────────────────────
+    const modalEditar       = document.getElementById('modalEditarProduto');
+    const btnFecharEditar   = document.getElementById('btnFecharEditar');
+    const btnCancelarEditar = document.getElementById('btnCancelarEditar');
+    const btnSalvarEditar   = document.getElementById('btnSalvarEditar');
+    const editCodigo        = document.getElementById('editCodigo');
+    const editDescricao     = document.getElementById('editDescricao');
+    const editTipo          = document.getElementById('editTipo');
+    const editCurva         = document.getElementById('editCurva');
+    const editAtivo         = document.getElementById('editAtivo');
+    const editModalMsg      = document.getElementById('editModalMsg');
+    let produtoEmEdicao     = null;
+
+    function abrirModalEditar(produto) {
+        produtoEmEdicao = produto;
+        editCodigo.value    = produto.CODIGO;
+        editDescricao.value = produto.DESCRICAO || '';
+        editTipo.value      = produto.TIPO || 'OUTROS';
+        editCurva.value     = produto.CURVA_A_B_C || 'C';
+        editAtivo.value     = (produto.ATIVO !== undefined ? produto.ATIVO : 1).toString();
+        editModalMsg.textContent = '';
+        modalEditar.style.display = 'flex';
+        setTimeout(() => editDescricao.focus(), 50);
+    }
+    function fecharModalEditar() {
+        modalEditar.style.display = 'none';
+        produtoEmEdicao = null;
+    }
+    if (btnFecharEditar)   btnFecharEditar.addEventListener('click', fecharModalEditar);
+    if (btnCancelarEditar) btnCancelarEditar.addEventListener('click', fecharModalEditar);
+    modalEditar.addEventListener('click', (e) => { if (e.target === modalEditar) fecharModalEditar(); });
+
+    if (btnSalvarEditar) btnSalvarEditar.addEventListener('click', async () => {
+        const descricao = editDescricao.value.trim();
+        if (!descricao) {
+            editModalMsg.style.color = '#c62828';
+            editModalMsg.textContent = 'Descrição não pode ser vazia.';
+            return;
+        }
+        btnSalvarEditar.disabled = true;
+        editModalMsg.style.color = '#1976d2';
+        editModalMsg.textContent = 'Salvando...';
+        try {
+            const res = await fetch('/api/cadastroProdutos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    acao: 'atualizar',
+                    alteracoes: [{
+                        codigo: produtoEmEdicao.CODIGO,
+                        descricao: descricao,
+                        tipo: editTipo.value,
+                        curva: editCurva.value,
+                        ativo: parseInt(editAtivo.value)
+                    }]
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Erro ao salvar');
+            // Atualiza produto na memória e na tabela
+            produtoEmEdicao.DESCRICAO  = descricao;
+            produtoEmEdicao.TIPO       = editTipo.value;
+            produtoEmEdicao.CURVA_A_B_C = editCurva.value;
+            produtoEmEdicao.ATIVO      = parseInt(editAtivo.value);
+            editModalMsg.style.color = '#2e7d32';
+            editModalMsg.textContent = 'Salvo com sucesso!';
+            mostrarMensagem('Produto atualizado com sucesso!', 'success');
+            setTimeout(() => { fecharModalEditar(); renderizarTabela(); }, 700);
+        } catch (err) {
+            editModalMsg.style.color = '#c62828';
+            editModalMsg.textContent = 'Erro: ' + err.message;
+        } finally {
+            btnSalvarEditar.disabled = false;
+        }
+    });
         statusMessage.textContent = mensagem;
         statusMessage.className = `status-message ${tipo}`;
         statusMessage.style.display = 'block';

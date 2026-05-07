@@ -202,7 +202,7 @@ async function atualizarProdutos(req, res) {
             let atualizados = 0;
 
             for (const item of alteracoes) {
-                const { codigo, curva, ativo } = item;
+                const { codigo, curva, ativo, descricao, tipo } = item;
 
                 if (!codigo) {
                     console.warn('⚠️ Item inválido ignorado (sem código):', item);
@@ -225,6 +225,18 @@ async function atualizarProdutos(req, res) {
                 
                 // Monta UPDATE dinâmico
                 let setClauses = [];
+                if (descricao !== undefined && String(descricao).trim()) {
+                    setClauses.push('DESCRICAO = @DESCRICAO');
+                    request.input('DESCRICAO', sql.NVarChar, String(descricao).trim());
+                }
+                if (tipo !== undefined && String(tipo).trim()) {
+                    const tiposValidos = ['OUTROS', 'EMBALAGEM'];
+                    const tipoUpper = String(tipo).toUpperCase().trim();
+                    if (tiposValidos.includes(tipoUpper)) {
+                        setClauses.push('TIPO = @TIPO');
+                        request.input('TIPO', sql.NVarChar, tipoUpper);
+                    }
+                }
                 if (curva) {
                     setClauses.push('CURVA_A_B_C = @CURVA');
                     request.input('CURVA', sql.NVarChar(1), curva);
