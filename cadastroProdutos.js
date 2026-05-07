@@ -389,6 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
             btnSalvarEditar.disabled = false;
         }
     });
+
+    function mostrarMensagem(mensagem, tipo) {
         statusMessage.textContent = mensagem;
         statusMessage.className = `status-message ${tipo}`;
         statusMessage.style.display = 'block';
