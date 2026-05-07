@@ -23,16 +23,6 @@
       </div>
     </div>
     <script>
-      // Selecionar GIF de fundo aleatório
-      const fundosDisponiveis = [
-        'customic_fundo.gif',
-        'customic_fundo_2.gif',
-        'customic_fundo_3.gif',
-        'customic_fundo_4.gif'
-      ];
-      const fundoAleatorio = fundosDisponiveis[Math.floor(Math.random() * fundosDisponiveis.length)];
-      document.getElementById('loginContainer').style.backgroundImage = `url('img/fundo_login/old/${fundoAleatorio}')`;
-
       document
         .getElementById("loginForm")
         .addEventListener("submit", async function (e) {
