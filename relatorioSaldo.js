@@ -139,6 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Tipo</th>
                         <th>Curva ABC</th>
                         <th>Saldo</th>
+                        <th>Custo Contábil Médio</th>
+                        <th>Custo Fiscal Médio</th>
+                        <th>Preço Unit. Últ. NF</th>
                         <th>Último Fornecedor</th>
                     </tr>
                 </thead>
@@ -148,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const curvaClass = curva === 'A' ? 'curva-a' 
                             : curva === 'B' ? 'curva-b' 
                             : 'curva-c';
+                        const fmtMoeda = v => parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         
                         return `
                         <tr>
@@ -157,14 +161,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td><span class="badge" style="background-color: #6c757d;">${item.TIPO || 'N/A'}</span></td>
                             <td><span class="badge ${curvaClass}">${curva}</span></td>
                             <td><strong>${parseFloat(item.SALDO || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></td>
+                            <td>${fmtMoeda(item.CUSTO_CONTABIL_MEDIO)}</td>
+                            <td>${fmtMoeda(item.CUSTO_FISCAL_MEDIO)}</td>
+                            <td>${fmtMoeda(item.PRECO_UNIT_ULT_NF)}</td>
                             <td>${item.ULTIMO_FORNECEDOR || 'Não informado'}</td>
                         </tr>
                     `}).join('')}
                 </tbody>
                 <tfoot>
                     <tr class="total-row">
-                        <td colspan="6" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
+                        <td colspan="5" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
                         <td><strong>${totalizadores.totalSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></td>
+                        <td colspan="4"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -192,6 +200,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Tipo': item.TIPO || 'N/A',
                 'Curva ABC': item.CURVA_A_B_C || 'C',
                 'Saldo': parseFloat(item.SALDO || 0),
+                'Custo Contábil Médio (R$)': parseFloat(item.CUSTO_CONTABIL_MEDIO || 0),
+                'Custo Fiscal Médio (R$)': parseFloat(item.CUSTO_FISCAL_MEDIO || 0),
+                'Preço Unit. Últ. NF (R$)': parseFloat(item.PRECO_UNIT_ULT_NF || 0),
                 'Último Fornecedor': item.ULTIMO_FORNECEDOR || 'Não informado'
             };
         });

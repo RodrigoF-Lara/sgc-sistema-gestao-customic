@@ -414,7 +414,10 @@ async function relatorioSaldoEstoque(req, res) {
                 cp.TIPO,
                 ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
                 ISNULL(k.SALDO, 0) AS SALDO,
-                uf.ULTIMO_FORNECEDOR
+                uf.ULTIMO_FORNECEDOR,
+                ISNULL(uf.CUSTO_CONTABIL_MEDIO, 0) AS CUSTO_CONTABIL_MEDIO,
+                ISNULL(uf.CUSTO_FISCAL_MEDIO, 0)   AS CUSTO_FISCAL_MEDIO,
+                ISNULL(uf.PRECO_UNIT_ULT_NF, 0)    AS PRECO_UNIT_ULT_NF
             FROM [dbo].[CAD_PROD] cp
             LEFT JOIN (
                 SELECT 
@@ -428,7 +431,10 @@ async function relatorioSaldoEstoque(req, res) {
             LEFT JOIN (
                 SELECT 
                     np.PROD_COD_PROD AS CODIGO,
-                    cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR
+                    cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR,
+                    np.PROD_CUSTO_CONTABIL_MEDIO_NOVO AS CUSTO_CONTABIL_MEDIO,
+                    np.PROD_CUSTO_FISCAL_MEDIO_NOVO   AS CUSTO_FISCAL_MEDIO,
+                    np.PROD_VALOR_UNIT                AS PRECO_UNIT_ULT_NF
                 FROM [dbo].[NF_PRODUTOS] np
                 INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
                 INNER JOIN [dbo].[CAD_FORNECEDOR] cf ON nc.CAB_NUM_FORN = cf.COD_FORNECEDOR
