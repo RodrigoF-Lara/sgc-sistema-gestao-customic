@@ -304,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.target.disabled = false;
                 }
             });
+        });
         // Botoes editar
         document.querySelectorAll('.btn-editar-produto').forEach(btn => {
             btn.addEventListener('click', (e) => {
