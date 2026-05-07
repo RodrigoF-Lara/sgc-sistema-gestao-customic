@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             let url = `/api/relatorios?acao=saldoEstoque&incluirSaldoZero=${incluirSaldoZero}`;
+            if (incluirSaldoZero === 'inativos') url += '&incluirInativos=sim';
             if (curvaABC) {
                 url += `&curvaABC=${curvaABC}`;
             }
