@@ -400,7 +400,7 @@ async function buscarTiposProduto(req, res) {
 
 async function relatorioSaldoEstoque(req, res) {
     try {
-        const { curvaABC, tipoProduto, incluirSaldoZero, incluirInativos } = req.query;
+        const { curvaABC, tipoProduto, incluirSaldoZero, incluirInativos, somenteInativos } = req.query;
 
         const pool = await getConnection();
         
@@ -447,10 +447,12 @@ async function relatorioSaldoEstoque(req, res) {
                 ) ultima ON np.PROD_COD_PROD = ultima.PROD_COD_PROD 
                     AND np.PROD_ID_NF = ultima.ULTIMA_NF
             ) uf ON cp.CODIGO = uf.CODIGO
-            WHERE (ISNULL(cp.ATIVO, 1) = 1 OR @INCLUIR_INATIVOS = 1)`;
+            WHERE (ISNULL(cp.ATIVO, 1) = 1 OR @INCLUIR_INATIVOS = 1)
+            AND (@SOMENTE_INATIVOS = 0 OR ISNULL(cp.ATIVO, 1) = 0)`;
         
         const request = pool.request();
-        request.input('INCLUIR_INATIVOS', sql.Bit, incluirInativos === 'sim' ? 1 : 0);
+        request.input('INCLUIR_INATIVOS', sql.Bit, (incluirInativos === 'sim' || somenteInativos === 'sim') ? 1 : 0);
+        request.input('SOMENTE_INATIVOS', sql.Bit, somenteInativos === 'sim' ? 1 : 0);
         
         // Filtro por curva ABC
         if (curvaABC && curvaABC.trim()) {
@@ -470,7 +472,7 @@ async function relatorioSaldoEstoque(req, res) {
         }
         
         // Filtro por saldo (inativos implica incluir saldo zero tb)
-        if (incluirSaldoZero !== 'sim' && incluirInativos !== 'sim') {
+        if (incluirSaldoZero !== 'sim' && incluirInativos !== 'sim' && somenteInativos !== 'sim') {
             query += ` AND ISNULL(k.SALDO, 0) > 0`;
         }
         
