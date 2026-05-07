@@ -333,6 +333,63 @@ tbody tr:hover {
     .login-card input { font-size: 16px; } /* evita zoom automático no iOS */
 }
 
+/* --- Dropdown multi-checkbox (Exibir no Relatório de Saldo) --- */
+.multicheck-wrapper { position: relative; width: 100%; }
+.multicheck-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 16px;
+    color: #333;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s;
+    height: 45px;
+}
+.multicheck-trigger:hover { border-color: var(--cor-principal); }
+.multicheck-trigger i { font-size: 13px; color: #666; transition: transform 0.2s; flex-shrink: 0; }
+.multicheck-trigger span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multicheck-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 100;
+    padding: 6px 0;
+}
+.multicheck-dropdown.open { display: block; }
+.multicheck-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #333;
+    user-select: none;
+    transition: background 0.15s;
+}
+.multicheck-item:hover { background: #f0f4ff; }
+.multicheck-item input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--cor-principal);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.multicheck-item input[type="checkbox"]:disabled + * { color: #aaa; }
+
 /* --- Página de Menu --- */
 .menu-header { text-align: center; margin-bottom: 40px; }
 .menu-header h1 { color: var(--cor-principal); text-align: center; }

@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     const filtroCurvaABC = document.getElementById('filtroCurvaABC');
     const filtroTipoProduto = document.getElementById('filtroTipoProduto');
-    const filtroSaldoZero = document.getElementById('filtroSaldoZero');
+    const chkSaldoZero = document.getElementById('chkSaldoZero');
+    const chkInativos = document.getElementById('chkInativos');
+    const chkSomenteInativos = document.getElementById('chkSomenteInativos');
     const gerarRelatorioBtn = document.getElementById('gerarRelatorioBtn');
     const totalizadoresContainer = document.getElementById('totalizadoresContainer');
     const resultadosContainer = document.getElementById('resultadosContainer');
@@ -19,6 +21,46 @@ document.addEventListener('DOMContentLoaded', function() {
     gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
     imprimirBtn.addEventListener('click', imprimirRelatorio);
     exportarExcelBtn.addEventListener('click', exportarParaExcel);
+
+    // --- Dropdown multi-checkbox Exibir ---
+    const trigger = document.getElementById('exibirTrigger');
+    const dropdown = document.getElementById('exibirDropdown');
+    const chevron = document.getElementById('exibirChevron');
+
+    trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const aberto = dropdown.classList.toggle('open');
+        chevron.style.transform = aberto ? 'rotate(180deg)' : '';
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('exibirWrapper').contains(e.target)) {
+            dropdown.classList.remove('open');
+            chevron.style.transform = '';
+        }
+    });
+
+    // Exclusividade: Somente inativos vs Incluir inativos
+    chkSomenteInativos.addEventListener('change', function() {
+        if (this.checked) { chkInativos.checked = false; chkInativos.disabled = true; }
+        else { chkInativos.disabled = false; }
+        atualizarLabelExibir();
+    });
+    chkInativos.addEventListener('change', function() {
+        if (this.checked) { chkSomenteInativos.checked = false; chkSomenteInativos.disabled = true; }
+        else { chkSomenteInativos.disabled = false; }
+        atualizarLabelExibir();
+    });
+    chkSaldoZero.addEventListener('change', atualizarLabelExibir);
+
+    function atualizarLabelExibir() {
+        const selecionados = [];
+        if (chkSaldoZero.checked) selecionados.push('Incl. saldo zero');
+        if (chkInativos.checked) selecionados.push('Incl. inativos');
+        if (chkSomenteInativos.checked) selecionados.push('Somente inativos');
+        document.getElementById('exibirLabel').textContent =
+            selecionados.length ? selecionados.join(', ') : 'Apenas com saldo';
+    }
 
     async function carregarTiposProduto() {
         try {
@@ -44,15 +86,15 @@ document.addEventListener('DOMContentLoaded', function() {
     async function gerarRelatorio() {
         const curvaABC = filtroCurvaABC.value;
         const tipoProduto = filtroTipoProduto.value;
-        const incluirSaldoZero = filtroSaldoZero.value;
 
         mostrarMensagem('Gerando relatório...', 'info');
         gerarRelatorioBtn.disabled = true;
 
         try {
-            let url = `/api/relatorios?acao=saldoEstoque&incluirSaldoZero=${incluirSaldoZero}`;
-            if (incluirSaldoZero === 'inativos') url += '&incluirInativos=sim';
-            if (incluirSaldoZero === 'somente_inativos') url += '&somenteInativos=sim';
+            let url = `/api/relatorios?acao=saldoEstoque`;
+            if (chkSaldoZero.checked) url += '&incluirSaldoZero=sim';
+            if (chkInativos.checked) url += '&incluirInativos=sim';
+            if (chkSomenteInativos.checked) url += '&somenteInativos=sim';
             if (curvaABC) {
                 url += `&curvaABC=${curvaABC}`;
             }
@@ -61,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             console.log('🔍 URL da requisição:', url);
-            console.log('🎯 Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', incluirSaldoZero });
+            console.log('🎯 Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoZero: chkSaldoZero.checked, inativos: chkInativos.checked, somenteInativos: chkSomenteInativos.checked });
 
             const response = await fetch(url);
 
