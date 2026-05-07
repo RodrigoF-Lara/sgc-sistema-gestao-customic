@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Requisições - SGC Customic</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        .req-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dee2e6; margin-bottom: 24px; }
+        .req-tab {
+            padding: 10px 24px;
+            border: none;
+            background: none;
+            font-size: 15px;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .req-tab:hover { color: var(--cor-principal); }
+        .req-tab.active { color: var(--cor-principal); border-bottom-color: var(--cor-principal); }
+        .req-tab i { margin-right: 8px; }
+        .req-panel { display: none; }
+        .req-panel.active { display: block; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+        <div class="container">
+            <h1><i class="fa-solid fa-file-lines"></i> Requisições</h1>
+
+            <!-- Abas -->
+            <div class="req-tabs">
+                <button class="req-tab active" data-tab="nova" id="tabNova">
+                    <i class="fa fa-plus-square"></i> Nova Requisição
+                </button>
+                <button class="req-tab" data-tab="consulta" id="tabConsulta">
+                    <i class="fa fa-search"></i> Consultar
+                </button>
+            </div>
+
+            <!-- Painel: Nova Requisição -->
+            <div class="req-panel active" id="panelNova">
+                <div id="novaRequisicaoContainer" class="card">
+                    <h2>Dados da Requisição</h2>
+                    <form id="csvForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="dtNecessidade">Data de Necessidade:</label>
+                                <input type="date" id="dtNecessidade" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="prioridade">Prioridade:</label>
+                                <select id="prioridade" required>
+                                    <option value="NORMAL">Normal</option>
+                                    <option value="ALTA">Alta</option>
+                                    <option value="BAIXA">Baixa</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Arquivo CSV:</label>
+                                <div class="input-file-wrapper">
+                                    <button type="button" class="btn-upload">Selecionar Arquivo</button>
+                                    <input type="file" id="csvFile" name="csvFile" accept=".csv" required />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn-destaque">Gerar Requisição</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="status"></div>
+                    <div id="aguardeAnimacao"></div>
+                </div>
+
+                <div id="resumo-container" style="display: none;">
+                    <h2>Resumo da Requisição Gerada</h2>
+                    <table id="resumoRequisicao">
+                        <thead>
+                            <tr>
+                                <th>ID Requisição</th>
+                                <th>Data de Necessidade</th>
+                                <th>Prioridade</th>
+                                <th>Código</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Painel: Consultar -->
+            <div class="req-panel" id="panelConsulta">
+                <div id="summary-container"></div>
+
+                <div class="filter-container">
+                    <input type="number" id="filterId" placeholder="Filtrar por ID...">
+                    <input type="text" id="filterSolicitante" placeholder="Filtrar por solicitante...">
+                    <select id="filterStatus">
+                        <option value="">Todos os Status</option>
+                    </select>
+                    <select id="filterPrioridade">
+                        <option value="">Todas as Prioridades</option>
+                        <option value="NORMAL">Normal</option>
+                        <option value="ALTA">Alta</option>
+                        <option value="BAIXA">Baixa</option>
+                    </select>
+                    <div class="form-group">
+                        <label for="filterDataNecessidade">Data de Necessidade:</label>
+                        <input type="date" id="filterDataNecessidade">
+                    </div>
+                </div>
+
+                <div id="requisicoes-container">
+                    <div class="loader-container">
+                        <div class="loader"></div>
+                        <p>Buscando requisições...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="script.js"></script>
+    <script src="consulta.js"></script>
+    <script src="layout.js"></script>
+    <script src="fundos.js"></script>
+    <script>
+        // Controle das abas
+        const tabs = document.querySelectorAll('.req-tab');
+        const panels = document.querySelectorAll('.req-panel');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                tabs.forEach(t => t.classList.remove('active'));
+                panels.forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('panel' + this.dataset.tab.charAt(0).toUpperCase() + this.dataset.tab.slice(1)).classList.add('active');
+            });
+        });
+
+        // Se vier com ?tab=consulta na URL, abre direto na aba consulta
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('tab') === 'consulta') {
+            document.getElementById('tabConsulta').click();
+        }
+    </script>
+</body>
+</html>

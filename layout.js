@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="sidebar-user-info"><span id="sidebar-username">Usuário</span></div>
         <nav class="sidebar-nav">
           <a href="menu.html" id="nav-menu"><i class="fa fa-home"></i> Menu Principal</a>
-          <a href="novaRequisicao.html" id="nav-nova-requisicao"><i class="fa fa-plus-square"></i> Nova Requisição</a>
-          <a href="consulta.html" id="nav-consultar"><i class="fa fa-search"></i> Consultar</a>
+          <a href="requisicoes.html" id="nav-requisicoes"><i class="fa fa-file-lines"></i> Requisições</a>
           <a href="estoque.html" id="nav-estoque"><i class="fa fa-archive"></i> Gerenciar Estoque</a>
           <a href="saidaRapida.html" id="nav-saida-rapida"><i class="fa fa-qrcode"></i> Saída Rápida (QR)</a>
           <a href="statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
@@ -44,10 +43,11 @@ function inicializarSidebar() {
   const pageKey = filename.replace('.html', '') || 'menu';
   const idMap = {
     'menu': 'nav-menu',
-    'nova-requisicao': 'nav-nova-requisicao',
-    'novarequisicao': 'nav-nova-requisicao',
-    'consultar': 'nav-consultar',
-    'consulta': 'nav-consultar',
+    'nova-requisicao': 'nav-requisicoes',
+    'novarequisicao': 'nav-requisicoes',
+    'consultar': 'nav-requisicoes',
+    'consulta': 'nav-requisicoes',
+    'requisicoes': 'nav-requisicoes',
     'estoque': 'nav-estoque',
     'saidarapida': 'nav-saida-rapida',
     'status-nf': 'nav-status-nf',
