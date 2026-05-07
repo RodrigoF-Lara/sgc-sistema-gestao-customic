@@ -297,9 +297,9 @@ tbody tr:hover {
 .login-container { 
     min-height: 100vh; 
     display: flex; 
-    align-items: flex-start; 
-    justify-content: flex-start; 
-    padding: 30px;
+    align-items: center; 
+    justify-content: center; 
+    padding: 20px;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -320,12 +320,18 @@ tbody tr:hover {
     border-radius: 12px; 
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); 
     padding: 40px; 
-    min-width: 380px; 
+    width: 100%;
+    max-width: 420px;
     text-align: center;
     position: relative;
     z-index: 2;
 }
-.login-card h2 { color: var(--cor-principal); }
+.login-card h2 { color: var(--cor-principal); font-size: 1.3em; }
+@media (max-width: 480px) {
+    .login-card { padding: 28px 20px; }
+    .login-card h2 { font-size: 1.1em; }
+    .login-card input { font-size: 16px; } /* evita zoom automático no iOS */
+}
 
 /* --- Página de Menu --- */
 .menu-header { text-align: center; margin-bottom: 40px; }
