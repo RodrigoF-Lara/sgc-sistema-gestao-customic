@@ -1,9 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     const filtroCurvaABC = document.getElementById('filtroCurvaABC');
     const filtroTipoProduto = document.getElementById('filtroTipoProduto');
-    const chkSaldoZero = document.getElementById('chkSaldoZero');
-    const chkInativos = document.getElementById('chkInativos');
-    const chkSomenteInativos = document.getElementById('chkSomenteInativos');
+    const chkSaldoPositivo  = document.getElementById('chkSaldoPositivo');
+    const chkSaldoZero      = document.getElementById('chkSaldoZero');
+    const chkSaldoNegativo  = document.getElementById('chkSaldoNegativo');
+    const chkAtivos         = document.getElementById('chkAtivos');
+    const chkInativos       = document.getElementById('chkInativos');
     const gerarRelatorioBtn = document.getElementById('gerarRelatorioBtn');
     const totalizadoresContainer = document.getElementById('totalizadoresContainer');
     const resultadosContainer = document.getElementById('resultadosContainer');
@@ -40,26 +42,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Exclusividade: Somente inativos vs Incluir inativos
-    chkSomenteInativos.addEventListener('change', function() {
-        if (this.checked) { chkInativos.checked = false; chkInativos.disabled = true; }
-        else { chkInativos.disabled = false; }
-        atualizarLabelExibir();
-    });
-    chkInativos.addEventListener('change', function() {
-        if (this.checked) { chkSomenteInativos.checked = false; chkSomenteInativos.disabled = true; }
-        else { chkSomenteInativos.disabled = false; }
-        atualizarLabelExibir();
-    });
-    chkSaldoZero.addEventListener('change', atualizarLabelExibir);
+    [chkSaldoPositivo, chkSaldoZero, chkSaldoNegativo, chkAtivos, chkInativos]
+        .forEach(chk => chk.addEventListener('change', atualizarLabelExibir));
 
     function atualizarLabelExibir() {
-        const selecionados = [];
-        if (chkSaldoZero.checked) selecionados.push('Incl. saldo zero');
-        if (chkInativos.checked) selecionados.push('Incl. inativos');
-        if (chkSomenteInativos.checked) selecionados.push('Somente inativos');
+        const partes = [];
+        const saldos = [];
+        if (chkSaldoPositivo.checked)  saldos.push('> 0');
+        if (chkSaldoZero.checked)      saldos.push('= 0');
+        if (chkSaldoNegativo.checked)  saldos.push('< 0');
+        if (saldos.length && saldos.length < 3) partes.push('Saldo ' + saldos.join('/'));
+        else if (saldos.length === 3)           partes.push('Todos os saldos');
+
+        const status = [];
+        if (chkAtivos.checked)   status.push('Ativos');
+        if (chkInativos.checked) status.push('Inativos');
+        if (status.length === 1) partes.push(status[0]);
+        else if (status.length === 2) partes.push('Ativos + Inativos');
+
         document.getElementById('exibirLabel').textContent =
-            selecionados.length ? selecionados.join(', ') : 'Apenas com saldo';
+            partes.length ? partes.join(' | ') : 'Nenhum filtro';
     }
 
     async function carregarTiposProduto() {
@@ -91,10 +93,23 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
 
         try {
+            if (!chkSaldoPositivo.checked && !chkSaldoZero.checked && !chkSaldoNegativo.checked) {
+                mostrarMensagem('Selecione ao menos uma opção de saldo.', 'error');
+                gerarRelatorioBtn.disabled = false;
+                return;
+            }
+            if (!chkAtivos.checked && !chkInativos.checked) {
+                mostrarMensagem('Selecione ao menos uma opção de status (Ativo/Inativo).', 'error');
+                gerarRelatorioBtn.disabled = false;
+                return;
+            }
+
             let url = `/api/relatorios?acao=saldoEstoque`;
-            if (chkSaldoZero.checked) url += '&incluirSaldoZero=sim';
-            if (chkInativos.checked) url += '&incluirInativos=sim';
-            if (chkSomenteInativos.checked) url += '&somenteInativos=sim';
+            if (chkSaldoPositivo.checked)  url += '&saldoPositivo=sim';
+            if (chkSaldoZero.checked)      url += '&saldoZero=sim';
+            if (chkSaldoNegativo.checked)  url += '&saldoNegativo=sim';
+            if (chkAtivos.checked)         url += '&ativos=sim';
+            if (chkInativos.checked)       url += '&inativos=sim';
             if (curvaABC) {
                 url += `&curvaABC=${curvaABC}`;
             }
@@ -103,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             console.log('🔍 URL da requisição:', url);
-            console.log('🎯 Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoZero: chkSaldoZero.checked, inativos: chkInativos.checked, somenteInativos: chkSomenteInativos.checked });
+            console.log('🎯 Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo: chkSaldoPositivo.checked, saldoZero: chkSaldoZero.checked, saldoNegativo: chkSaldoNegativo.checked, ativos: chkAtivos.checked, inativos: chkInativos.checked });
 
             const response = await fetch(url);
 

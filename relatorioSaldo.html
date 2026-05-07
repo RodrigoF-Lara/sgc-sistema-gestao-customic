@@ -47,14 +47,23 @@
                   <i class="fa-solid fa-chevron-down" id="exibirChevron"></i>
                 </button>
                 <div class="multicheck-dropdown" id="exibirDropdown">
+                  <div class="multicheck-group-label">Saldo</div>
                   <label class="multicheck-item">
-                    <input type="checkbox" id="chkSaldoZero"> Incluir saldo zero
+                    <input type="checkbox" id="chkSaldoPositivo" checked> Saldo &gt; 0
                   </label>
                   <label class="multicheck-item">
-                    <input type="checkbox" id="chkInativos"> Incluir inativos
+                    <input type="checkbox" id="chkSaldoZero"> Saldo = 0
                   </label>
                   <label class="multicheck-item">
-                    <input type="checkbox" id="chkSomenteInativos"> Somente inativos
+                    <input type="checkbox" id="chkSaldoNegativo"> Saldo &lt; 0
+                  </label>
+                  <div class="multicheck-separator"></div>
+                  <div class="multicheck-group-label">Status</div>
+                  <label class="multicheck-item">
+                    <input type="checkbox" id="chkAtivos" checked> Ativos
+                  </label>
+                  <label class="multicheck-item">
+                    <input type="checkbox" id="chkInativos"> Inativos
                   </label>
                 </div>
               </div>

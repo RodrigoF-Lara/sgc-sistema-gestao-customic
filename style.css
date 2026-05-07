@@ -375,6 +375,19 @@ tbody tr:hover {
     flex-shrink: 0;
 }
 .multicheck-item input[type="checkbox"]:disabled + * { color: #aaa; }
+.multicheck-group-label {
+    padding: 6px 16px 2px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+}
+.multicheck-separator {
+    height: 1px;
+    background: #e9ecef;
+    margin: 6px 0;
+}
 
 /* --- Página de Menu --- */
 .menu-header { text-align: center; margin-bottom: 40px; }

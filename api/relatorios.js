@@ -400,11 +400,11 @@ async function buscarTiposProduto(req, res) {
 
 async function relatorioSaldoEstoque(req, res) {
     try {
-        const { curvaABC, tipoProduto, incluirSaldoZero, incluirInativos, somenteInativos } = req.query;
+        const { curvaABC, tipoProduto, saldoPositivo, saldoZero, saldoNegativo, ativos, inativos } = req.query;
 
         const pool = await getConnection();
         
-        console.log('📊 Relatório de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', incluirSaldoZero });
+        console.log('📊 Relatório de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo, saldoZero, saldoNegativo, ativos, inativos });
         
         // Query principal
         let query = `
@@ -447,12 +447,22 @@ async function relatorioSaldoEstoque(req, res) {
                 ) ultima ON np.PROD_COD_PROD = ultima.PROD_COD_PROD 
                     AND np.PROD_ID_NF = ultima.ULTIMA_NF
             ) uf ON cp.CODIGO = uf.CODIGO
-            WHERE (ISNULL(cp.ATIVO, 1) = 1 OR @INCLUIR_INATIVOS = 1)
-            AND (@SOMENTE_INATIVOS = 0 OR ISNULL(cp.ATIVO, 1) = 0)`;
+            WHERE (
+                (@ATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 1) OR
+                (@INATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 0)
+            )
+            AND (
+                (@SALDO_POSITIVO = 1 AND ISNULL(k.SALDO, 0) > 0) OR
+                (@SALDO_ZERO = 1     AND ISNULL(k.SALDO, 0) = 0) OR
+                (@SALDO_NEGATIVO = 1 AND ISNULL(k.SALDO, 0) < 0)
+            )`;
         
         const request = pool.request();
-        request.input('INCLUIR_INATIVOS', sql.Bit, (incluirInativos === 'sim' || somenteInativos === 'sim') ? 1 : 0);
-        request.input('SOMENTE_INATIVOS', sql.Bit, somenteInativos === 'sim' ? 1 : 0);
+        request.input('ATIVOS',          sql.Bit, ativos         === 'sim' ? 1 : 0);
+        request.input('INATIVOS',        sql.Bit, inativos       === 'sim' ? 1 : 0);
+        request.input('SALDO_POSITIVO',  sql.Bit, saldoPositivo  === 'sim' ? 1 : 0);
+        request.input('SALDO_ZERO',      sql.Bit, saldoZero      === 'sim' ? 1 : 0);
+        request.input('SALDO_NEGATIVO',  sql.Bit, saldoNegativo  === 'sim' ? 1 : 0);
         
         // Filtro por curva ABC
         if (curvaABC && curvaABC.trim()) {
@@ -471,10 +481,7 @@ async function relatorioSaldoEstoque(req, res) {
             request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
         }
         
-        // Filtro por saldo (inativos implica incluir saldo zero tb)
-        if (incluirSaldoZero !== 'sim' && incluirInativos !== 'sim' && somenteInativos !== 'sim') {
-            query += ` AND ISNULL(k.SALDO, 0) > 0`;
-        }
+        // Filtro por saldo removido — agora tratado diretamente via params no WHERE
         
         query += ` ORDER BY CURVA_A_B_C, cp.CODIGO`;
 
