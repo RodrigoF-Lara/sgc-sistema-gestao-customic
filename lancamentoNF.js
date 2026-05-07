@@ -567,6 +567,13 @@ $("btn-finalizar-nf").addEventListener("click", async () => {
             state.statusNF = "LANÇADA";
             atualizarBadgeNFAtiva();
             showToast("NF finalizada e marcada como LANÇADA!");
+            if (window.SGCNotifications) {
+                SGCNotifications.add(
+                    'nf-lancada',
+                    `NF ${state.numNF} lançada`,
+                    `Fornecedor: ${state.razaoSocial || state.codForn || '—'}`
+                );
+            }
         } else {
             showToast("Há diferenças entre cabeçalho e produtos. Corrija antes de finalizar.", "warn");
         }

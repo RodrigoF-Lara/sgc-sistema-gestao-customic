@@ -266,6 +266,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!response.ok) throw new Error(result.message || 'Erro ao salvar.');
 
+            if (processo && processo.toUpperCase() === 'ARMAZENADO' && window.SGCNotifications) {
+                SGCNotifications.add(
+                    'nf-armazenada',
+                    `NF ${nf} armazenada`,
+                    `Código: ${codigo} | Por: ${usuario || 'Sistema'}`
+                );
+            }
+
             modalStatus.textContent = result.message || 'Alteração salva com sucesso.';
             modalStatus.style.color = "green";
             fetchDataAndRender(); // Recarrega os dados

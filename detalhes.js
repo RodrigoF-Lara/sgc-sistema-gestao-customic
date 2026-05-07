@@ -117,6 +117,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const response = await fetch('/api/requisicao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'updateStatus', idReqItem, idReq, novoStatus, statusAntigo: originalStatus, usuario }) });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message);
+                    if (novoStatus === 'Finalizado' && window.SGCNotifications) {
+                        SGCNotifications.add(
+                            'requisicao-finalizada',
+                            `Requisição #${idReq} — item finalizado`,
+                            `Por: ${usuario || 'Sistema'}`
+                        );
+                    }
                     await carregarDetalhes();
                 } catch (error) {
                     alert(`Falha: ${error.message}`);
@@ -151,6 +158,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message);
                 alert(result.message);
+                if (novoStatus === 'Finalizado' && window.SGCNotifications) {
+                    SGCNotifications.add(
+                        'requisicao-finalizada',
+                        `Requisição #${idReq} finalizada (${itemIds.length} item(ns))`,
+                        `Por: ${usuario || 'Sistema'}`
+                    );
+                }
                 await carregarDetalhes();
             } catch (error) {
                 alert(`Falha na atualização em massa: ${error.message}`);

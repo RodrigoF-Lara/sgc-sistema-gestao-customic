@@ -154,6 +154,14 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.textContent = `Inventário #${data.idInventario} salvo com sucesso!`;
             setTimeout(() => { statusMessage.textContent = ''; }, 3000);
 
+            if (window.SGCNotifications) {
+                SGCNotifications.add(
+                    'inventario-criado',
+                    `Inventário #${data.idInventario} criado`,
+                    `Por: ${usuario}`
+                );
+            }
+
             renderizarInventario(inventarioAtual);
             salvarInventarioBtn.style.display = 'none';
             finalizarInventarioBtn.style.display = 'inline-block';
@@ -730,6 +738,14 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.style.color = 'green';
             statusMessage.textContent = 'Inventário finalizado com sucesso!';
             finalizarInventarioBtn.style.display = 'none';
+
+            if (window.SGCNotifications) {
+                SGCNotifications.add(
+                    'inventario-finalizado',
+                    `Inventário #${inventarioAtual.id} finalizado`,
+                    `Acuracidade: ${data.acuracidadeGeral.toFixed(2)}% | Por: ${usuario}`
+                );
+            }
 
         } catch (error) {
             console.error('Erro ao finalizar inventário:', error);

@@ -1429,3 +1429,247 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         font-size: 24px;
     }
 }
+
+/* =================================================================== */
+/* SISTEMA DE NOTIFICAÇÕES                                             */
+/* =================================================================== */
+
+/* Container raiz: ancora o botão + painel no canto inferior direito */
+#sgc-notif-root {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+}
+
+/* Botão sino */
+#sgc-notif-bell {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--cor-principal);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(25,118,210,0.45);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    font-size: 1.2em;
+    user-select: none;
+    border: none;
+}
+#sgc-notif-bell:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(25,118,210,0.55);
+}
+
+/* Badge de não lidos */
+#sgc-notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    background: #dc3545;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border: 2px solid #fff;
+    animation: sgc-badge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes sgc-badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.18); }
+}
+
+/* Painel de histórico */
+#sgc-notif-panel {
+    position: absolute;
+    bottom: 64px;
+    right: 0;
+    width: 340px;
+    max-height: 480px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--cor-cinza-borda);
+    transform-origin: bottom right;
+}
+#sgc-notif-panel.sgc-panel-visible {
+    display: flex;
+    animation: sgc-panel-in 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes sgc-panel-in {
+    from { opacity: 0; transform: scale(0.9) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sgc-notif-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--cor-cinza-borda);
+    font-weight: 700;
+    font-size: 0.95em;
+    color: #1a253c;
+    flex-shrink: 0;
+}
+.sgc-notif-panel-header button {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: #888;
+    font-size: 1em;
+    border-radius: 4px;
+    line-height: 1;
+}
+.sgc-notif-panel-header button:hover { background: #e9ecef; color: #333; }
+
+.sgc-notif-panel-actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--cor-cinza-borda);
+    background: #fafafa;
+    flex-shrink: 0;
+}
+.sgc-notif-panel-actions button {
+    flex: 1;
+    padding: 5px 8px;
+    font-size: 12px;
+    border: 1px solid var(--cor-cinza-borda);
+    background: #fff;
+    color: #555;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.sgc-notif-panel-actions button:hover { background: #e9ecef; color: #333; }
+
+#sgc-notif-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 4px 0;
+}
+
+.sgc-notif-item {
+    display: flex;
+    gap: 11px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #f2f2f2;
+    transition: background 0.12s;
+    cursor: default;
+}
+.sgc-notif-item:last-child { border-bottom: none; }
+.sgc-notif-item:hover { background: #f8f9fa; }
+.sgc-notif-item.nao-lido { background: #f0f6ff; }
+.sgc-notif-item.nao-lido:hover { background: #e8f0fe; }
+
+.sgc-notif-item-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.07);
+    flex-shrink: 0;
+    font-size: 0.9em;
+}
+.sgc-notif-item-body  { flex: 1; min-width: 0; }
+.sgc-notif-item-title { font-weight: 700; font-size: 13px; color: #1a253c; }
+.sgc-notif-item-msg   { font-size: 13px; color: #444; margin-top: 2px; word-break: break-word; }
+.sgc-notif-item-detail{ font-size: 11px; color: #888; margin-top: 2px; font-style: italic; }
+.sgc-notif-item-time  { font-size: 11px; color: #bbb; margin-top: 4px; }
+.sgc-notif-empty      { text-align: center; color: #aaa; padding: 30px 16px; font-size: 14px; }
+
+/* Container de toasts (fora do root para não sobrepor o painel) */
+#sgc-notif-toasts {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    z-index: 9998;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+    pointer-events: none;
+    width: 320px;
+}
+
+/* Toast individual */
+.sgc-toast {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 13px 20px 13px;
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(30px);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease;
+    border: 1px solid var(--cor-cinza-borda);
+}
+.sgc-toast.sgc-toast-show {
+    opacity: 1;
+    transform: translateX(0);
+}
+.sgc-toast.sgc-toast-hide {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: transform 0.28s ease-in, opacity 0.28s ease-in;
+}
+.sgc-toast-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    font-size: 0.9em;
+}
+.sgc-toast-body   { flex: 1; min-width: 0; cursor: pointer; }
+.sgc-toast-title  { font-weight: 700; font-size: 13px; color: #1a253c; }
+.sgc-toast-msg    { font-size: 13px; color: #555; margin-top: 3px; word-break: break-word; }
+.sgc-toast-close  {
+    background: none;
+    border: none;
+    padding: 2px 5px;
+    cursor: pointer;
+    color: #bbb;
+    font-size: 11px;
+    align-self: flex-start;
+    border-radius: 3px;
+    flex-shrink: 0;
+    line-height: 1.6;
+}
+.sgc-toast-close:hover { color: #666; background: #f0f0f0; }
+
+/* Barra de progresso no rodapé do toast */
+.sgc-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: var(--cor-principal);
+    border-radius: 0 0 10px 10px;
+}

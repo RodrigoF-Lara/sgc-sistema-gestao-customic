@@ -80,6 +80,14 @@ document.getElementById('csvForm').addEventListener('submit', async function(e) 
                     statusElem.style.color = "green";
                     statusElem.textContent = `${dataUpload.message} (Requisição #${idReq} - Inserido em: ${dataHora})`;
 
+                    if (window.SGCNotifications) {
+                        SGCNotifications.add(
+                            'requisicao-criada',
+                            `Requisição #${idReq} criada com ${results.data.length} item(ns)`,
+                            `Solicitante: ${userName || 'Sistema'} | Prioridade: ${prioridade}`
+                        );
+                    }
+
                     // Adiciona os dados na tabela de resumo
                     results.data.forEach(item => {
                         const row = document.createElement('tr');
