@@ -153,7 +153,8 @@ async function carregarUsuarioParaEdicao(id) {
                 console.log('Usuário encontrado:', usuario);
                 usuarioSelecionado = usuario;
                 
-                document.getElementById('usuarioId').value = usuario.ID || '';
+                // Guarda o nome original do usuário para edição
+                document.getElementById('usuarioId').value = usuario.USUARIO || '';
                 document.getElementById('usuario').value = usuario.USUARIO || '';
                 document.getElementById('senha').value = ''; // Não mostra senha por segurança
                 document.getElementById('nivel').value = usuario.NIVEL || '';
@@ -184,7 +185,7 @@ async function carregarUsuarioParaEdicao(id) {
 async function salvarUsuario(e) {
     e.preventDefault();
 
-    const id = document.getElementById('usuarioId').value;
+    const usuarioOriginal = document.getElementById('usuarioId').value;
     const dados = {
         usuario: document.getElementById('usuario').value,
         senha: document.getElementById('senha').value,
@@ -199,9 +200,9 @@ async function salvarUsuario(e) {
     try {
         let response;
 
-        if (id) {
+        if (usuarioOriginal) {
             // Atualizar usuário existente
-            dados.id = parseInt(id);
+            dados.usuarioOriginal = usuarioOriginal;
             
             // Se senha estiver vazia, remove do objeto
             if (!dados.senha) {
@@ -238,21 +239,21 @@ async function salvarUsuario(e) {
 }
 
 async function excluirUsuario() {
-    const id = document.getElementById('usuarioId').value;
+    const usuarioNome = document.getElementById('usuarioId').value;
 
-    if (!id) {
+    if (!usuarioNome) {
         mostrarMensagem('Selecione um usuário para excluir', 'error');
         return;
     }
 
-    const usuario = document.getElementById('usuario').value;
+    const nomeExibicao = document.getElementById('usuario').value;
 
-    if (!confirm(`Tem certeza que deseja excluir o usuário "${usuario}"?\n\nEsta ação não pode ser desfeita!`)) {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${nomeExibicao}"?\n\nEsta ação não pode ser desfeita!`)) {
         return;
     }
 
     try {
-        const response = await fetch(`/api/auth?id=${id}`, {
+        const response = await fetch(`/api/auth?usuario=${encodeURIComponent(usuarioNome)}`, {
             method: 'DELETE'
         });
 

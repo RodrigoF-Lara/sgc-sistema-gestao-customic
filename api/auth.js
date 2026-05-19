@@ -87,21 +87,14 @@ async function listarUsuarios(req, res, pool) {
   try {
     const result = await pool.request().query(`
       SELECT 
-        ID,
         USUARIO,
         NIVEL,
         CPF,
         F_NAME,
         L_NAME,
         SETOR,
-        COD
-      FROM [dbo].[CAD_USUARIO]
-      ORDER BY F_NAME, L_NAME
-    `);
-
-    return res.status(200).json({ 
-      usuarios: result.recordset,
-      total: result.recordset.length
+        COD,
+        ROW_NUMBER() OVER (ORDER BY F_NAME, L_NAME) as ID
     });
   } catch (error) {
     console.error("Erro ao listar usuários:", error);
@@ -195,18 +188,18 @@ async function criarUsuario(req, res, pool) {
  * PUT - Atualizar usuário existente
  */
 async function atualizarUsuario(req, res, pool) {
-  const { id, usuario, senha, nivel, cpf, firstName, lastName, setor = '', cod = '' } = req.body;
+  const { usuarioOriginal, usuario, senha, nivel, cpf, firstName, lastName, setor = '', cod = '' } = req.body;
 
-  if (!id) {
-    return res.status(400).json({ error: "ID do usuário é obrigatório" });
+  if (!usuarioOriginal) {
+    return res.status(400).json({ error: "Nome de usuário original é obrigatório" });
   }
 
   try {
     // Verifica se o usuário existe
     const usuarioExiste = await pool.request()
-      .input('id', sql.Int, id)
+      .input('usuarioOriginal', sql.VarChar(50), usuarioOriginal.toUpperCase())
       .query(`
-        SELECT ID FROM [dbo].[CAD_USUARIO] WHERE ID = @id
+        SELECT USUARIO FROM [dbo].[CAD_USUARIO] WHERE USUARIO = @usuarioOriginal
       `);
 
     if (usuarioExiste.recordset.length === 0) {
@@ -214,14 +207,13 @@ async function atualizarUsuario(req, res, pool) {
     }
 
     // Se está alterando o nome de usuário, verifica se o novo já existe
-    if (usuario) {
+    if (usuario && usuario.toUpperCase() !== usuarioOriginal.toUpperCase()) {
       const usuarioDuplicado = await pool.request()
         .input('usuario', sql.VarChar(50), usuario.toUpperCase())
-        .input('id', sql.Int, id)
         .query(`
           SELECT COUNT(*) as count 
           FROM [dbo].[CAD_USUARIO] 
-          WHERE USUARIO = @usuario AND ID <> @id
+          WHERE USUARIO = @usuario
         `);
 
       if (usuarioDuplicado.recordset[0].count > 0) {
@@ -233,7 +225,7 @@ async function atualizarUsuario(req, res, pool) {
 
     // Monta a query de UPDATE dinamicamente baseado nos campos fornecidos
     let updateFields = [];
-    let request = pool.request().input('id', sql.Int, id);
+    let request = pool.request().input('usuarioOriginal', sql.VarChar(50), usuarioOriginal.toUpperCase());
 
     if (usuario) {
       updateFields.push('USUARIO = @usuario');
@@ -275,7 +267,7 @@ async function atualizarUsuario(req, res, pool) {
     await request.query(`
       UPDATE [dbo].[CAD_USUARIO] 
       SET ${updateFields.join(', ')}
-      WHERE ID = @id
+      WHERE USUARIO = @usuarioOriginal
     `);
 
     return res.status(200).json({ 
@@ -295,18 +287,18 @@ async function atualizarUsuario(req, res, pool) {
  * DELETE - Excluir usuário
  */
 async function excluirUsuario(req, res, pool) {
-  const { id } = req.query;
+  const { usuario } = req.query;
 
-  if (!id) {
-    return res.status(400).json({ error: "ID do usuário é obrigatório" });
+  if (!usuario) {
+    return res.status(400).json({ error: "Nome do usuário é obrigatório" });
   }
 
   try {
     // Verifica se o usuário existe
     const usuarioExiste = await pool.request()
-      .input('id', sql.Int, id)
+      .input('usuario', sql.VarChar(50), usuario.toUpperCase())
       .query(`
-        SELECT USUARIO FROM [dbo].[CAD_USUARIO] WHERE ID = @id
+        SELECT USUARIO FROM [dbo].[CAD_USUARIO] WHERE USUARIO = @usuario
       `);
 
     if (usuarioExiste.recordset.length === 0) {
@@ -315,9 +307,9 @@ async function excluirUsuario(req, res, pool) {
 
     // Exclui o usuário
     await pool.request()
-      .input('id', sql.Int, id)
+      .input('usuario', sql.VarChar(50), usuario.toUpperCase())
       .query(`
-        DELETE FROM [dbo].[CAD_USUARIO] WHERE ID = @id
+        DELETE FROM [dbo].[CAD_USUARIO] WHERE USUARIO = @usuario
       `);
 
     return res.status(200).json({ 
