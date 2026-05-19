@@ -1,5 +1,4 @@
-const sql = require("mssql");
-const getConnection = require("../db");
+import { getConnection, sql } from "../db.js";
 
 /**
  * API de Configurações de Notificações
