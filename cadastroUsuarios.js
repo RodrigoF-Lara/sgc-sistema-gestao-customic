@@ -59,17 +59,13 @@ function inicializarEventos() {
     document.getElementById('usuariosList').addEventListener('click', function(e) {
         const usuarioItem = e.target.closest('.usuario-item');
         if (usuarioItem) {
-            console.log('Item clicado:', usuarioItem);
-            console.log('dataset:', usuarioItem.dataset);
-            console.log('data-id:', usuarioItem.dataset.id);
+            const usuarioNome = usuarioItem.dataset.usuario;
+            console.log('Item clicado, USUARIO:', usuarioNome);
             
-            const id = parseInt(usuarioItem.dataset.id);
-            console.log('ID parseado:', id);
-            
-            if (!isNaN(id)) {
-                selecionarUsuario(id);
+            if (usuarioNome) {
+                selecionarUsuario(usuarioNome);
             } else {
-                console.error('ID inválido:', usuarioItem.dataset.id);
+                console.error('USUARIO inválido:', usuarioItem.dataset);
             }
         }
     });
@@ -135,15 +131,13 @@ function renderizarUsuarios(usuarios) {
     }
 
     const html = usuarios.map(usuario => {
-        console.log('Usuário individual:', usuario, 'ID:', usuario.ID);
-        
         const nivel = String(usuario.NIVEL || 'USER');
         const nivelClass = nivel.toLowerCase();
         const nivelLabel = nivel;
-        const userId = usuario.ID || 0;
+        const userKey = usuario.USUARIO || '';
 
         return `
-            <div class="usuario-item" data-id="${userId}">
+            <div class="usuario-item" data-usuario="${userKey}">
                 <div class="usuario-info">
                     <h3>${usuario.USUARIO || ''}</h3>
                     <p>${usuario.F_NAME || ''} ${usuario.L_NAME || ''}</p>
@@ -190,8 +184,8 @@ function filtrarUsuarios(termo) {
     }
 }
 
-function selecionarUsuario(id) {
-    console.log('Selecionando usuário ID:', id);
+function selecionarUsuario(usuarioNome) {
+    console.log('Selecionando USUARIO:', usuarioNome);
     
     // Remove seleção anterior
     document.querySelectorAll('.usuario-item').forEach(item => {
@@ -199,25 +193,24 @@ function selecionarUsuario(id) {
     });
 
     // Adiciona seleção ao item clicado
-    const item = document.querySelector(`[data-id="${id}"]`);
+    const item = document.querySelector(`[data-usuario="${usuarioNome}"]`);
     if (item) {
         item.classList.add('selecionado');
-        console.log('Item selecionado:', item);
     }
 
     // Carrega dados do usuário no formulário
-    carregarUsuarioParaEdicao(id);
+    carregarUsuarioParaEdicao(usuarioNome);
 }
 
-async function carregarUsuarioParaEdicao(id) {
-    console.log('Carregando usuário para edição, ID:', id);
+async function carregarUsuarioParaEdicao(usuarioNome) {
+    console.log('Carregando USUARIO para edição:', usuarioNome);
     
     try {
         const response = await fetch('/api/auth');
         const data = await response.json();
 
         if (response.ok) {
-            const usuario = data.usuarios.find(u => u.ID === id);
+            const usuario = data.usuarios.find(u => u.USUARIO === usuarioNome);
             
             if (usuario) {
                 console.log('Usuário encontrado:', usuario);
