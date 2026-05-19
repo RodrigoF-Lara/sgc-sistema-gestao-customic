@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function carregarConfiguracoes() {
         try {
-            const response = await fetch('/api/configInventario');
+            const response = await fetch('/api/config?tipo=inventario&action=get');
             const data = await response.json();
 
             if (response.ok && data.config) {
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
             statusMessage.style.color = '#222';
             statusMessage.textContent = 'Salvando configurações...';
 
-            const response = await fetch('/api/configInventario', {
+            const response = await fetch('/api/config?tipo=inventario', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)

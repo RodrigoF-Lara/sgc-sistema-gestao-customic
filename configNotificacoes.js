@@ -43,7 +43,7 @@ const TIPOS_NOTIFICACOES = {
 
 async function carregarConfiguracoes() {
     try {
-        const response = await fetch('/api/configNotificacoes?action=get');
+        const response = await fetch('/api/config?tipo=notificacoes&action=get');
         const data = await response.json();
 
         if (response.ok && data.config) {
@@ -137,7 +137,7 @@ async function salvarConfiguracoes() {
         statusMessage.className = 'status-message';
         statusMessage.style.display = 'block';
 
-        const response = await fetch('/api/configNotificacoes', {
+        const response = await fetch('/api/config?tipo=notificacoes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
