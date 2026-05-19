@@ -41,6 +41,9 @@
             });
             const data = await res.json();
             if (res.ok && data.usuario) {
+              console.log('LOGIN - Dados recebidos:', data.usuario);
+              console.log('LOGIN - NIVEL:', data.usuario.NIVEL, 'tipo:', typeof data.usuario.NIVEL);
+              
               const loginTime = new Date().toLocaleString("pt-BR");
               localStorage.setItem("loginTime", loginTime);
               localStorage.setItem(
@@ -49,6 +52,8 @@
               );
               localStorage.setItem("userLevel", data.usuario.NIVEL);
               localStorage.setItem("userCode", data.usuario.USUARIO);
+              
+              console.log('LOGIN - Salvou userLevel:', localStorage.getItem('userLevel'));
               window.location.href = "menu.html";
             } else {
               status.style.color = "#c00";

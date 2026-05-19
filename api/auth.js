@@ -70,6 +70,8 @@ async function fazerLogin(req, res, pool) {
 
     if (result.recordset.length === 1) {
       const user = result.recordset[0];
+      console.log('LOGIN SUCESSO - User data:', JSON.stringify(user));
+      console.log('NIVEL value:', user.NIVEL, 'type:', typeof user.NIVEL);
       return res.status(200).json({ usuario: user });
     } else {
       return res.status(401).json({ message: "Usuário ou senha inválidos" });
