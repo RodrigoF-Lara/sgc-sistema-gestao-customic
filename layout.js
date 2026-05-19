@@ -75,11 +75,14 @@ function inicializarSidebar() {
 }
 
 // =====================================================================
-// SISTEMA DE NOTIFICAÇÕES SGC
+// SISTEMA DE NOTIFICAÇÕES SGC (Com sincronização por API)
 // =====================================================================
 (function () {
-  const STORAGE_KEY = 'sgc_notif_history';
   const MAX_HISTORY = 60;
+  const POLL_INTERVAL = 10000; // Atualizar a cada 10 segundos
+  
+  let notificacoesCache = [];
+  let pollTimer = null;
 
   const TIPOS = {
     'requisicao-criada':     { icon: 'fa fa-clipboard',        cor: '#1976d2', label: 'Requisição Criada'     },
@@ -90,17 +93,32 @@ function inicializarSidebar() {
     'nf-armazenada':         { icon: 'fa fa-building',         cor: '#059669', label: 'NF Armazenada'          },
   };
 
-  function getHistory() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-    catch (e) { return []; }
+  // Busca notificações do servidor
+  async function getHistory() {
+    const usuario = localStorage.getItem('userName');
+    if (!usuario) return [];
+
+    try {
+      const response = await fetch(`/api/notificacoes?usuario=${encodeURIComponent(usuario)}&limite=${MAX_HISTORY}`);
+      if (!response.ok) throw new Error('Erro ao buscar notificações');
+      
+      const data = await response.json();
+      notificacoesCache = data.notificacoes || [];
+      return notificacoesCache;
+    } catch (error) {
+      console.error('Erro ao buscar notificações:', error);
+      return notificacoesCache; // Retorna cache em caso de erro
+    }
   }
 
+  // Não precisa mais salvar no localStorage - tudo vai para o servidor
   function saveHistory(arr) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr.slice(0, MAX_HISTORY)));
+    // Função mantida para compatibilidade, mas não faz nada
+    // As notificações são salvas automaticamente via API
   }
 
   function getUnreadCount() {
-    return getHistory().filter(function(e) { return !e.lido; }).length;
+    return notificacoesCache.filter(function(e) { return !e.lido; }).length;
   }
 
   function escapeHtml(text) {
@@ -164,11 +182,11 @@ function inicializarSidebar() {
     }
   }
 
-  function openPanel() {
+  async function openPanel() {
     var panel = document.getElementById('sgc-notif-panel');
     if (!panel) return;
     panel.classList.add('sgc-panel-visible');
-    renderHistory();
+    await renderHistory();
   }
 
   function closePanel() {
@@ -176,10 +194,12 @@ function inicializarSidebar() {
     if (panel) panel.classList.remove('sgc-panel-visible');
   }
 
-  function renderHistory() {
+  async function renderHistory() {
     var list = document.getElementById('sgc-notif-list');
     if (!list) return;
-    var history = getHistory();
+    
+    var history = await getHistory();
+    
     if (history.length === 0) {
       list.innerHTML = '<p class="sgc-notif-empty"><i class="fa fa-bell-slash" style="font-size:1.5em;display:block;margin-bottom:8px"></i>Nenhuma notificação ainda.</p>';
       return;
@@ -197,19 +217,48 @@ function inicializarSidebar() {
         '</div>' +
       '</div>';
     }).join('');
+    
+    updateBadge();
   }
 
-  function clearAll() {
-    saveHistory([]);
-    updateBadge();
-    renderHistory();
+  async function clearAll() {
+    const usuario = localStorage.getItem('userName');
+    if (!usuario) return;
+
+    try {
+      const response = await fetch('/api/notificacoes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'limparTodas', usuario })
+      });
+
+      if (response.ok) {
+        notificacoesCache = [];
+        updateBadge();
+        renderHistory();
+      }
+    } catch (error) {
+      console.error('Erro ao limpar notificações:', error);
+    }
   }
 
-  function markAllRead() {
-    var history = getHistory().map(function(e) { return Object.assign({}, e, { lido: true }); });
-    saveHistory(history);
-    updateBadge();
-    renderHistory();
+  async function markAllRead() {
+    const usuario = localStorage.getItem('userName');
+    if (!usuario) return;
+
+    try {
+      const response = await fetch('/api/notificacoes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'marcarTodasLidas', usuario })
+      });
+
+      if (response.ok) {
+        await renderHistory();
+      }
+    } catch (error) {
+      console.error('Erro ao marcar notificações como lidas:', error);
+    }
   }
 
   function showToast(evt) {
@@ -261,34 +310,98 @@ function inicializarSidebar() {
 
   // API pública global
   window.SGCNotifications = {
-    add: function(type, message, detail) {
+    add: async function(type, message, detail) {
       detail = detail || '';
-      var evt = {
-        id: Date.now() + Math.random(),
-        type: type,
-        message: message,
-        detail: detail,
-        timestamp: Date.now(),
-        lido: false
-      };
-      var history = getHistory();
-      history.unshift(evt);
-      saveHistory(history);
-      updateBadge();
-
-      var panel = document.getElementById('sgc-notif-panel');
-      if (panel && panel.classList.contains('sgc-panel-visible')) {
-        renderHistory();
+      const usuario = localStorage.getItem('userName');
+      if (!usuario) {
+        console.warn('Usuário não logado - notificação não será salva');
+        return;
       }
 
-      showToast(evt);
+      try {
+        // Enviar notificação para o servidor (será visível para todos)
+        const response = await fetch('/api/notificacoes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo: type,
+            mensagem: message,
+            detalhe: detail,
+            usuarioOrigem: usuario,
+            usuarioDestino: null  // null = todos veem
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao criar notificação');
+        }
+
+        // Criar evento local para o toast (imediato)
+        var evt = {
+          id: Date.now() + Math.random(),
+          type: type,
+          message: message,
+          detail: detail,
+          timestamp: Date.now(),
+          lido: false
+        };
+
+        // Mostrar toast imediatamente
+        showToast(evt);
+
+        // Atualizar histórico em segundo plano
+        setTimeout(async function() {
+          await getHistory();
+          updateBadge();
+          
+          var panel = document.getElementById('sgc-notif-panel');
+          if (panel && panel.classList.contains('sgc-panel-visible')) {
+            renderHistory();
+          }
+        }, 500);
+
+      } catch (error) {
+        console.error('Erro ao adicionar notificação:', error);
+      }
     }
   };
 
+  // Inicializa polling de notificações
+  async function startPolling() {
+    const usuario = localStorage.getItem('userName');
+    if (!usuario) return;
+
+    // Primeira busca
+    await getHistory();
+    updateBadge();
+
+    // Polling a cada 10 segundos
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async function() {
+      await getHistory();
+      updateBadge();
+    }, POLL_INTERVAL);
+  }
+
+  // Para o polling quando o usuário sai
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
   // Inicializa quando o DOM estiver pronto
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', buildUI);
+    document.addEventListener('DOMContentLoaded', function() {
+      buildUI();
+      startPolling();
+    });
   } else {
     buildUI();
+    startPolling();
   }
+
+  // Expor função de parar polling (útil para logout)
+  window.SGCNotifications.stopPolling = stopPolling;
 })();
