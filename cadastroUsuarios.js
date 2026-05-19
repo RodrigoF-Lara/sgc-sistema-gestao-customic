@@ -73,14 +73,14 @@ function renderizarUsuarios(usuarios) {
     }
 
     const html = usuarios.map(usuario => {
-        const nivelClass = usuario.NIVEL.toLowerCase();
-        const nivelLabel = usuario.NIVEL;
+        const nivelClass = (usuario.NIVEL || 'user').toLowerCase();
+        const nivelLabel = usuario.NIVEL || 'USER';
 
         return `
             <div class="usuario-item" data-id="${usuario.ID}" onclick="selecionarUsuario(${usuario.ID})">
                 <div class="usuario-info">
-                    <h3>${usuario.USUARIO}</h3>
-                    <p>${usuario.F_NAME} ${usuario.L_NAME}</p>
+                    <h3>${usuario.USUARIO || ''}</h3>
+                    <p>${usuario.F_NAME || ''} ${usuario.L_NAME || ''}</p>
                 </div>
                 <span class="usuario-badge ${nivelClass}">${nivelLabel}</span>
             </div>
@@ -117,13 +117,13 @@ async function carregarUsuarioParaEdicao(id) {
             if (usuario) {
                 usuarioSelecionado = usuario;
                 
-                document.getElementById('usuarioId').value = usuario.ID;
-                document.getElementById('usuario').value = usuario.USUARIO;
+                document.getElementById('usuarioId').value = usuario.ID || '';
+                document.getElementById('usuario').value = usuario.USUARIO || '';
                 document.getElementById('senha').value = ''; // Não mostra senha por segurança
-                document.getElementById('nivel').value = usuario.NIVEL;
-                document.getElementById('cpf').value = usuario.CPF;
-                document.getElementById('firstName').value = usuario.F_NAME;
-                document.getElementById('lastName').value = usuario.L_NAME;
+                document.getElementById('nivel').value = usuario.NIVEL || '';
+                document.getElementById('cpf').value = usuario.CPF || '';
+                document.getElementById('firstName').value = usuario.F_NAME || '';
+                document.getElementById('lastName').value = usuario.L_NAME || '';
                 document.getElementById('setor').value = usuario.SETOR || '';
                 document.getElementById('cod').value = usuario.COD || '';
 
