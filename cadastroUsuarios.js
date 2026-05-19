@@ -73,8 +73,9 @@ function renderizarUsuarios(usuarios) {
     }
 
     const html = usuarios.map(usuario => {
-        const nivelClass = (usuario.NIVEL || 'user').toLowerCase();
-        const nivelLabel = usuario.NIVEL || 'USER';
+        const nivel = String(usuario.NIVEL || 'USER');
+        const nivelClass = nivel.toLowerCase();
+        const nivelLabel = nivel;
 
         return `
             <div class="usuario-item" data-id="${usuario.ID}" onclick="selecionarUsuario(${usuario.ID})">
