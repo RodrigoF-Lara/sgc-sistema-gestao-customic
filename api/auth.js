@@ -87,14 +87,27 @@ async function listarUsuarios(req, res, pool) {
   try {
     const result = await pool.request().query(`
       SELECT 
+        ID,
         USUARIO,
         NIVEL,
         CPF,
         F_NAME,
         L_NAME,
         SETOR,
-        COD,
-        ROW_NUMBER() OVER (ORDER BY F_NAME, L_NAME) as ID
+        COD
+      FROM [dbo].[CAD_USUARIO]
+      ORDER BY F_NAME, L_NAME
+    `);
+
+    // Gera IDs temporários se ID estiver NULL
+    const usuariosComId = result.recordset.map((usuario, index) => ({
+      ...usuario,
+      ID: usuario.ID || (index + 1)
+    }));
+
+    return res.status(200).json({ 
+      usuarios: usuariosComId,
+      total: usuariosComId.length
     });
   } catch (error) {
     console.error("Erro ao listar usuários:", error);
