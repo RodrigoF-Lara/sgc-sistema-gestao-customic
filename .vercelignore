@@ -1,0 +1,9 @@
+kardex-inventory/
+node_modules/
+SQL_Scripts/
+*.xlsx
+*.frm
+*.frx
+*.md
+.git/
+.github/
