@@ -23,8 +23,18 @@ function inicializarEventos() {
     document.getElementById('usuariosList').addEventListener('click', function(e) {
         const usuarioItem = e.target.closest('.usuario-item');
         if (usuarioItem) {
+            console.log('Item clicado:', usuarioItem);
+            console.log('dataset:', usuarioItem.dataset);
+            console.log('data-id:', usuarioItem.dataset.id);
+            
             const id = parseInt(usuarioItem.dataset.id);
-            selecionarUsuario(id);
+            console.log('ID parseado:', id);
+            
+            if (!isNaN(id)) {
+                selecionarUsuario(id);
+            } else {
+                console.error('ID inválido:', usuarioItem.dataset.id);
+            }
         }
     });
 
@@ -59,6 +69,8 @@ async function carregarUsuarios() {
         const response = await fetch('/api/auth');
         const data = await response.json();
 
+        console.log('Resposta da API:', data);
+
         if (response.ok) {
             renderizarUsuarios(data.usuarios);
             document.getElementById('totalUsuarios').textContent = data.total;
@@ -74,6 +86,8 @@ async function carregarUsuarios() {
 function renderizarUsuarios(usuarios) {
     const container = document.getElementById('usuariosList');
 
+    console.log('Renderizando usuários:', usuarios);
+
     if (usuarios.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -85,12 +99,15 @@ function renderizarUsuarios(usuarios) {
     }
 
     const html = usuarios.map(usuario => {
+        console.log('Usuário individual:', usuario, 'ID:', usuario.ID);
+        
         const nivel = String(usuario.NIVEL || 'USER');
         const nivelClass = nivel.toLowerCase();
         const nivelLabel = nivel;
+        const userId = usuario.ID || 0;
 
         return `
-            <div class="usuario-item" data-id="${usuario.ID}">
+            <div class="usuario-item" data-id="${userId}">
                 <div class="usuario-info">
                     <h3>${usuario.USUARIO || ''}</h3>
                     <p>${usuario.F_NAME || ''} ${usuario.L_NAME || ''}</p>
