@@ -9,8 +9,10 @@ function verificarAcesso() {
     const userLevel = localStorage.getItem('userLevel');
     const userName = localStorage.getItem('userName');
     
-    // NIVEL 1 = ADMIN
-    if (userLevel !== '1') {
+    console.log('DEBUG - userLevel:', userLevel, 'tipo:', typeof userLevel);
+    
+    // NIVEL 1 = ADMIN (aceita string '1' ou número convertido)
+    if (userLevel !== '1' && userLevel !== 1 && parseInt(userLevel) !== 1) {
         alert(`Acesso Negado!\n\n${userName || 'Usuário'}, você não tem permissão para acessar esta página.\n\nApenas administradores podem gerenciar usuários.`);
         window.location.href = 'menu.html';
         return false;
