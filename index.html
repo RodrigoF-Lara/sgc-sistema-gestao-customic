@@ -47,6 +47,8 @@
                 "userName",
                 `${data.usuario.F_NAME} ${data.usuario.L_NAME}`
               );
+              localStorage.setItem("userLevel", data.usuario.NIVEL);
+              localStorage.setItem("userCode", data.usuario.USUARIO);
               window.location.href = "menu.html";
             } else {
               status.style.color = "#c00";

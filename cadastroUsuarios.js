@@ -4,7 +4,26 @@ let usuarioSelecionado = null;
 // Torna selecionarUsuario global para onclick funcionar
 window.selecionarUsuario = selecionarUsuario;
 
+// Verificação de acesso - Apenas ADMIN (nível 1)
+function verificarAcesso() {
+    const userLevel = localStorage.getItem('userLevel');
+    const userName = localStorage.getItem('userName');
+    
+    // NIVEL 1 = ADMIN
+    if (userLevel !== '1') {
+        alert(`Acesso Negado!\n\n${userName || 'Usuário'}, você não tem permissão para acessar esta página.\n\nApenas administradores podem gerenciar usuários.`);
+        window.location.href = 'menu.html';
+        return false;
+    }
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Verifica acesso antes de carregar a página
+    if (!verificarAcesso()) {
+        return;
+    }
+    
     carregarUsuarios();
     inicializarEventos();
     configurarMascaras();
@@ -14,10 +33,16 @@ function inicializarEventos() {
     const form = document.getElementById('usuarioForm');
     const btnLimpar = document.getElementById('btnLimpar');
     const btnExcluir = document.getElementById('btnExcluir');
+    const filtroInput = document.getElementById('filtroUsuarios');
 
     form.addEventListener('submit', salvarUsuario);
     btnLimpar.addEventListener('click', limparFormulario);
     btnExcluir.addEventListener('click', excluirUsuario);
+
+    // Filtro de usuários
+    filtroInput.addEventListener('input', function(e) {
+        filtrarUsuarios(e.target.value);
+    });
 
     // Delegação de eventos para cliques nos usuários da lista
     document.getElementById('usuariosList').addEventListener('click', function(e) {
@@ -118,6 +143,40 @@ function renderizarUsuarios(usuarios) {
     }).join('');
 
     container.innerHTML = html;
+}
+
+function filtrarUsuarios(termo) {
+    const filtroLower = termo.toLowerCase().trim();
+    const items = document.querySelectorAll('.usuario-item');
+    let totalVisiveis = 0;
+
+    items.forEach(item => {
+        const usuario = item.querySelector('h3').textContent.toLowerCase();
+        const nome = item.querySelector('p').textContent.toLowerCase();
+        const badge = item.querySelector('.usuario-badge').textContent.toLowerCase();
+        
+        // Busca em usuário, nome completo ou nível
+        const match = usuario.includes(filtroLower) || 
+                     nome.includes(filtroLower) || 
+                     badge.includes(filtroLower);
+
+        if (match) {
+            item.style.display = '';
+            totalVisiveis++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Atualiza contador
+    const totalElement = document.getElementById('totalUsuarios');
+    const totalOriginal = totalElement.textContent.match(/\d+/)[0];
+    
+    if (filtroLower) {
+        totalElement.textContent = `${totalVisiveis} de ${totalOriginal}`;
+    } else {
+        totalElement.textContent = totalOriginal;
+    }
 }
 
 function selecionarUsuario(id) {

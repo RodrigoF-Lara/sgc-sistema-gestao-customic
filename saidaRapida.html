@@ -291,6 +291,8 @@
                 if (res.ok && data.usuario) {
                     usuario = `${data.usuario.F_NAME} ${data.usuario.L_NAME}`;
                     localStorage.setItem('userName', usuario);
+                    localStorage.setItem('userLevel', data.usuario.NIVEL);
+                    localStorage.setItem('userCode', data.usuario.USUARIO);
                     localStorage.setItem('loginTime', new Date().toLocaleString('pt-BR'));
                     msg.textContent = '';
                     init();
