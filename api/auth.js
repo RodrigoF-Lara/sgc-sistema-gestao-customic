@@ -1,12 +1,14 @@
 import { getConnection, sql } from "../db.js";
 
 /**
- * API de Gestão de Usuários
- * CRUD completo para gerenciamento de usuários do sistema
+ * API Unificada de Autenticação e Gestão de Usuários
  * 
- * Métodos:
+ * Consolidação de /api/login.js e /api/usuarios.js
+ * 
+ * Endpoints:
+ * - POST (com campo 'pw'): Autenticação/Login
+ * - POST (com campo 'senha'): Criar novo usuário
  * - GET: Listar todos os usuários
- * - POST: Criar novo usuário
  * - PUT: Atualizar usuário existente
  * - DELETE: Excluir usuário
  */
@@ -17,11 +19,16 @@ export default async function handler(req, res) {
     const pool = await getConnection();
 
     switch (method) {
+      case "POST":
+        // Se tem campo 'pw', é login. Se tem 'senha', é criar usuário
+        if (req.body.pw !== undefined) {
+          return await fazerLogin(req, res, pool);
+        } else {
+          return await criarUsuario(req, res, pool);
+        }
+      
       case "GET":
         return await listarUsuarios(req, res, pool);
-      
-      case "POST":
-        return await criarUsuario(req, res, pool);
       
       case "PUT":
         return await atualizarUsuario(req, res, pool);
@@ -33,11 +40,43 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: "Método não permitido" });
     }
   } catch (error) {
-    console.error("Erro na API de usuários:", error);
+    console.error("Erro na API de autenticação:", error);
     return res.status(500).json({ 
       error: "Erro interno do servidor", 
       message: error.message 
     });
+  }
+}
+
+/**
+ * POST (com pw) - Autenticação/Login
+ */
+async function fazerLogin(req, res, pool) {
+  const { usuario, pw } = req.body;
+
+  if (!usuario || !pw) {
+    return res.status(400).json({ message: "Usuário e senha obrigatórios" });
+  }
+
+  try {
+    const result = await pool.request()
+      .input('usuario', sql.NVarChar, usuario)
+      .input('pw', sql.NVarChar, pw)
+      .query(`
+        SELECT [USUARIO],[PW],[NIVEL],[CPF],[F_NAME],[L_NAME],[ID],[COD],[SETOR]
+        FROM [dbo].[CAD_USUARIO]
+        WHERE [USUARIO]=@usuario AND [PW]=@pw
+      `);
+
+    if (result.recordset.length === 1) {
+      const user = result.recordset[0];
+      return res.status(200).json({ usuario: user });
+    } else {
+      return res.status(401).json({ message: "Usuário ou senha inválidos" });
+    }
+  } catch (err) {
+    console.error("ERRO DETALHADO NO LOGIN:", err);
+    return res.status(500).json({ message: "Erro no servidor", error: err.message });
   }
 }
 
@@ -74,7 +113,7 @@ async function listarUsuarios(req, res, pool) {
 }
 
 /**
- * POST - Criar novo usuário
+ * POST (com senha) - Criar novo usuário
  */
 async function criarUsuario(req, res, pool) {
   const { usuario, senha, nivel, cpf, firstName, lastName, setor = '', cod = '' } = req.body;

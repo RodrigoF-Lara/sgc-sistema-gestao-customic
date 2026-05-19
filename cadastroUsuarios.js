@@ -44,7 +44,7 @@ function configurarMascaras() {
 
 async function carregarUsuarios() {
     try {
-        const response = await fetch('/api/usuarios');
+        const response = await fetch('/api/auth');
         const data = await response.json();
 
         if (response.ok) {
@@ -108,7 +108,7 @@ function selecionarUsuario(id) {
 
 async function carregarUsuarioParaEdicao(id) {
     try {
-        const response = await fetch('/api/usuarios');
+        const response = await fetch('/api/auth');
         const data = await response.json();
 
         if (response.ok) {
@@ -168,14 +168,14 @@ async function salvarUsuario(e) {
                 delete dados.senha;
             }
 
-            response = await fetch('/api/usuarios', {
+            response = await fetch('/api/auth', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
             });
         } else {
             // Criar novo usuário
-            response = await fetch('/api/usuarios', {
+            response = await fetch('/api/auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
@@ -212,7 +212,7 @@ async function excluirUsuario() {
     }
 
     try {
-        const response = await fetch(`/api/usuarios?id=${id}`, {
+        const response = await fetch(`/api/auth?id=${id}`, {
             method: 'DELETE'
         });
 

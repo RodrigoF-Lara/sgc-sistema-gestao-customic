@@ -282,7 +282,7 @@
             if (!u || !p) { msg.textContent = 'Preencha usuário e senha.'; return; }
             msg.textContent = 'Verificando...';
             try {
-                const res = await fetch('/api/login', {
+                const res = await fetch('/api/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ usuario: u, pw: p })
