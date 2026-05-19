@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações de Notificações - SGC</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .config-notif-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .page-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2em;
+        }
+
+        .page-header p {
+            margin: 0;
+            opacity: 0.95;
+        }
+
+        .breadcrumb {
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .breadcrumb a {
+            color: var(--cor-principal);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .config-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .config-section h2 {
+            color: var(--cor-principal);
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notif-type-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .notif-type-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .notif-type-item:hover {
+            background: #f8f9fa;
+            border-color: var(--cor-principal);
+        }
+
+        .notif-type-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .notif-type-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .notif-type-details h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.05em;
+            color: #1a253c;
+        }
+
+        .notif-type-details p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #28a745;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a253c;
+        }
+
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .form-group input[type="number"]:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--cor-principal);
+        }
+
+        .help-text {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--cor-principal);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1565c0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #1976d2;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <main class="main-content">
+        <div class="config-notif-container">
+            <div class="breadcrumb">
+                <a href="configuracoes.html"><i class="fa fa-cog"></i> Configurações</a> 
+                <i class="fa fa-chevron-right" style="font-size: 0.7em; margin: 0 8px;"></i>
+                <span>Notificações</span>
+            </div>
+
+            <div class="page-header">
+                <h1><i class="fa fa-bell"></i> Configurações de Notificações</h1>
+                <p>Gerencie como e quando o sistema envia notificações aos usuários</p>
+            </div>
+
+            <div id="status-message" class="status-message"></div>
+
+            <div class="info-box">
+                <p><i class="fa fa-info-circle"></i> <strong>Nota:</strong> As configurações abaixo afetam todas as notificações do sistema. Alterações são aplicadas imediatamente.</p>
+            </div>
+
+            <!-- Tipos de Notificações -->
+            <div class="config-section">
+                <h2><i class="fa fa-list"></i> Tipos de Notificações</h2>
+                <p style="margin-bottom: 20px; color: #666;">Ative ou desative tipos específicos de notificações no sistema.</p>
+
+                <div class="notif-type-grid" id="notif-types-container">
+                    <!-- Será preenchido via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Configurações Gerais -->
+            <div class="config-section">
+                <h2><i class="fa fa-sliders-h"></i> Configurações Gerais</h2>
+
+                <div class="form-group">
+                    <label for="expirationDays">
+                        <i class="fa fa-clock"></i> Tempo de Expiração (dias)
+                    </label>
+                    <input type="number" id="expirationDays" min="1" max="365" value="30">
+                    <div class="help-text">Notificações mais antigas que este período serão automaticamente removidas</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="maxNotifications">
+                        <i class="fa fa-database"></i> Máximo de Notificações por Usuário
+                    </label>
+                    <input type="number" id="maxNotifications" min="10" max="200" value="60">
+                    <div class="help-text">Quantidade máxima de notificações mantidas no histórico</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pollInterval">
+                        <i class="fa fa-sync"></i> Intervalo de Atualização (segundos)
+                    </label>
+                    <input type="number" id="pollInterval" min="5" max="300" value="10">
+                    <div class="help-text">Com que frequência o sistema verifica novas notificações</div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="action-buttons">
+                <button type="button" class="btn btn-secondary" onclick="resetarPadrao()">
+                    <i class="fa fa-undo"></i> Restaurar Padrão
+                </button>
+                <button type="button" class="btn btn-primary" onclick="salvarConfiguracoes()">
+                    <i class="fa fa-save"></i> Salvar Configurações
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="layout.js"></script>
+    <script src="configNotificacoes.js"></script>
+</body>
+</html>

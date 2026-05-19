@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - SGC</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .config-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .config-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .config-header h1 {
+            color: var(--cor-principal);
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .config-header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .config-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+
+        .config-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: var(--cor-principal);
+        }
+
+        .config-card-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .config-card-icon.inventario {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .config-card-icon.notificacoes {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .config-card h2 {
+            font-size: 1.4em;
+            margin-bottom: 12px;
+            color: #1a253c;
+        }
+
+        .config-card p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        .config-card-badge {
+            margin-top: 15px;
+            padding: 5px 15px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <main class="main-content">
+        <div class="config-container">
+            <div class="config-header">
+                <h1><i class="fa fa-cog"></i> Configurações do Sistema</h1>
+                <p>Personalize as regras e comportamentos do SGC</p>
+            </div>
+
+            <div class="config-grid">
+                <!-- Card Inventário Cíclico -->
+                <a href="configInventario.html" class="config-card">
+                    <div class="config-card-icon inventario">
+                        <i class="fa fa-clipboard-check"></i>
+                    </div>
+                    <h2>Inventário Cíclico</h2>
+                    <p>Configure as regras de geração dos blocos de inventário, quantidades por bloco e critérios de seleção de itens.</p>
+                    <span class="config-card-badge">5 Blocos Configuráveis</span>
+                </a>
+
+                <!-- Card Notificações -->
+                <a href="configNotificacoes.html" class="config-card">
+                    <div class="config-card-icon notificacoes">
+                        <i class="fa fa-bell"></i>
+                    </div>
+                    <h2>Notificações</h2>
+                    <p>Gerencie regras de notificações, destinatários e tipos de alertas do sistema.</p>
+                    <span class="config-card-badge">Em Breve</span>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script src="layout.js"></script>
+</body>
+</html>
