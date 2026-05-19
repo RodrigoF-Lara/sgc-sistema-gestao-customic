@@ -1,6 +1,9 @@
 // Gestão de Usuários - SGC
 let usuarioSelecionado = null;
 
+// Torna selecionarUsuario global para onclick funcionar
+window.selecionarUsuario = selecionarUsuario;
+
 document.addEventListener('DOMContentLoaded', function() {
     carregarUsuarios();
     inicializarEventos();
@@ -15,6 +18,15 @@ function inicializarEventos() {
     form.addEventListener('submit', salvarUsuario);
     btnLimpar.addEventListener('click', limparFormulario);
     btnExcluir.addEventListener('click', excluirUsuario);
+
+    // Delegação de eventos para cliques nos usuários da lista
+    document.getElementById('usuariosList').addEventListener('click', function(e) {
+        const usuarioItem = e.target.closest('.usuario-item');
+        if (usuarioItem) {
+            const id = parseInt(usuarioItem.dataset.id);
+            selecionarUsuario(id);
+        }
+    });
 
     // Força uppercase em campos específicos
     const camposUppercase = document.querySelectorAll('.uppercase');
@@ -78,7 +90,7 @@ function renderizarUsuarios(usuarios) {
         const nivelLabel = nivel;
 
         return `
-            <div class="usuario-item" data-id="${usuario.ID}" onclick="selecionarUsuario(${usuario.ID})">
+            <div class="usuario-item" data-id="${usuario.ID}">
                 <div class="usuario-info">
                     <h3>${usuario.USUARIO || ''}</h3>
                     <p>${usuario.F_NAME || ''} ${usuario.L_NAME || ''}</p>
@@ -92,6 +104,8 @@ function renderizarUsuarios(usuarios) {
 }
 
 function selecionarUsuario(id) {
+    console.log('Selecionando usuário ID:', id);
+    
     // Remove seleção anterior
     document.querySelectorAll('.usuario-item').forEach(item => {
         item.classList.remove('selecionado');
@@ -101,6 +115,7 @@ function selecionarUsuario(id) {
     const item = document.querySelector(`[data-id="${id}"]`);
     if (item) {
         item.classList.add('selecionado');
+        console.log('Item selecionado:', item);
     }
 
     // Carrega dados do usuário no formulário
@@ -108,6 +123,8 @@ function selecionarUsuario(id) {
 }
 
 async function carregarUsuarioParaEdicao(id) {
+    console.log('Carregando usuário para edição, ID:', id);
+    
     try {
         const response = await fetch('/api/auth');
         const data = await response.json();
@@ -116,6 +133,7 @@ async function carregarUsuarioParaEdicao(id) {
             const usuario = data.usuarios.find(u => u.ID === id);
             
             if (usuario) {
+                console.log('Usuário encontrado:', usuario);
                 usuarioSelecionado = usuario;
                 
                 document.getElementById('usuarioId').value = usuario.ID || '';
@@ -135,6 +153,10 @@ async function carregarUsuarioParaEdicao(id) {
                 // Torna senha opcional na edição
                 document.getElementById('senha').required = false;
                 document.getElementById('senha').placeholder = 'Deixe em branco para manter a senha atual';
+                
+                console.log('Formulário carregado com sucesso');
+            } else {
+                console.error('Usuário não encontrado na lista');
             }
         }
     } catch (error) {
