@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <a href="statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
           <a href="inventarioCiclico.html" id="nav-inventario-ciclico"><i class="fa fa-clipboard-check"></i> Inventário Cíclico</a>
           <a href="relatorios.html" id="nav-relatorios"><i class="fa fa-chart-bar"></i> Relatórios</a>
+          <a href="cadastroUsuarios.html" id="nav-usuarios"><i class="fa fa-users"></i> Usuários</a>
           <a href="configuracoes.html" id="nav-configuracoes"><i class="fa fa-cog"></i> Configurações</a>
         </nav>
         <div class="sidebar-footer"><button id="logout-btn" class="logout-btn">Sair</button></div>

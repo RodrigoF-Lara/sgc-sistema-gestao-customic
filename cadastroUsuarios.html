@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Usuários - SGC</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .usuarios-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .page-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2em;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: var(--cor-principal);
+            font-size: 1.3em;
+            margin: 0 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #1a253c;
+            font-size: 0.9em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95em;
+            text-transform: uppercase;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--cor-principal);
+        }
+
+        .form-group input.uppercase {
+            text-transform: uppercase;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: var(--cor-principal);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #1565c0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .usuarios-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .usuario-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .usuario-item:hover {
+            background: #f8f9fa;
+            border-color: var(--cor-principal);
+            transform: translateX(5px);
+        }
+
+        .usuario-item.selecionado {
+            background: #e3f2fd;
+            border-color: var(--cor-principal);
+        }
+
+        .usuario-info {
+            flex: 1;
+        }
+
+        .usuario-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.05em;
+            color: #1a253c;
+        }
+
+        .usuario-info p {
+            margin: 0;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .usuario-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .usuario-badge.admin {
+            background: #dc3545;
+        }
+
+        .usuario-badge.user {
+            background: #28a745;
+        }
+
+        .usuario-badge.gerente {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .lista-header {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <main class="main-content">
+        <div class="usuarios-container">
+            <div class="page-header">
+                <h1><i class="fa fa-users"></i> Gestão de Usuários</h1>
+                <p>Cadastro e gerenciamento de usuários do sistema</p>
+            </div>
+
+            <div id="status-message" class="status-message"></div>
+
+            <div class="content-grid">
+                <!-- Formulário de Cadastro/Edição -->
+                <div class="card">
+                    <h2><i class="fa fa-user-plus"></i> <span id="form-title">Novo Usuário</span></h2>
+                    
+                    <form id="usuarioForm">
+                        <input type="hidden" id="usuarioId">
+
+                        <div class="form-group">
+                            <label for="usuario">Usuário *</label>
+                            <input type="text" id="usuario" class="uppercase" required maxlength="50">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="senha">Senha *</label>
+                            <input type="password" id="senha" class="uppercase" required maxlength="50">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nivel">Nível *</label>
+                            <select id="nivel" required>
+                                <option value="">Selecione...</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="GERENTE">GERENTE</option>
+                                <option value="USER">USER</option>
+                                <option value="ESTOQUISTA">ESTOQUISTA</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cpf">CPF *</label>
+                            <input type="text" id="cpf" required maxlength="14" placeholder="000.000.000-00">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="firstName">Nome *</label>
+                            <input type="text" id="firstName" class="uppercase" required maxlength="50">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lastName">Sobrenome *</label>
+                            <input type="text" id="lastName" class="uppercase" required maxlength="50">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="setor">Setor</label>
+                            <input type="text" id="setor" class="uppercase" maxlength="50">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cod">Código</label>
+                            <input type="text" id="cod" class="uppercase" maxlength="20">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="btnSalvar">
+                                <i class="fa fa-save"></i> Salvar
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="btnLimpar">
+                                <i class="fa fa-eraser"></i> Limpar
+                            </button>
+                        </div>
+
+                        <div class="form-actions" id="acoesEdicao" style="display: none;">
+                            <button type="button" class="btn btn-danger" id="btnExcluir">
+                                <i class="fa fa-trash"></i> Excluir
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Lista de Usuários -->
+                <div class="card">
+                    <h2><i class="fa fa-list"></i> Usuários Cadastrados (<span id="totalUsuarios">0</span>)</h2>
+                    
+                    <div class="lista-header">
+                        <div>USUÁRIO</div>
+                        <div>NÍVEL</div>
+                        <div>NOME</div>
+                    </div>
+
+                    <div class="usuarios-list" id="usuariosList">
+                        <div class="empty-state">
+                            <i class="fa fa-users"></i>
+                            <p>Nenhum usuário cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="layout.js"></script>
+    <script src="cadastroUsuarios.js"></script>
+</body>
+</html>
