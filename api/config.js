@@ -50,20 +50,29 @@ async function getConfigInventario(pool, res) {
   try {
     const result = await pool.request().query(`
       SELECT TOP 1 
-        QTD_BLOCO_1,
-        QTD_BLOCO_2,
-        QTD_BLOCO_3,
-        QTD_BLOCO_4,
-        QTD_BLOCO_5
+        BLOCO1_QTD_ITENS,
+        BLOCO1_DIAS_MOVIMENTACAO,
+        BLOCO2_QTD_ITENS,
+        BLOCO2_ACURACIDADE_MIN,
+        BLOCO3_QTD_ITENS,
+        BLOCO4_QTD_ITENS,
+        BLOCO5_QTD_ITENS,
+        BLOCO5_INVENTARIOS_ATRAS,
+        USUARIO_ALTERACAO,
+        DT_ALTERACAO
       FROM TB_CONFIG_INVENTARIO
-      ORDER BY ID DESC
+      ORDER BY ID_CONFIG DESC
     `);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: "Configurações não encontradas" });
     }
 
-    return res.status(200).json(result.recordset[0]);
+    // Retorna no formato esperado pelo frontend
+    return res.status(200).json({ 
+      success: true,
+      config: result.recordset[0] 
+    });
   } catch (error) {
     console.error("Erro ao buscar configuração:", error);
     return res.status(500).json({ 
