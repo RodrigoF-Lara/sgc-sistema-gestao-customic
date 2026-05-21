@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const sidebarContainer = document.getElementById('sidebar-container');
   if (!sidebarContainer) return;
 
-  fetch('menu-lateral.html')
+  fetch('/shared/frontend/menu-lateral.html')
     .then(response => {
       if (!response.ok) throw new Error('menu-lateral.html não encontrado');
       return response.text();

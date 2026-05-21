@@ -1,10 +1,10 @@
-Ôªø<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gerenciamento de Estoque</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 </head>
 <body>
@@ -15,31 +15,31 @@
             <h1>Gerenciamento de Estoque</h1>
 
             <div class="form-group">
-                <label for="codigo">C√≥digo do Produto:</label>
-                <input type="text" id="codigo" placeholder="Digite o c√≥digo do produto" required />
+                <label for="codigo">CÛdigo do Produto:</label>
+                <input type="text" id="codigo" placeholder="Digite o cÛdigo do produto" required />
                 <button id="consultarBtn" class="btn-destaque">Consultar</button>
             </div>
 
             <div id="produtoInfo" class="produto-info" style="display: none;">
-                <h2>Informa√ß√µes do Produto</h2>
-                <p><strong>C√≥digo:</strong> <span id="infoCodigo"></span></p>
-                <p><strong>Descri√ß√£o:</strong> <span id="infoDescricao"></span></p>
+                <h2>InformaÁıes do Produto</h2>
+                <p><strong>CÛdigo:</strong> <span id="infoCodigo"></span></p>
+                <p><strong>DescriÁ„o:</strong> <span id="infoDescricao"></span></p>
                 <p><strong>Quantidade em Estoque:</strong> <span id="infoQuantidade"></span></p>
             </div>
 
-            <!-- NOVA SE√á√ÉO: Estat√≠sticas R√°pidas -->
+            <!-- NOVA SE«√O: EstatÌsticas R·pidas -->
             <div id="estatisticasContainer" style="display: none; margin-top: 20px;">
                 <!-- Preenchido dinamicamente -->
             </div>
 
-            <!-- NOVA SE√á√ÉO: Saldo por Local -->
+            <!-- NOVA SE«√O: Saldo por Local -->
             <div id="saldoPorLocalContainer" class="card" style="display: none; margin-top: 20px;">
-                <h2>üì¶ Saldo por Localiza√ß√£o</h2>
+                <h2>?? Saldo por LocalizaÁ„o</h2>
                 <table>
                     <thead>
                         <tr>
-                            <th>Armaz√©m</th>
-                            <th>Endere√ßo</th>
+                            <th>ArmazÈm</th>
+                            <th>EndereÁo</th>
                             <th>Tam. Lote</th>
                             <th class="text-right">Qtd. Caixas</th>
                             <th class="text-right">Saldo</th>
@@ -52,8 +52,8 @@
             <div class="form-group" id="entradaSaidaContainer" style="display: none;">
                 <div class="card gerenciar-card">
                     <div class="gerenciar-header">
-                        <h2>üöÄ Gerenciar Movimenta√ß√µes</h2>
-                        <p>Registre entradas e sa√≠das do produto</p>
+                        <h2>?? Gerenciar MovimentaÁıes</h2>
+                        <p>Registre entradas e saÌdas do produto</p>
                     </div>
 
                     <div class="botoes-movimento">
@@ -63,19 +63,19 @@
                         </button>
                         <button id="btnSaida" class="btn-movimento saida" disabled>
                             <i class="fa-solid fa-arrow-down"></i>
-                            <span>SA√çDA</span>
+                            <span>SAÕDA</span>
                         </button>
                         <button id="btnZerarEndereco" class="btn-movimento zerar" disabled>
                             <i class="fa-solid fa-location-crosshairs"></i>
-                            <span>ZERAR ENDERE√áO</span>
+                            <span>ZERAR ENDERE«O</span>
                         </button>
                         <button id="btnZerarCodigo" class="btn-movimento zerar-codigo" disabled>
                             <i class="fa-solid fa-triangle-exclamation"></i>
-                            <span>ZERAR C√ìDIGO</span>
+                            <span>ZERAR C”DIGO</span>
                         </button>
                         <button id="btnAlterarEndereco" class="btn-movimento alterar" disabled>
                             <i class="fa-solid fa-right-left"></i>
-                            <span>ALTERAR ENDERE√áO</span>
+                            <span>ALTERAR ENDERE«O</span>
                         </button>
                     </div>
 
@@ -83,18 +83,18 @@
                 </div>
             </div>
 
-            <!-- MODAL para Entrada/Sa√≠da -->
+            <!-- MODAL para Entrada/SaÌda -->
             <div id="modalMovimento" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <span id="iconModal" style="font-size: 32px; margin-right: 10px;">üì•</span>
+                        <span id="iconModal" style="font-size: 32px; margin-right: 10px;">??</span>
                         <h2 id="tituloModal">Registrar Movimento</h2>
                         <span id="closeModal" class="close-btn">&times;</span>
                     </div>
                     
                     <form id="formMovimento">
                         <div class="form-group-modal" id="loteSelectorContainer" style="display: none;">
-                            <label for="loteIdModal">Lote de Sa√≠da:</label>
+                            <label for="loteIdModal">Lote de SaÌda:</label>
                             <select id="loteIdModal" required></select>
                         </div>
 
@@ -104,23 +104,23 @@
                         </div>
 
                         <div class="form-group-modal" id="repeticoesContainer" style="display: none;">
-                            <label for="repeticoesModal">N√∫mero de Etiquetas (Repeti√ß√µes):</label>
+                            <label for="repeticoesModal">N˙mero de Etiquetas (RepetiÁıes):</label>
                             <input type="number" id="repeticoesModal" min="1" value="1" />
                         </div>
 
                         <div class="form-group-modal">
-                            <label for="observacaoModal">Observa√ß√£o:</label>
-                            <textarea id="observacaoModal" rows="3" placeholder="Digite uma observa√ß√£o (opcional)"></textarea>
+                            <label for="observacaoModal">ObservaÁ„o:</label>
+                            <textarea id="observacaoModal" rows="3" placeholder="Digite uma observaÁ„o (opcional)"></textarea>
                         </div>
 
                         <div id="entradaFields">
                             <div class="form-group-modal">
-                                <label for="enderecoModal">Endere√ßo:</label>
+                                <label for="enderecoModal">EndereÁo:</label>
                                 <input type="text" id="enderecoModal" placeholder="Ex: TESTE1" />
                             </div>
     
                             <div class="form-group-modal">
-                                <label for="armazemModal">Armaz√©m:</label>
+                                <label for="armazemModal">ArmazÈm:</label>
                                 <input type="text" id="armazemModal" placeholder="Ex: 01" />
                             </div>
                         </div>
@@ -132,7 +132,7 @@
                                 Cancelar
                             </button>
                             <button type="submit" id="submitBtn" class="btn-movimento entrada">
-                                ‚úì Registrar
+                                ? Registrar
                             </button>
                         </div>
                     </form>
@@ -140,19 +140,19 @@
             </div>
 
             <div id="historicoContainer" style="display: none; margin-top: 20px;">
-                <h2>üìã Hist√≥rico de Movimentos</h2>
+                <h2>?? HistÛrico de Movimentos</h2>
                 <table id="historicoTable">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Tipo</th>
-                            <th>Endere√ßo</th>
+                            <th>EndereÁo</th>
                             <th>Armaz.</th>
                             <th class="text-right">Qtd</th>
-                            <th>Usu√°rio</th>
+                            <th>Usu·rio</th>
                             <th>Data</th>
                             <th>Hora</th>
-                            <th>A√ß√µes</th>
+                            <th>AÁıes</th>
                         </tr>
                         <tr class="filter-row">
                             <th><input type="text" class="filtro-hist" data-col="0" placeholder="Filtrar..." /></th>
@@ -160,7 +160,7 @@
                                 <select class="filtro-hist" data-col="1">
                                     <option value="">Todos</option>
                                     <option value="ENTRADA">Entrada</option>
-                                    <option value="SA√çDA">Sa√≠da</option>
+                                    <option value="SAÕDA">SaÌda</option>
                                 </select>
                             </th>
                             <th><input type="text" class="filtro-hist" data-col="2" placeholder="Filtrar..." /></th>
@@ -169,7 +169,7 @@
                             <th><input type="text" class="filtro-hist" data-col="5" placeholder="Filtrar..." /></th>
                             <th><input type="text" class="filtro-hist" data-col="6" placeholder="dd/mm/aaaa" /></th>
                             <th><input type="text" class="filtro-hist" data-col="7" placeholder="hh:mm" /></th>
-                            <th><button type="button" id="btnLimparFiltrosHist" title="Limpar filtros" style="background:#eee;border:1px solid #ccc;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;">‚úï</button></th>
+                            <th><button type="button" id="btnLimparFiltrosHist" title="Limpar filtros" style="background:#eee;border:1px solid #ccc;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;">?</button></th>
                         </tr>
                     </thead>
                     <tbody id="historicoBody"></tbody>
@@ -178,11 +178,11 @@
         </div>
     </div>
 
-    <!-- MODAL para Sele√ß√£o de Tamanho de Etiqueta -->
+    <!-- MODAL para SeleÁ„o de Tamanho de Etiqueta -->
     <div id="modalEtiqueta" class="modal">
         <div class="modal-content" style="max-width: 440px;">
             <div class="modal-header">
-                <span style="font-size: 32px; margin-right: 10px;">üè∑Ô∏è</span>
+                <span style="font-size: 32px; margin-right: 10px;">???</span>
                 <h2 style="color: #1565c0;">Tamanho da Etiqueta</h2>
                 <span id="closeModalEtiqueta" class="close-btn">&times;</span>
             </div>
@@ -190,43 +190,43 @@
                 <p style="margin-bottom: 16px; color: #555; font-size: 14px;">Escolha o tamanho da etiqueta a ser impressa:</p>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <button id="btnEtiqueta100x150" style="padding: 14px 16px; font-size: 15px; font-weight: bold; background: linear-gradient(135deg,#1976d2,#1565c0); color: white; border: none; border-radius: 8px; cursor: pointer; text-align: left; transition: opacity .2s;">
-                        üñ®Ô∏è 100mm √ó 150mm
-                        <small style="display:block; font-size:11px; font-weight:normal; margin-top:4px; opacity:.85;">Etiqueta completa com QR Code e c√≥digo de barras</small>
+                        ??? 100mm ◊ 150mm
+                        <small style="display:block; font-size:11px; font-weight:normal; margin-top:4px; opacity:.85;">Etiqueta completa com QR Code e cÛdigo de barras</small>
                     </button>
                     <button id="btnEtiqueta40x30" style="padding: 14px 16px; font-size: 15px; font-weight: bold; background: linear-gradient(135deg,#388e3c,#2e7d32); color: white; border: none; border-radius: 8px; cursor: pointer; text-align: left; transition: opacity .2s;">
-                        üñ®Ô∏è 40mm √ó 30mm
-                        <small style="display:block; font-size:11px; font-weight:normal; margin-top:4px; opacity:.85;">Etiqueta compacta com c√≥digo de barras</small>
+                        ??? 40mm ◊ 30mm
+                        <small style="display:block; font-size:11px; font-weight:normal; margin-top:4px; opacity:.85;">Etiqueta compacta com cÛdigo de barras</small>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL para Alterar Endere√ßo -->
+    <!-- MODAL para Alterar EndereÁo -->
     <div id="modalAlterarEndereco" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span style="font-size: 32px; margin-right: 10px;">üîÑ</span>
-                <h2 id="tituloModalAlterar" style="color: #1565c0;">Alterar Endere√ßo</h2>
+                <span style="font-size: 32px; margin-right: 10px;">??</span>
+                <h2 id="tituloModalAlterar" style="color: #1565c0;">Alterar EndereÁo</h2>
                 <span id="closeModalAlterar" class="close-btn">&times;</span>
             </div>
             <form id="formAlterarEndereco">
-                <p style="margin-bottom:12px; color:#555; font-size:13px;">Informe o endere√ßo atual e o novo endere√ßo. O sistema dar√° sa√≠da no endere√ßo atual e entrada no novo.</p>
+                <p style="margin-bottom:12px; color:#555; font-size:13px;">Informe o endereÁo atual e o novo endereÁo. O sistema dar· saÌda no endereÁo atual e entrada no novo.</p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                     <div class="form-group-modal">
-                        <label for="armAtualAlterar">Armaz√©m Atual:</label>
+                        <label for="armAtualAlterar">ArmazÈm Atual:</label>
                         <input type="text" id="armAtualAlterar" placeholder="Ex: 01" required />
                     </div>
                     <div class="form-group-modal">
-                        <label for="endAtualAlterar">Endere√ßo Atual:</label>
+                        <label for="endAtualAlterar">EndereÁo Atual:</label>
                         <input type="text" id="endAtualAlterar" placeholder="Ex: 30-04-355" required />
                     </div>
                     <div class="form-group-modal">
-                        <label for="armNovoAlterar">Novo Armaz√©m:</label>
+                        <label for="armNovoAlterar">Novo ArmazÈm:</label>
                         <input type="text" id="armNovoAlterar" placeholder="Ex: 01" required />
                     </div>
                     <div class="form-group-modal">
-                        <label for="endNovoAlterar">Novo Endere√ßo:</label>
+                        <label for="endNovoAlterar">Novo EndereÁo:</label>
                         <input type="text" id="endNovoAlterar" placeholder="Ex: 30-04-360" required />
                     </div>
                 </div>
@@ -236,52 +236,52 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-cancelar" id="cancelarAlterar">Cancelar</button>
                     <button type="submit" id="submitAlterar" class="btn-movimento alterar-confirm" style="padding:10px 20px;">
-                        üîç Localizar Saldo
+                        ?? Localizar Saldo
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL para Zerar C√≥digo -->
+    <!-- MODAL para Zerar CÛdigo -->
     <div id="modalZerarCodigo" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span style="font-size: 32px; margin-right: 10px;">‚ö†Ô∏è</span>
-                <h2 style="color: #c62828;">Zerar C√≥digo</h2>
+                <span style="font-size: 32px; margin-right: 10px;">??</span>
+                <h2 style="color: #c62828;">Zerar CÛdigo</h2>
                 <span id="closeModalZerarCodigo" class="close-btn">&times;</span>
             </div>
             <div style="padding: 16px 0;">
                 <div style="background:#ffebee; border:2px solid #c62828; border-radius:8px; padding:16px; margin-bottom:16px;">
-                    <p style="margin:0 0 8px 0; font-weight:bold; color:#c62828; font-size:15px;">‚ö†Ô∏è A√á√ÉO IRREVERS√çVEL</p>
+                    <p style="margin:0 0 8px 0; font-weight:bold; color:#c62828; font-size:15px;">?? A«√O IRREVERSÕVEL</p>
                     <p id="msgZerarCodigo" style="margin:0; color:#333;"></p>
                 </div>
-                <p style="margin:0; color:#555; font-size:13px;">Ser√£o dadas sa√≠das em <strong>todos os lotes</strong> do produto em <strong>todos os endere√ßos</strong>. Esta a√ß√£o n√£o pode ser desfeita.</p>
+                <p style="margin:0; color:#555; font-size:13px;">Ser„o dadas saÌdas em <strong>todos os lotes</strong> do produto em <strong>todos os endereÁos</strong>. Esta aÁ„o n„o pode ser desfeita.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-cancelar" id="cancelarZerarCodigo">Cancelar</button>
                 <button type="button" id="confirmarZerarCodigo" style="padding:10px 20px; background:linear-gradient(135deg,#e53935,#c62828); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:14px;">
-                    ‚ö†Ô∏è SIM, ZERAR TUDO
+                    ?? SIM, ZERAR TUDO
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL para Zerar Endere√ßo -->
+    <!-- MODAL para Zerar EndereÁo -->
     <div id="modalZerarEndereco" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span style="font-size: 32px; margin-right: 10px;">üóëÔ∏è</span>
-                <h2 id="tituloModalZerar" style="color: #e65100;">Zerar Endere√ßo</h2>
+                <span style="font-size: 32px; margin-right: 10px;">???</span>
+                <h2 id="tituloModalZerar" style="color: #e65100;">Zerar EndereÁo</h2>
                 <span id="closeModalZerar" class="close-btn">&times;</span>
             </div>
             <form id="formZerarEndereco">
                 <div class="form-group-modal">
-                    <label for="armazemZerar">Armaz√©m:</label>
+                    <label for="armazemZerar">ArmazÈm:</label>
                     <input type="text" id="armazemZerar" placeholder="Ex: 01" required />
                 </div>
                 <div class="form-group-modal">
-                    <label for="enderecoZerar">Endere√ßo:</label>
+                    <label for="enderecoZerar">EndereÁo:</label>
                     <input type="text" id="enderecoZerar" placeholder="Ex: 30-04-355" required />
                 </div>
                 <div id="confirmarZerarContainer" style="display:none; margin-top:12px; padding:12px; background:#fff3e0; border-radius:6px; border-left:4px solid #e65100;">
@@ -290,7 +290,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-cancelar" id="cancelarZerar">Cancelar</button>
                     <button type="submit" id="submitZerarEndereco" class="btn-movimento zerar-confirm" style="padding:10px 20px;">
-                        ‚úì Localizar Saldo
+                        ? Localizar Saldo
                     </button>
                 </div>
             </form>
@@ -298,7 +298,7 @@
     </div>
 
     <script src="inventoryManagement.js"></script>
-    <script src="layout.js"></script>
-    <script src="fundos.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
 </body>
 </html>
