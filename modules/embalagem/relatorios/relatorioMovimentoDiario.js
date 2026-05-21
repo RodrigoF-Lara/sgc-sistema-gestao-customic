@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         gerarRelatorioBtn.disabled = true;
 
         try {
-            let url = `/api/relatorios?acao=movimentoDiario&data=${data}`;
+            let url = `/api/embalagem/relatorios?acao=movimentoDiario&data=${data}`;
             if (tipo) url += `&tipoProduto=${encodeURIComponent(tipo)}`;
 
             const response = await fetch(url);

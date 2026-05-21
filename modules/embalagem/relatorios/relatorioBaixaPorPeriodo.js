@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function carregarTiposProduto() {
         try {
-            const response = await fetch('/api/relatorios?acao=tiposProduto');
+            const response = await fetch('/api/embalagem/relatorios?acao=tiposProduto');
             if (!response.ok) throw new Error('Erro ao carregar tipos');
             
             const data = await response.json();
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
 
         try {
-            let url = `/api/relatorios?acao=baixaPorPeriodo&dataInicio=${inicio}&dataFim=${fim}`;
+            let url = `/api/embalagem/relatorios?acao=baixaPorPeriodo&dataInicio=${inicio}&dataFim=${fim}`;
             if (tipo) {
                 url += `&tipoProduto=${encodeURIComponent(tipo)}`;
             }

@@ -119,7 +119,7 @@ async function carregarFornecedores() {
             search: estadoAtual.search
         });
 
-        const response = await fetch(`/api/cadastros?${params}`);
+        const response = await fetch(`/api/shared/cadastros?${params}`);
         const data = await response.json();
 
         if (response.ok) {
@@ -227,7 +227,7 @@ async function carregarFornecedorParaEdicao(codigo) {
             search: codigo,
             pageSize: 10
         });
-        const response = await fetch(`/api/cadastros?${params}`);
+        const response = await fetch(`/api/shared/cadastros?${params}`);
         const data = await response.json();
 
         if (response.ok) {
@@ -262,13 +262,13 @@ async function salvarFornecedor(e) {
         let response;
         if (codFornecedorOriginal) {
             dados.codFornecedorOriginal = parseInt(codFornecedorOriginal);
-            response = await fetch('/api/cadastros?tipo=fornecedores', {
+            response = await fetch('/api/shared/cadastros?tipo=fornecedores', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
             });
         } else {
-            response = await fetch('/api/cadastros?tipo=fornecedores', {
+            response = await fetch('/api/shared/cadastros?tipo=fornecedores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
@@ -293,7 +293,7 @@ async function excluirFornecedorDireto(codigo, razao) {
     if (!confirm(`Deseja realmente excluir o fornecedor ${codigo} - ${razao}?\n\nEsta ação não pode ser desfeita!`)) return;
 
     try {
-        const response = await fetch(`/api/cadastros?tipo=fornecedores&codFornecedor=${codigo}`, { method: 'DELETE' });
+        const response = await fetch(`/api/shared/cadastros?tipo=fornecedores&codFornecedor=${codigo}`, { method: 'DELETE' });
         const data = await response.json();
         if (response.ok) {
             mostrarMensagem(data.message, 'success');
@@ -314,7 +314,7 @@ async function excluirFornecedor() {
     if (!confirm(`Deseja realmente excluir o fornecedor ${codigo} - ${razao}?\n\nEsta ação não pode ser desfeita!`)) return;
 
     try {
-        const response = await fetch(`/api/cadastros?tipo=fornecedores&codFornecedor=${codigo}`, { method: 'DELETE' });
+        const response = await fetch(`/api/shared/cadastros?tipo=fornecedores&codFornecedor=${codigo}`, { method: 'DELETE' });
         const data = await response.json();
         if (response.ok) {
             mostrarMensagem(data.message, 'success');

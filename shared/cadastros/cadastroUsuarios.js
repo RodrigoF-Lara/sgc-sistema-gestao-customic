@@ -94,7 +94,7 @@ window.excluirUsuarioConfirm = async function(usuarioNome, nomeCompleto) {
     }
 
     try {
-        const response = await fetch(`/api/auth?usuario=${encodeURIComponent(usuarioNome)}`, {
+        const response = await fetch(`/api/shared/auth?usuario=${encodeURIComponent(usuarioNome)}`, {
             method: 'DELETE'
         });
 
@@ -131,7 +131,7 @@ function configurarMascaras() {
 
 async function carregarUsuarios() {
     try {
-        const response = await fetch('/api/auth');
+        const response = await fetch('/api/shared/auth');
         const data = await response.json();
 
         console.log('Resposta da API:', data);
@@ -238,7 +238,7 @@ async function carregarUsuarioParaEdicao(usuarioNome) {
     console.log('Carregando USUARIO para edição:', usuarioNome);
     
     try {
-        const response = await fetch('/api/auth');
+        const response = await fetch('/api/shared/auth');
         const data = await response.json();
 
         if (response.ok) {
@@ -303,14 +303,14 @@ async function salvarUsuario(e) {
                 delete dados.senha;
             }
 
-            response = await fetch('/api/auth', {
+            response = await fetch('/api/shared/auth', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
             });
         } else {
             // Criar novo usuário
-            response = await fetch('/api/auth', {
+            response = await fetch('/api/shared/auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
@@ -350,7 +350,7 @@ async function excluirUsuario() {
     }
 
     try {
-        const response = await fetch(`/api/auth?usuario=${encodeURIComponent(usuarioNome)}`, {
+        const response = await fetch(`/api/shared/auth?usuario=${encodeURIComponent(usuarioNome)}`, {
             method: 'DELETE'
         });
 

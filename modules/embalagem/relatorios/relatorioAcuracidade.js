@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
 
         try {
-            let url = `/api/relatorios?acao=acuracidade&dataInicio=${dataInicio}&dataFim=${dataFim}`;
+            let url = `/api/embalagem/relatorios?acao=acuracidade&dataInicio=${dataInicio}&dataFim=${dataFim}`;
             if (status) {
                 url += `&status=${status}`;
             }
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             mostrarMensagem('Carregando detalhes...', 'info');
             
-            const response = await fetch(`/api/relatorios?acao=detalhesInventario&idInventario=${idInventario}`);
+            const response = await fetch(`/api/embalagem/relatorios?acao=detalhesInventario&idInventario=${idInventario}`);
             
             if (!response.ok) {
                 throw new Error('Erro ao carregar detalhes');

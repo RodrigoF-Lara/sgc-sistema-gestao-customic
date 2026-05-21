@@ -62,7 +62,7 @@
             <div class="teste-label">Teste 3: /img/fundo_menu_principal/fundo_3.gif</div>
         </div>
         
-        <button onclick="testarAPI()">Testar API /api/fundos</button>
+        <button onclick="testarAPI()">Testar API /api/shared/fundos</button>
     </div>
     
     <script>
@@ -104,7 +104,7 @@
         
         async function testarAPI() {
             try {
-                const response = await fetch('/api/fundos');
+                const response = await fetch('/api/shared/fundos');
                 const data = await response.json();
                 console.log('API Response:', data);
                 alert('✓ API funcionando!\n\nImagens: ' + data.imagens.join(', ') + '\nTotal: ' + data.total);

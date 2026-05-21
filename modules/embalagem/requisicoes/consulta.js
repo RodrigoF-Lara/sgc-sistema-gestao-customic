@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function carregarDadosIniciais() {
         try {
             container.innerHTML = '<div class="loader-container"><div class="loader"></div><p>Buscando requisições...</p></div>';
-            const response = await fetch("/api/requisicao"); 
+            const response = await fetch("/api/embalagem/requisicao"); 
             if (!response.ok) throw new Error('Falha ao buscar dados do servidor.');
             
             todasRequisicoes = await response.json();

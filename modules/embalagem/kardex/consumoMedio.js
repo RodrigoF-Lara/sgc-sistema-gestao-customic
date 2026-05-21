@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
 
         try {
-            let url = `/api/relatorios?acao=consumoMedio&periodo=${periodo}`;
+            let url = `/api/embalagem/relatorios?acao=consumoMedio&periodo=${periodo}`;
             if (fornecedor) {
                 url += `&fornecedor=${encodeURIComponent(fornecedor)}`;
             }
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modalMov.style.display = 'flex';
 
         try {
-            const resp = await fetch(`/api/relatorios?acao=movimentacoesProduto&codigo=${encodeURIComponent(codigo)}&janela=${janelaDias}`);
+            const resp = await fetch(`/api/embalagem/relatorios?acao=movimentacoesProduto&codigo=${encodeURIComponent(codigo)}&janela=${janelaDias}`);
             if (!resp.ok) throw new Error('Erro ao buscar movimentações');
             const { movimentacoes, totalSaidas } = await resp.json();
 

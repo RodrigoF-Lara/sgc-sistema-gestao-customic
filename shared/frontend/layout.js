@@ -133,7 +133,7 @@ function inicializarSidebar() {
     if (!usuario) return [];
 
     try {
-      const response = await fetch(`/api/notificacoes?usuario=${encodeURIComponent(usuario)}&limite=${MAX_HISTORY}`);
+      const response = await fetch(`/api/shared/notificacoes?usuario=${encodeURIComponent(usuario)}&limite=${MAX_HISTORY}`);
       if (!response.ok) throw new Error('Erro ao buscar notificações');
       
       const data = await response.json();
@@ -260,7 +260,7 @@ function inicializarSidebar() {
     if (!usuario) return;
 
     try {
-      const response = await fetch('/api/notificacoes', {
+      const response = await fetch('/api/shared/notificacoes', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'limparTodas', usuario })
@@ -281,7 +281,7 @@ function inicializarSidebar() {
     if (!usuario) return;
 
     try {
-      const response = await fetch('/api/notificacoes', {
+      const response = await fetch('/api/shared/notificacoes', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'marcarTodasLidas', usuario })
@@ -354,7 +354,7 @@ function inicializarSidebar() {
 
       try {
         // Enviar notificação para o servidor (será visível para todos)
-        const response = await fetch('/api/notificacoes', {
+        const response = await fetch('/api/shared/notificacoes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

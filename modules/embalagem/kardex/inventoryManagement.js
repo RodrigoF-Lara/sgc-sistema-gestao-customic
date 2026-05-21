@@ -1,4 +1,4 @@
-Ôªødocument.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
   const codigoEl = document.getElementById("codigo");
   const btnConsultar = document.getElementById("consultarBtn");
   const produtoInfo = document.getElementById("produtoInfo");
@@ -23,7 +23,7 @@
   const historicoContainer = document.getElementById("historicoContainer");
   const historicoBody = document.getElementById("historicoBody");
   
-  // Novos elementos para estat√≠sticas
+  // Novos elementos para estatÌsticas
   const estatisticasContainer = document.getElementById("estatisticasContainer");
   const saldoPorLocalContainer = document.getElementById("saldoPorLocalContainer");
 
@@ -49,7 +49,7 @@
     statusEl.textContent = "Buscando...";
     
     try {
-      const res = await fetch(`/api/inventory?codigo=${encodeURIComponent(codigo)}`);
+      const res = await fetch(`/api/embalagem/inventory?codigo=${encodeURIComponent(codigo)}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: "Erro ao consultar" }));
         throw new Error(err.message || "Erro ao consultar");
@@ -70,7 +70,7 @@
       
       statusEl.textContent = "";
       
-      // Habilita bot√µes de entrada e sa√≠da
+      // Habilita botıes de entrada e saÌda
       btnEntrada.disabled = false;
       btnSaida.disabled = false;
       btnZerarEndereco.disabled = false;
@@ -95,7 +95,7 @@
     saldoLocalBody.innerHTML = '<tr><td colspan="5">Buscando...</td></tr>';
     
     try {
-        const res = await fetch(`/api/inventory?action=saldoLocal&codigo=${encodeURIComponent(codigo)}`);
+        const res = await fetch(`/api/embalagem/inventory?action=saldoLocal&codigo=${encodeURIComponent(codigo)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
         renderSaldoAgrupado(data.locais);
@@ -130,11 +130,11 @@
     
     const movimentos = data.movimentos || [];
     const entradas = movimentos.filter(m => m.OPERACAO === 'ENTRADA');
-    const saidas = movimentos.filter(m => m.OPERACAO === 'SA√çDA');
+    const saidas = movimentos.filter(m => m.OPERACAO === 'SAÕDA');
     const saldoTotal = data.saldo || 0;
     
     estatisticasContainer.innerHTML = `
-      <h3>üìä Estat√≠sticas R√°pidas</h3>
+      <h3>?? EstatÌsticas R·pidas</h3>
       <div class="estatisticas-grid">
         <div class="stat-card destaque-saldo">
           <i class="fa-solid fa-boxes-stacked"></i>
@@ -148,12 +148,12 @@
         </div>
         <div class="stat-card">
           <i class="fa-solid fa-arrow-down" style="color: #f44336;"></i>
-          <span class="stat-label">Total Sa√≠das</span>
+          <span class="stat-label">Total SaÌdas</span>
           <span class="stat-value">${saidas.length}</span>
         </div>
         <div class="stat-card">
           <i class="fa-solid fa-calendar-days"></i>
-          <span class="stat-label">√öltima Movimenta√ß√£o</span>
+          <span class="stat-label">⁄ltima MovimentaÁ„o</span>
           <span class="stat-value">${movimentos[0]?.DT ? movimentos[0].DT.split('-').reverse().join('/') : '-'}</span>
         </div>
       </div>
@@ -166,7 +166,7 @@
     historicoBody.innerHTML = "";
     if (!rows || rows.length === 0) {
       historicoBody.innerHTML =
-        '<tr><td colspan="9" style="text-align:center;">Nenhum hist√≥rico encontrado</td></tr>';
+        '<tr><td colspan="9" style="text-align:center;">Nenhum histÛrico encontrado</td></tr>';
       return;
     }
 
@@ -176,7 +176,7 @@
           <td>${row.ID_TB_RESUMO || "-"}</td>
           <td><span class="badge ${
             row.OPERACAO === "ENTRADA" ? "badge-entrada" : "badge-saida"
-          }">${row.OPERACAO === "ENTRADA" ? "‚¨ÜÔ∏è" : "‚¨áÔ∏è"} ${
+          }">${row.OPERACAO === "ENTRADA" ? "??" : "??"} ${
         row.OPERACAO || "-"
       }</span></td>
           <td>${row.ENDERECO || "-"}</td>
@@ -231,14 +231,14 @@
   function gerarEtiqueta100x150(dadosOuArray) {
     const etiquetas = Array.isArray(dadosOuArray) ? dadosOuArray : [dadosOuArray];
     if (etiquetas.length === 0) {
-      console.error("gerarEtiqueta100x150 foi chamada sem dados de etiqueta v√°lidos.");
+      console.error("gerarEtiqueta100x150 foi chamada sem dados de etiqueta v·lidos.");
       return;
     }
 
     const janelaEtiqueta = window.open("", "_blank", "width=800,height=600");
 
     if (!janelaEtiqueta || typeof janelaEtiqueta.closed == 'undefined' || janelaEtiqueta.closed) {
-      alert("A janela de impress√£o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do hist√≥rico.");
+      alert("A janela de impress„o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do histÛrico.");
       return;
     }
 
@@ -253,7 +253,7 @@
         
         <div class="codigo-principal">
             <div class="descricao-card">
-                <div class="descricao-label">DESCRI√á√ÉO DO PRODUTO:</div>
+                <div class="descricao-label">DESCRI«√O DO PRODUTO:</div>
                 <div class="descricao-text">${dados.descricao || "N/A"}</div>
             </div>
         </div>
@@ -270,12 +270,12 @@
             </div>
             
             <div class="info-row">
-                <span class="info-label">ENDERE√áO:</span>
+                <span class="info-label">ENDERE«O:</span>
                 <span class="info-value">${dados.endereco || "-"}</span>
             </div>
             
             <div class="info-row">
-                <span class="info-label">ARMAZ√âM:</span>
+                <span class="info-label">ARMAZ…M:</span>
                 <span class="info-value">${dados.armazem ? String(dados.armazem).padStart(2, "0") : "-"}</span>
             </div>
         </div>
@@ -542,7 +542,7 @@
     </style>
 </head>
 <body>
-    <button class="btn-imprimir no-print" onclick="window.print()">üñ®Ô∏è Imprimir Etiqueta</button>
+    <button class="btn-imprimir no-print" onclick="window.print()">??? Imprimir Etiqueta</button>
     ${etiquetasHtml}    
     <script>
         const etiquetasData = ${JSON.stringify(etiquetas)};
@@ -566,7 +566,7 @@
     janelaEtiqueta.document.write(htmlEtiqueta);
     janelaEtiqueta.document.close();
 
-    // Adiciona um pequeno delay para garantir que o conte√∫do foi renderizado antes de imprimir
+    // Adiciona um pequeno delay para garantir que o conte˙do foi renderizado antes de imprimir
     setTimeout(() => {
       janelaEtiqueta.print();
     }, 500);
@@ -578,7 +578,7 @@
 
     const janelaEtiqueta = window.open("", "_blank", "width=420,height=360");
     if (!janelaEtiqueta || typeof janelaEtiqueta.closed == 'undefined' || janelaEtiqueta.closed) {
-      alert("A janela de impress√£o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do hist√≥rico.");
+      alert("A janela de impress„o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do histÛrico.");
       return;
     }
 
@@ -747,7 +747,7 @@
     </style>
 </head>
 <body>
-    <button class="btn-imprimir no-print" onclick="window.print()">üñ®Ô∏è Imprimir Etiqueta</button>
+    <button class="btn-imprimir no-print" onclick="window.print()">??? Imprimir Etiqueta</button>
     ${etiquetasHtml}
     <script>
         const etiquetasData = ${JSON.stringify(etiquetas)};
@@ -773,14 +773,14 @@
     setTimeout(() => { janelaEtiqueta.print(); }, 500);
   }
 
-  // --- L√≥gica de Zerar C√≥digo ---
+  // --- LÛgica de Zerar CÛdigo ---
 
   btnZerarCodigo.addEventListener("click", () => {
     if (!codigoAtual) return;
     const descricao = document.getElementById("infoDescricao").textContent.trim();
     const saldo = document.getElementById("infoQuantidade").textContent.trim();
     document.getElementById("msgZerarCodigo").textContent =
-      `Voc√™ est√° prestes a zerar TODAS as ${saldo} unidades do produto ${descricao} (${codigoAtual}) em todos os endere√ßos.`;
+      `VocÍ est· prestes a zerar TODAS as ${saldo} unidades do produto ${descricao} (${codigoAtual}) em todos os endereÁos.`;
     modalZerarCodigo.style.display = "flex";
   });
 
@@ -803,7 +803,7 @@
     const usuario = localStorage.getItem("userName") || "WEB";
 
     try {
-      const res = await fetch("/api/inventory", {
+      const res = await fetch("/api/embalagem/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -818,17 +818,17 @@
 
       modalZerarCodigo.style.display = "none";
       statusEl.style.color = "#28a745";
-      statusEl.textContent = data.message || "C√≥digo zerado com sucesso!";
+      statusEl.textContent = data.message || "CÛdigo zerado com sucesso!";
       setTimeout(() => consultar(codigoAtual), 500);
     } catch (err) {
-      alert(`Erro ao zerar c√≥digo: ${err.message}`);
+      alert(`Erro ao zerar cÛdigo: ${err.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = "‚ö†Ô∏è SIM, ZERAR TUDO";
+      btn.textContent = "?? SIM, ZERAR TUDO";
     }
   });
 
-  // --- L√≥gica de Alterar Endere√ßo ---
+  // --- LÛgica de Alterar EndereÁo ---
 
   btnAlterarEndereco.addEventListener("click", () => {
     if (!codigoAtual) return;
@@ -838,7 +838,7 @@
     document.getElementById("endNovoAlterar").value = "";
     document.getElementById("confirmarAlterarContainer").style.display = "none";
     const btn = document.getElementById("submitAlterar");
-    btn.textContent = "üîç Localizar Saldo";
+    btn.textContent = "?? Localizar Saldo";
     btn.dataset.step = "localizar";
     btn.disabled = false;
     modalAlterarEndereco.style.display = "flex";
@@ -870,7 +870,7 @@
       btn.disabled = true;
       btn.textContent = "Buscando...";
       try {
-        const res = await fetch(`/api/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
+        const res = await fetch(`/api/embalagem/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
 
@@ -879,9 +879,9 @@
         );
 
         if (lotesFiltrados.length === 0) {
-          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armaz√©m ${armAtual} / endere√ßo ${endAtual}.`);
+          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armazÈm ${armAtual} / endereÁo ${endAtual}.`);
           btn.disabled = false;
-          btn.textContent = "üîç Localizar Saldo";
+          btn.textContent = "?? Localizar Saldo";
           return;
         }
 
@@ -889,21 +889,21 @@
         const descricao = document.getElementById("infoDescricao").textContent.trim();
         document.getElementById("mensagemConfirmarAlterar").textContent =
           `Transferir ${totalSaldo} unidades de "${descricao}" (${codigoAtual}) ` +
-          `de ARM:${armAtual} END:${endAtual} ‚Üí ARM:${armNovo} END:${endNovo}?`;
+          `de ARM:${armAtual} END:${endAtual} ? ARM:${armNovo} END:${endNovo}?`;
         document.getElementById("confirmarAlterarContainer").style.display = "block";
-        btn.textContent = "‚úì CONFIRMAR TRANSFER√äNCIA";
+        btn.textContent = "? CONFIRMAR TRANSFER NCIA";
         btn.dataset.step = "confirmar";
         btn.disabled = false;
       } catch (err) {
         alert(`Erro: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = "üîç Localizar Saldo";
+        btn.textContent = "?? Localizar Saldo";
       }
     } else {
       btn.disabled = true;
       btn.textContent = "Transferindo...";
       try {
-        const res = await fetch("/api/inventory", {
+        const res = await fetch("/api/embalagem/inventory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -923,17 +923,17 @@
         btn.disabled = false;
         modalAlterarEndereco.style.display = "none";
         statusEl.style.color = "#28a745";
-        statusEl.textContent = data.message || "Endere√ßo alterado com sucesso!";
+        statusEl.textContent = data.message || "EndereÁo alterado com sucesso!";
         setTimeout(() => consultar(codigoAtual), 500);
       } catch (err) {
-        alert(`Erro ao alterar endere√ßo: ${err.message}`);
+        alert(`Erro ao alterar endereÁo: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = "‚úì CONFIRMAR TRANSFER√äNCIA";
+        btn.textContent = "? CONFIRMAR TRANSFER NCIA";
       }
     }
   });
 
-  // --- L√≥gica de Zerar Endere√ßo ---
+  // --- LÛgica de Zerar EndereÁo ---
 
   btnZerarEndereco.addEventListener("click", () => {
     if (!codigoAtual) return;
@@ -941,7 +941,7 @@
     document.getElementById("enderecoZerar").value = "";
     document.getElementById("confirmarZerarContainer").style.display = "none";
     const submitBtn = document.getElementById("submitZerarEndereco");
-    submitBtn.textContent = "‚úì Localizar Saldo";
+    submitBtn.textContent = "? Localizar Saldo";
     submitBtn.dataset.step = "localizar";
     submitBtn.disabled = false;
     modalZerarEndereco.style.display = "flex";
@@ -970,11 +970,11 @@
     const step = submitBtn.dataset.step || "localizar";
 
     if (step === "localizar") {
-      // Passo 1: buscar o saldo do endere√ßo e confirmar
+      // Passo 1: buscar o saldo do endereÁo e confirmar
       submitBtn.disabled = true;
       submitBtn.textContent = "Buscando...";
       try {
-        const res = await fetch(`/api/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
+        const res = await fetch(`/api/embalagem/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
 
@@ -983,32 +983,32 @@
         );
 
         if (lotesFiltrados.length === 0) {
-          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armaz√©m ${arm} / endere√ßo ${end}.`);
+          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armazÈm ${arm} / endereÁo ${end}.`);
           submitBtn.disabled = false;
-          submitBtn.textContent = "‚úì Localizar Saldo";
+          submitBtn.textContent = "? Localizar Saldo";
           return;
         }
 
         const totalSaldo = lotesFiltrados.reduce((sum, l) => sum + (l.SALDO || 0), 0);
         const descricao = document.getElementById("infoDescricao").textContent.trim();
         document.getElementById("mensagemConfirmarZerar").textContent =
-          `Confirmar SA√çDA de ${totalSaldo} unidades do produto ${descricao} (${codigoAtual}) ` +
-          `no armaz√©m ${arm} / endere√ßo ${end}?`;
+          `Confirmar SAÕDA de ${totalSaldo} unidades do produto ${descricao} (${codigoAtual}) ` +
+          `no armazÈm ${arm} / endereÁo ${end}?`;
         document.getElementById("confirmarZerarContainer").style.display = "block";
-        submitBtn.textContent = "‚ö†Ô∏è CONFIRMAR ZERAMENTO";
+        submitBtn.textContent = "?? CONFIRMAR ZERAMENTO";
         submitBtn.dataset.step = "confirmar";
         submitBtn.disabled = false;
       } catch (err) {
         alert(`Erro: ${err.message}`);
         submitBtn.disabled = false;
-        submitBtn.textContent = "‚úì Localizar Saldo";
+        submitBtn.textContent = "? Localizar Saldo";
       }
     } else {
       // Passo 2: executar o zeramento
       submitBtn.disabled = true;
       submitBtn.textContent = "Zerando...";
       try {
-        const res = await fetch("/api/inventory", {
+        const res = await fetch("/api/embalagem/inventory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1026,17 +1026,17 @@
         submitBtn.disabled = false;
         modalZerarEndereco.style.display = "none";
         statusEl.style.color = "#28a745";
-        statusEl.textContent = data.message || "Endere√ßo zerado com sucesso!";
+        statusEl.textContent = data.message || "EndereÁo zerado com sucesso!";
         setTimeout(() => consultar(codigoAtual), 500);
       } catch (err) {
-        alert(`Erro ao zerar endere√ßo: ${err.message}`);
+        alert(`Erro ao zerar endereÁo: ${err.message}`);
         submitBtn.disabled = false;
-        submitBtn.textContent = "‚ö†Ô∏è CONFIRMAR ZERAMENTO";
+        submitBtn.textContent = "?? CONFIRMAR ZERAMENTO";
       }
     }
   });
 
-  // --- L√≥gica de Eventos ---
+  // --- LÛgica de Eventos ---
 
   btnConsultar.addEventListener("click", () => {
     const codigo = codigoEl.value.trim();
@@ -1052,17 +1052,17 @@
 
   btnEntrada.addEventListener("click", () => {
     if (!codigoAtual) return;
-    tituloModal.textContent = "üì• Registrar ENTRADA";
+    tituloModal.textContent = "?? Registrar ENTRADA";
     tituloModal.style.color = "#4caf50";
-    iconModal.textContent = "üì•";
+    iconModal.textContent = "??";
     iconModal.style.color = "#4caf50";
     inputTipoMovimento.value = "ENTRADA";
     submitBtn.className = "btn-movimento entrada";
-    submitBtn.textContent = "‚úì Registrar Entrada";
+    submitBtn.textContent = "? Registrar Entrada";
 
-    // Mostra/oculta campos e ajusta valida√ß√£o
+    // Mostra/oculta campos e ajusta validaÁ„o
     document.getElementById('loteSelectorContainer').style.display = 'none';
-    document.getElementById('loteIdModal').required = false; // <-- Corre√ß√£o
+    document.getElementById('loteIdModal').required = false; // <-- CorreÁ„o
     document.getElementById('entradaFields').style.display = 'block';
     document.getElementById('repeticoesContainer').style.display = 'block';
     
@@ -1071,33 +1071,33 @@
 
   btnSaida.addEventListener("click", async () => {
     if (!codigoAtual) {
-      alert('Consulte um produto antes de registrar uma sa√≠da.');
+      alert('Consulte um produto antes de registrar uma saÌda.');
       return;
     }
-    tituloModal.textContent = `üì§ Registrar SA√çDA`;
+    tituloModal.textContent = `?? Registrar SAÕDA`;
     tituloModal.style.color = "#f44336";
-    iconModal.textContent = "üì§";
+    iconModal.textContent = "??";
     iconModal.style.color = "#f44336";
     inputTipoMovimento.value = "SAIDA";
     submitBtn.className = "btn-movimento saida";
-    submitBtn.textContent = "‚úì Registrar Sa√≠da";
+    submitBtn.textContent = "? Registrar SaÌda";
 
-    // Mostra/oculta campos e ajusta valida√ß√£o
+    // Mostra/oculta campos e ajusta validaÁ„o
     document.getElementById('loteSelectorContainer').style.display = 'block';
-    document.getElementById('loteIdModal').required = true; // <-- Corre√ß√£o
+    document.getElementById('loteIdModal').required = true; // <-- CorreÁ„o
     document.getElementById('entradaFields').style.display = 'none';
     document.getElementById('repeticoesContainer').style.display = 'none';
     
     modalMovimento.style.display = "flex";
 
-    // Busca e popula os lotes dispon√≠veis
+    // Busca e popula os lotes disponÌveis
     const loteSelect = document.getElementById('loteIdModal');
     loteSelect.innerHTML = '<option value="">Carregando lotes...</option>';
     loteSelect.disabled = true;
-    loteSelecionado = null; // Reseta sele√ß√£o anterior
+    loteSelecionado = null; // Reseta seleÁ„o anterior
 
     try {
-        const res = await fetch(`/api/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
+        const res = await fetch(`/api/embalagem/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
 
@@ -1142,15 +1142,15 @@
             id: selectedOption.value,
             saldo: parseFloat(selectedOption.dataset.saldo)
         };
-        // Atualiza o t√≠tulo do modal com o ID selecionado
-        tituloModal.textContent = `üì§ Registrar SA√çDA (Lote ID: ${loteSelecionado.id})`;
+        // Atualiza o tÌtulo do modal com o ID selecionado
+        tituloModal.textContent = `?? Registrar SAÕDA (Lote ID: ${loteSelecionado.id})`;
     } else {
         loteSelecionado = null;
-        tituloModal.textContent = `üì§ Registrar SA√çDA`;
+        tituloModal.textContent = `?? Registrar SAÕDA`;
     }
   });
 
-  // ===== Filtros do Hist√≥rico de Movimentos =====
+  // ===== Filtros do HistÛrico de Movimentos =====
   function aplicarFiltrosHistorico() {
     const filtros = Array.from(document.querySelectorAll('.filtro-hist')).map(el => ({
       col: parseInt(el.dataset.col, 10),
@@ -1159,7 +1159,7 @@
 
     const rows = historicoBody.querySelectorAll('tr');
     rows.forEach(tr => {
-      // N√£o filtra linhas de mensagem (sem data-id-movimento)
+      // N„o filtra linhas de mensagem (sem data-id-movimento)
       if (!tr.hasAttribute('data-id-movimento')) return;
       let visivel = true;
       for (const f of filtros) {
@@ -1185,22 +1185,22 @@
     });
   }
 
-  // Reaplica filtros sempre que o hist√≥rico for renderizado novamente
+  // Reaplica filtros sempre que o histÛrico for renderizado novamente
   const _origRenderHistorico = renderHistorico;
   renderHistorico = function(rows) {
     _origRenderHistorico(rows);
     aplicarFiltrosHistorico();
   };
 
-  // Listener para o bot√£o de reimprimir etiqueta
+  // Listener para o bot„o de reimprimir etiqueta
   document.getElementById('historicoBody').addEventListener('click', function(event) {
     const target = event.target.closest('.btn-reimprimir');
     if (target) {
         const row = target.closest('tr');
-        const operacao = row.cells[1].textContent.trim().replace('‚¨ÜÔ∏è', '').replace('‚¨áÔ∏è', '').trim();
+        const operacao = row.cells[1].textContent.trim().replace('??', '').replace('??', '').trim();
         
         if (operacao !== 'ENTRADA') {
-            alert('A reimpress√£o de etiquetas est√° dispon√≠vel apenas para movimenta√ß√µes de ENTRADA.');
+            alert('A reimpress„o de etiquetas est· disponÌvel apenas para movimentaÁıes de ENTRADA.');
             return;
         }
 
@@ -1235,11 +1235,11 @@
 
     if (tipo === 'SAIDA') {
       if (!loteSelecionado) {
-        alert("Erro fatal: Nenhum lote selecionado. A opera√ß√£o n√£o pode continuar.");
+        alert("Erro fatal: Nenhum lote selecionado. A operaÁ„o n„o pode continuar.");
         return;
       }
       if (quantidade > loteSelecionado.saldo) {
-        alert(`Quantidade inv√°lida. O lote selecionado (${loteSelecionado.id}) possui saldo de apenas ${loteSelecionado.saldo}.`);
+        alert(`Quantidade inv·lida. O lote selecionado (${loteSelecionado.id}) possui saldo de apenas ${loteSelecionado.saldo}.`);
         return;
       }
     }
@@ -1247,17 +1247,17 @@
     statusEl.style.color = "#222";
     statusEl.textContent = "Registrando...";
 
-    // Bloqueia o bot√£o para evitar cliques duplicados
+    // Bloqueia o bot„o para evitar cliques duplicados
     submitBtn.disabled = true;
     const textoOriginalBtn = submitBtn.textContent;
-    submitBtn.textContent = "‚è≥ Aguarde...";
+    submitBtn.textContent = "? Aguarde...";
 
     const etiquetasParaImprimir = [];
 
     try {
       for (let i = 0; i < repeticoes; i++) {
         if (repeticoes > 1) {
-          submitBtn.textContent = `‚è≥ Registrando ${i + 1}/${repeticoes}...`;
+          submitBtn.textContent = `? Registrando ${i + 1}/${repeticoes}...`;
           statusEl.textContent = `Registrando ${i + 1} de ${repeticoes}...`;
         }
         
@@ -1275,7 +1275,7 @@
             body.idTbResumo = loteSelecionado.id;
         }
 
-        const res = await fetch("/api/inventory", {
+        const res = await fetch("/api/embalagem/inventory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),

@@ -28,7 +28,7 @@ document.getElementById('csvForm').addEventListener('submit', async function(e) 
     try {
         // Criar a requisição
         // ALTERAÇÃO AQUI
-        const responseNovaReq = await fetch("/api/requisicao", {
+        const responseNovaReq = await fetch("/api/embalagem/requisicao", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -58,7 +58,7 @@ document.getElementById('csvForm').addEventListener('submit', async function(e) 
             complete: async function(results) {
                 try {
                     // ALTERAÇÃO AQUI
-        const responseUpload = await fetch("/api/requisicao", {
+        const responseUpload = await fetch("/api/embalagem/requisicao", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

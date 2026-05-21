@@ -74,7 +74,7 @@ async function buscarFornecedor() {
     const cod = v("cod-forn");
     if (!cod) return showToast("Informe o código do fornecedor.", "error");
     try {
-        const data = await apiFetch(`/api/lancamentoNF?action=buscar_fornecedor&cod=${encodeURIComponent(cod)}`);
+        const data = await apiFetch(`/api/embalagem/lancamentoNF?action=buscar_fornecedor&cod=${encodeURIComponent(cod)}`);
         $("razao-social").value = data.RAZAO_SOCIAL;
         state.codForn = data.COD_FORNECEDOR;
         state.razaoSocial = data.RAZAO_SOCIAL;
@@ -92,7 +92,7 @@ async function buscarFornecedor() {
 }
 
 async function carregarNFsFornecedor(cod) {
-    const data = await apiFetch(`/api/lancamentoNF?action=nfs_fornecedor&cod=${encodeURIComponent(cod)}`);
+    const data = await apiFetch(`/api/embalagem/lancamentoNF?action=nfs_fornecedor&cod=${encodeURIComponent(cod)}`);
     const sel = $("sel-nf-existente");
     sel.innerHTML = '<option value="">-- Nova NF --</option>';
     data.forEach(nf => {
@@ -111,7 +111,7 @@ $("sel-nf-existente").addEventListener("change", async () => {
 
 async function carregarCabecalho(idNF) {
     try {
-        const data = await apiFetch(`/api/lancamentoNF?action=cabecalho&id_nf=${idNF}`);
+        const data = await apiFetch(`/api/embalagem/lancamentoNF?action=cabecalho&id_nf=${idNF}`);
         $("num-nf").value          = data.CAB_NUM_NF || "";
         $("pedido-compra").value   = data.CAB_PC || "";
         $("qnt-total-itens").value = data.CAB_QNT_TOTAL_ITENS || 0;
@@ -189,7 +189,7 @@ $("btn-lancar-nf").addEventListener("click", async () => {
             usuario:       usuario(),
         };
 
-        const resp = await apiFetch("/api/lancamentoNF?action=criar_cabecalho", {
+        const resp = await apiFetch("/api/embalagem/lancamentoNF?action=criar_cabecalho", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -223,7 +223,7 @@ $("btn-excluir-nf").addEventListener("click", async () => {
     if (!confirm(`Excluir NF ${state.numNF} e todos os seus produtos? Esta ação não pode ser desfeita.`)) return;
 
     try {
-        await apiFetch("/api/lancamentoNF?action=excluir_nf", {
+        await apiFetch("/api/embalagem/lancamentoNF?action=excluir_nf", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id_nf: state.idNF, num_nf: state.numNF }),
@@ -248,7 +248,7 @@ async function buscarProduto() {
     const cod = v("prod-codigo");
     if (!cod) return;
     try {
-        const data = await apiFetch(`/api/lancamentoNF?action=saldo_produto&codigo=${encodeURIComponent(cod)}`);
+        const data = await apiFetch(`/api/embalagem/lancamentoNF?action=saldo_produto&codigo=${encodeURIComponent(cod)}`);
         $("prod-descricao").value = data.descricao;
         $("prod-saldo").value = data.saldo;
 
@@ -410,7 +410,7 @@ $("btn-inserir-prod").addEventListener("click", async () => {
             ...custos,
         };
 
-        await apiFetch("/api/lancamentoNF?action=inserir_produto", {
+        await apiFetch("/api/embalagem/lancamentoNF?action=inserir_produto", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -467,7 +467,7 @@ $("btn-alterar-prod").addEventListener("click", async () => {
             ...custos,
         };
 
-        await apiFetch("/api/lancamentoNF?action=alterar_produto", {
+        await apiFetch("/api/embalagem/lancamentoNF?action=alterar_produto", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -494,7 +494,7 @@ $("btn-remover-prod").addEventListener("click", async () => {
     if (!confirm(`Remover produto ${p.PROD_COD_PROD} (${p.DESCRICAO}) da NF?`)) return;
 
     try {
-        await apiFetch("/api/lancamentoNF?action=remover_produto", {
+        await apiFetch("/api/embalagem/lancamentoNF?action=remover_produto", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id_prod: p.PROD_ID_PROD }),
@@ -518,7 +518,7 @@ $("btn-finalizar-nf").addEventListener("click", async () => {
     btn.disabled = true; btn.textContent = "⏳ Verificando...";
 
     try {
-        const data = await apiFetch("/api/lancamentoNF?action=finalizar_nf", {
+        const data = await apiFetch("/api/embalagem/lancamentoNF?action=finalizar_nf", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id_nf: state.idNF }),
@@ -588,7 +588,7 @@ $("btn-finalizar-nf").addEventListener("click", async () => {
 /* --- Carregar lista de produtos da NF ------------------- */
 async function carregarProdutos() {
     if (!state.idNF) return;
-    const data = await apiFetch(`/api/lancamentoNF?action=produtos&id_nf=${state.idNF}`);
+    const data = await apiFetch(`/api/embalagem/lancamentoNF?action=produtos&id_nf=${state.idNF}`);
     state.produtos = data;
     renderizarTabelaProdutos(data);
 }
@@ -681,7 +681,7 @@ async function buscarCusto() {
     if (!cod) return showToast("Informe o código do produto.", "error");
 
     try {
-        const data = await apiFetch(`/api/lancamentoNF?action=saldo_produto&codigo=${encodeURIComponent(cod)}`);
+        const data = await apiFetch(`/api/embalagem/lancamentoNF?action=saldo_produto&codigo=${encodeURIComponent(cod)}`);
         $("custo-info").style.display = "block";
         $("custo-saldo").textContent = data.saldo;
         $("custo-cont-atual").textContent = moeda(data.custo?.PROD_CUSTO_CONTABIL_MEDIO_NOVO || 0);
@@ -701,7 +701,7 @@ async function buscarCusto() {
 }
 
 async function carregarHistoricoCustos(codigo) {
-    const data = await apiFetch(`/api/lancamentoNF?action=produtos&id_nf=-1`).catch(() => []);
+    const data = await apiFetch(`/api/embalagem/lancamentoNF?action=produtos&id_nf=-1`).catch(() => []);
     // Não faz sentido buscar produtos por código sem um endpoint dedicado
     // Vamos mostrar aviso
     $("tbCustoBody").innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">Histórico disponível após primeiro lançamento.</td></tr>`;
@@ -715,7 +715,7 @@ $("btn-salvar-primeiro-custo").addEventListener("click", async () => {
     btn.disabled = true; btn.textContent = "⏳ Salvando...";
 
     try {
-        await apiFetch("/api/lancamentoNF?action=primeiro_custo", {
+        await apiFetch("/api/embalagem/lancamentoNF?action=primeiro_custo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -749,7 +749,7 @@ async function pesquisarNF() {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#999;">Buscando...</td></tr>`;
 
     try {
-        const data = await apiFetch(`/api/lancamentoNF?action=pesquisa_nf&num_nf=${encodeURIComponent(numNF)}`);
+        const data = await apiFetch(`/api/embalagem/lancamentoNF?action=pesquisa_nf&num_nf=${encodeURIComponent(numNF)}`);
 
         if (!data.length) {
             tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#999;">Nenhuma NF encontrada.</td></tr>`;
@@ -792,7 +792,7 @@ async function pesquisarNF() {
 
                 // Busca razão social
                 try {
-                    const forn = await apiFetch(`/api/lancamentoNF?action=buscar_fornecedor&cod=${encodeURIComponent(codForn)}`);
+                    const forn = await apiFetch(`/api/embalagem/lancamentoNF?action=buscar_fornecedor&cod=${encodeURIComponent(codForn)}`);
                     $("razao-social").value = forn.RAZAO_SOCIAL;
                     state.razaoSocial = forn.RAZAO_SOCIAL;
                 } catch {}

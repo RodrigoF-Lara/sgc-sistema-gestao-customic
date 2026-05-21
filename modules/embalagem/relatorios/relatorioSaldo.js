@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function carregarTiposProduto() {
         try {
-            const response = await fetch('/api/relatorios?acao=tiposProduto');
+            const response = await fetch('/api/embalagem/relatorios?acao=tiposProduto');
             if (!response.ok) throw new Error('Erro ao carregar tipos');
             
             const data = await response.json();
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            let url = `/api/relatorios?acao=saldoEstoque`;
+            let url = `/api/embalagem/relatorios?acao=saldoEstoque`;
             if (chkSaldoPositivo.checked)  url += '&saldoPositivo=sim';
             if (chkSaldoZero.checked)      url += '&saldoZero=sim';
             if (chkSaldoNegativo.checked)  url += '&saldoNegativo=sim';

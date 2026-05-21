@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modalMsg.textContent = 'Criando produto...';
 
         try {
-            const res = await fetch('/api/cadastros?tipo=produtos', {
+            const res = await fetch('/api/shared/cadastros?tipo=produtos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ acao: 'criar', codigo, descricao, tipo })
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
         buscarBtn.disabled = true;
 
         try {
-            let url = '/api/cadastros?tipo=produtos&acao=listar';
+            let url = '/api/shared/cadastros?tipo=produtos&acao=listar';
             if (codigo) url += `&codigo=${encodeURIComponent(codigo)}`;
             if (descricao) url += `&descricao=${encodeURIComponent(descricao)}`;
             if (curva) url += `&curva=${curva}`;
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
 
                     // Salva automaticamente
-                    const response = await fetch('/api/cadastros?tipo=produtos', {
+                    const response = await fetch('/api/shared/cadastros?tipo=produtos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
         editModalMsg.style.color = '#1976d2';
         editModalMsg.textContent = 'Salvando...';
         try {
-            const res = await fetch('/api/cadastros?tipo=produtos', {
+            const res = await fetch('/api/shared/cadastros?tipo=produtos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

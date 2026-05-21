@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
 
         try {
-            let url = `/api/relatorios?acao=requisicoes&dataInicio=${inicio}&dataFim=${fim}`;
+            let url = `/api/embalagem/relatorios?acao=requisicoes&dataInicio=${inicio}&dataFim=${fim}`;
             if (status) {
                 url += `&status=${status}`;
             }

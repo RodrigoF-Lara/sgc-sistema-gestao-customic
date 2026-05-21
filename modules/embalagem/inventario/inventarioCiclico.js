@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
             gerarListaBtn.disabled = true;
             gerarListaBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
 
-            const response = await fetch('/api/inventarioCiclico?acao=gerarLista');
+            const response = await fetch('/api/embalagem/inventarioCiclico?acao=gerarLista');
             const data = await response.json();
 
             if (!response.ok) {
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.textContent = 'Salvando inventário...';
             salvarInventarioBtn.disabled = true;
 
-            const response = await fetch('/api/inventarioCiclico', {
+            const response = await fetch('/api/embalagem/inventarioCiclico', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
             carregarInventariosBtn.disabled = true;
             listaInventariosSalvos.innerHTML = '<div class="loader"></div>';
             
-            const response = await fetch('/api/inventarioCiclico?acao=listar');
+            const response = await fetch('/api/embalagem/inventarioCiclico?acao=listar');
             const data = await response.json();
 
             if (!response.ok) {
@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.style.color = '#222';
             statusMessage.textContent = 'Carregando inventário...';
 
-            const response = await fetch(`/api/inventarioCiclico?acao=abrir&id=${idInventario}`);
+            const response = await fetch(`/api/embalagem/inventarioCiclico?acao=abrir&id=${idInventario}`);
             const data = await response.json();
 
             if (!response.ok) {
@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const usuario = localStorage.getItem('userName') || 'Sistema';
 
         try {
-            const response = await fetch('/api/inventarioCiclico', {
+            const response = await fetch('/api/embalagem/inventarioCiclico', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -576,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.style.color = '#222';
             statusMessage.textContent = 'Removendo item...';
 
-            fetch('/api/inventarioCiclico', {
+            fetch('/api/embalagem/inventarioCiclico', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ acao: 'removerItem', idInventario: inventarioAtual.id, codigo })
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.textContent = 'Buscando produto...';
 
             // Busca informações do produto no banco
-            const response = await fetch(`/api/inventarioCiclico?acao=buscarProduto&codigo=${codigoLimpo}`);
+            const response = await fetch(`/api/embalagem/inventarioCiclico?acao=buscarProduto&codigo=${codigoLimpo}`);
             const data = await response.json();
 
             if (!response.ok) {
@@ -667,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Se o inventário já está salvo, persiste no banco
             if (inventarioAtual.id) {
                 statusMessage.textContent = 'Salvando item no banco...';
-                const respAdd = await fetch('/api/inventarioCiclico', {
+                const respAdd = await fetch('/api/embalagem/inventarioCiclico', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ acao: 'adicionarItem', idInventario: inventarioAtual.id, item: novoItem })
@@ -712,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.textContent = 'Finalizando inventário...';
             finalizarInventarioBtn.disabled = true;
 
-            const response = await fetch('/api/inventarioCiclico', {
+            const response = await fetch('/api/embalagem/inventarioCiclico', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -8,7 +8,7 @@
     
     try {
       // Buscar lista de imagens da API
-      const response = await fetch('/api/fundos');
+      const response = await fetch('/api/shared/fundos');
       const data = await response.json();
       
       if (data.success && data.imagens.length > 0) {

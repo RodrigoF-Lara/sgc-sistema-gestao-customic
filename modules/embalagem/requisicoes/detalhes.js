@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             headerContainer.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
             itemsContainer.innerHTML = '';
-            const response = await fetch(`/api/requisicao?id=${idReq}`);
+            const response = await fetch(`/api/embalagem/requisicao?id=${idReq}`);
             const responseData = await response.json();
             if (!response.ok) { throw new Error(responseData.message); }
             renderHeader(responseData.header);
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             logContent.innerHTML = '<div class="loader"></div>';
             logModal.style.display = 'block';
             try {
-                const response = await fetch(`/api/requisicao?idReqItemLog=${idReqItem}&idReqLog=${idReq}`);
+                const response = await fetch(`/api/embalagem/requisicao?idReqItemLog=${idReqItem}&idReqLog=${idReq}`);
                 const logData = await response.json();
                 if (!response.ok) throw new Error(logData.message || 'Erro ao buscar histórico.');
                 if (logData.length === 0) {
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (confirm(`Alterar status de "${originalStatus}" para "${novoStatus}"?`)) {
                 try {
                     target.disabled = true;
-                    const response = await fetch('/api/requisicao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'updateStatus', idReqItem, idReq, novoStatus, statusAntigo: originalStatus, usuario }) });
+                    const response = await fetch('/api/embalagem/requisicao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'updateStatus', idReqItem, idReq, novoStatus, statusAntigo: originalStatus, usuario }) });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message);
                     if (novoStatus === 'Finalizado' && window.SGCNotifications) {
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             try {
                 bulkApplyBtn.disabled = true;
                 bulkApplyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aplicando...';
-                const response = await fetch('/api/requisicao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bulkUpdateStatus', itemIds, idReq, novoStatus, usuario }) });
+                const response = await fetch('/api/embalagem/requisicao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bulkUpdateStatus', itemIds, idReq, novoStatus, usuario }) });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message);
                 alert(result.message);
