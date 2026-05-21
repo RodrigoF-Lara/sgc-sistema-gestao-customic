@@ -106,6 +106,48 @@ function inicializarSidebar() {
       }
     });
   }
+
+  // ===== Toggle de sidebar para mobile =====
+  inicializarSidebarMobile();
+}
+
+function inicializarSidebarMobile() {
+  // Evita duplicar elementos se layout for re-inicializado
+  if (document.getElementById('sidebar-toggle-btn')) return;
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'sidebar-toggle-btn';
+  toggleBtn.className = 'sidebar-toggle-btn';
+  toggleBtn.setAttribute('aria-label', 'Abrir/fechar menu');
+  toggleBtn.innerHTML = '<i class="fa fa-bars"></i>';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sidebar-overlay';
+  overlay.className = 'sidebar-overlay';
+
+  document.body.appendChild(toggleBtn);
+  document.body.appendChild(overlay);
+
+  const close = () => document.body.classList.remove('sidebar-open');
+  const open  = () => document.body.classList.add('sidebar-open');
+  const toggle = () => {
+    if (document.body.classList.contains('sidebar-open')) close(); else open();
+  };
+
+  toggleBtn.addEventListener('click', toggle);
+  overlay.addEventListener('click', close);
+
+  // Fecha ao clicar em qualquer link de navegação (após navegar)
+  document.querySelectorAll('.sidebar-nav a').forEach(a => {
+    a.addEventListener('click', () => {
+      if (window.innerWidth <= 768) close();
+    });
+  });
+
+  // Fecha com ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') close();
+  });
 }
 
 // =====================================================================
