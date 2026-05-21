@@ -241,6 +241,9 @@ async function handleProdutos(req, res, pool, method) {
     if (acao === 'criar') {
       return await criarProduto(req, res, pool);
     }
+    if (acao === 'atualizar') {
+      return await atualizarProdutosAlteracoes(req, res, pool);
+    }
     return await atualizarProdutos(req, res, pool);
   }
 
@@ -249,16 +252,101 @@ async function handleProdutos(req, res, pool, method) {
 
 async function listarProdutos(req, res, pool) {
   try {
-    const result = await pool.request().query(`
-      SELECT CODIGO, DESCRICAO, TIPO, DEPOSITO
+    const { codigo, descricao, curva, ativo } = req.query || {};
+
+    const request = pool.request();
+    const where = [];
+
+    if (codigo) {
+      request.input('codigo', sql.NVarChar, String(codigo).trim());
+      where.push('CODIGO LIKE @codigo + \'%\'');
+    }
+    if (descricao) {
+      request.input('descricao', sql.NVarChar, String(descricao).trim());
+      where.push('DESCRICAO LIKE \'%\' + @descricao + \'%\'');
+    }
+    if (curva) {
+      request.input('curva', sql.NVarChar, String(curva).trim());
+      where.push('CURVA_A_B_C = @curva');
+    }
+    if (ativo !== undefined && ativo !== '' && ativo !== null) {
+      request.input('ativo', sql.Int, parseInt(ativo, 10));
+      where.push('ATIVO = @ativo');
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const result = await request.query(`
+      SELECT TOP 500 CODIGO, DESCRICAO, TIPO, DEPOSITO, CURVA_A_B_C, ATIVO
       FROM [dbo].[CAD_PROD]
+      ${whereSql}
       ORDER BY CODIGO
     `);
 
-    return res.status(200).json(result.recordset);
+    const produtos = result.recordset.map(p => ({
+      ...p,
+      ATIVO: (p.ATIVO && p.ATIVO.type === 'Buffer' && p.ATIVO.data)
+        ? p.ATIVO.data[0]
+        : (typeof p.ATIVO === 'boolean' ? (p.ATIVO ? 1 : 0) : p.ATIVO)
+    }));
+
+    return res.status(200).json({ produtos });
   } catch (error) {
     console.error("Erro ao listar produtos:", error);
-    return res.status(500).json({ message: "Erro ao buscar produtos" });
+    return res.status(500).json({ message: "Erro ao buscar produtos", error: error.message });
+  }
+}
+
+async function atualizarProdutosAlteracoes(req, res, pool) {
+  const { alteracoes } = req.body;
+
+  if (!Array.isArray(alteracoes) || alteracoes.length === 0) {
+    return res.status(400).json({ message: "Envie um array de alterações" });
+  }
+
+  try {
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    for (const alt of alteracoes) {
+      const sets = [];
+      const reqUp = new sql.Request(transaction);
+      reqUp.input('codigo', sql.NVarChar, alt.codigo);
+
+      if (alt.descricao !== undefined) {
+        reqUp.input('descricao', sql.NVarChar, alt.descricao);
+        sets.push('DESCRICAO = @descricao');
+      }
+      if (alt.tipo !== undefined) {
+        reqUp.input('tipo', sql.NVarChar, alt.tipo);
+        sets.push('TIPO = @tipo');
+      }
+      if (alt.curva !== undefined) {
+        reqUp.input('curva', sql.NVarChar, alt.curva);
+        sets.push('CURVA_A_B_C = @curva');
+      }
+      if (alt.ativo !== undefined) {
+        reqUp.input('ativo', sql.Int, parseInt(alt.ativo, 10));
+        sets.push('ATIVO = @ativo');
+      }
+
+      if (sets.length === 0) continue;
+
+      await reqUp.query(`
+        UPDATE [dbo].[CAD_PROD]
+        SET ${sets.join(', ')}
+        WHERE CODIGO = @codigo
+      `);
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      message: `${alteracoes.length} alteração(ões) salva(s)`
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar produtos (alteracoes):", error);
+    return res.status(500).json({ message: "Erro ao salvar alterações", error: error.message });
   }
 }
 
