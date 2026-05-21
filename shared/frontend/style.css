@@ -179,13 +179,13 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
     transition: transform 0.25s ease;
     color: #888;
 }
-.nav-group.open .nav-group-caret { transform: rotate(180deg); }
+.nav-group.open > .nav-group-toggle > .nav-group-caret { transform: rotate(180deg); }
 .nav-group-items {
     display: none;
     flex-direction: column;
     background-color: rgba(0,0,0,0.02);
 }
-.nav-group.open .nav-group-items { display: flex; }
+.nav-group.open > .nav-group-items { display: flex; }
 .nav-group-items a {
     padding-left: 48px;
     font-size: 13px;
