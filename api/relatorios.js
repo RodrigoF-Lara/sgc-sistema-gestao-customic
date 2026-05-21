@@ -34,6 +34,8 @@ export default async function handler(req, res) {
             return await relatorioAcuracidade(req, res);
         } else if (acao === 'detalhesInventario') {
             return await detalhesInventario(req, res);
+        } else if (acao === 'movimentoDiario') {
+            return await relatorioMovimentoDiario(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -826,3 +828,135 @@ async function detalhesInventario(req, res) {
     }
 }
 
+
+
+async function relatorioMovimentoDiario(req, res) {
+    try {
+        const { data, tipoProduto } = req.query;
+
+        if (!data) {
+            return res.status(400).json({ message: "Data é obrigatória" });
+        }
+
+        const pool = await getConnection();
+        const dataObj = new Date(data + 'T00:00:00Z');
+
+        console.log('📅 Movimento Diário - Data:', data, '| Tipo:', tipoProduto || 'EMBALAGEM');
+
+        // Query principal: movimentações do dia + custos (último PROD_DT_EMISSAO <= data)
+        // Usa STRING_AGG para concatenar fornecedores em uma única query (evita N+1)
+        let query = `
+            WITH MOV AS (
+                SELECT 
+                    A.CODIGO,
+                    A.QNT,
+                    B.DESCRICAO,
+                    B.TIPO,
+                    A.ARMAZEM,
+                    A.ENDERECO,
+                    A.USUARIO,
+                    A.DT,
+                    CONVERT(VARCHAR(8), A.HR) AS HR,
+                    A.OPERACAO,
+                    (
+                        SELECT TOP (1) D.PROD_CUSTO_CONTABIL_MEDIO_NOVO
+                        FROM [dbo].[NF_PRODUTOS] D
+                        WHERE A.CODIGO = D.PROD_COD_PROD
+                          AND D.PROD_DT_EMISSAO <= @DT_POS
+                        ORDER BY D.PROD_DT_EMISSAO DESC
+                    ) AS CUSTO_CONTABIL_MEDIO,
+                    (
+                        SELECT TOP (1) D.PROD_CUSTO_FISCAL_MEDIO_NOVO
+                        FROM [dbo].[NF_PRODUTOS] D
+                        WHERE A.CODIGO = D.PROD_COD_PROD
+                          AND D.PROD_DT_EMISSAO <= @DT_POS
+                        ORDER BY D.PROD_DT_EMISSAO DESC
+                    ) AS CUSTO_FISCAL_MEDIO,
+                    (
+                        SELECT TOP (1) D.PROD_CUSTO_PAGO
+                        FROM [dbo].[NF_PRODUTOS] D
+                        WHERE A.CODIGO = D.PROD_COD_PROD
+                          AND D.PROD_DT_EMISSAO <= @DT_POS
+                        ORDER BY D.PROD_DT_EMISSAO DESC
+                    ) AS CUSTO_PAGO
+                FROM [dbo].[KARDEX_2026] A
+                INNER JOIN [dbo].[CAD_PROD] B ON B.CODIGO = A.CODIGO
+                WHERE A.DT = @DT_POS
+        `;
+
+        if (tipoProduto && tipoProduto.trim()) {
+            query += ` AND B.TIPO = @TIPO `;
+        } else {
+            query += ` AND B.TIPO = 'EMBALAGEM' `;
+        }
+
+        query += `
+            ),
+            FORN AS (
+                SELECT 
+                    A.CODIGO,
+                    STRING_AGG(D.RAZAO_SOCIAL, '; ') AS FORNECEDORES
+                FROM (
+                    SELECT DISTINCT M.CODIGO, C.CAB_NUM_FORN
+                    FROM MOV M
+                    LEFT JOIN [dbo].[NF_PRODUTOS] B ON B.PROD_COD_PROD = M.CODIGO
+                    LEFT JOIN [dbo].[NF_CABECALHO] C ON C.CAB_ID_NF = B.PROD_ID_NF
+                    WHERE C.CAB_NUM_FORN IS NOT NULL
+                ) A
+                INNER JOIN [dbo].[CAD_FORNECEDOR] D ON D.COD_FORNECEDOR = A.CAB_NUM_FORN
+                GROUP BY A.CODIGO
+            )
+            SELECT 
+                M.CODIGO,
+                M.QNT,
+                M.DESCRICAO,
+                M.TIPO,
+                M.CUSTO_CONTABIL_MEDIO,
+                M.CUSTO_FISCAL_MEDIO,
+                M.CUSTO_PAGO,
+                M.ARMAZEM,
+                M.ENDERECO,
+                ISNULL(F.FORNECEDORES, '') AS FORNECEDOR,
+                M.USUARIO,
+                M.DT,
+                M.HR,
+                M.OPERACAO
+            FROM MOV M
+            LEFT JOIN FORN F ON F.CODIGO = M.CODIGO
+            ORDER BY M.CODIGO, M.ARMAZEM, M.ENDERECO;
+        `;
+
+        const request = pool.request().input('DT_POS', sql.Date, dataObj);
+        if (tipoProduto && tipoProduto.trim()) {
+            request.input('TIPO', sql.NVarChar, tipoProduto);
+        }
+
+        const result = await request.query(query);
+        const dados = result.recordset;
+
+        // Totalizadores
+        const totalItens = dados.length;
+        const totalQnt = dados.reduce((acc, r) => acc + Number(r.QNT || 0), 0);
+        const valorContabilTotal = dados.reduce((acc, r) => acc + (Number(r.QNT || 0) * Number(r.CUSTO_CONTABIL_MEDIO || 0)), 0);
+        const valorFiscalTotal = dados.reduce((acc, r) => acc + (Number(r.QNT || 0) * Number(r.CUSTO_FISCAL_MEDIO || 0)), 0);
+
+        return res.status(200).json({
+            dados,
+            totalizadores: {
+                totalItens,
+                totalQnt,
+                valorContabilTotal,
+                valorFiscalTotal,
+                data
+            }
+        });
+
+    } catch (err) {
+        console.error("❌ Erro no relatório de movimento diário:", err);
+        return res.status(500).json({
+            message: "Erro ao gerar relatório de movimento diário",
+            error: err.message,
+            stack: err.stack
+        });
+    }
+}
