@@ -285,7 +285,8 @@ async function salvarUsuario(e) {
         cpf: document.getElementById('cpf').value.replace(/\D/g, ''),
         firstName: document.getElementById('firstName').value,
         lastName: document.getElementById('lastName').value,
-        setor: document.getElementById('setor').value
+        setor: document.getElementById('setor').value,
+        cod: '' // Campo não utilizado mas necessário para API
     };
 
     try {
