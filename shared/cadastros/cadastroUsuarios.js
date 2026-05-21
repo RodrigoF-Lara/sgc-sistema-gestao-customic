@@ -16,14 +16,14 @@ function verificarAcesso() {
         alert('Sua sessão precisa ser atualizada.\n\nPor favor, faça login novamente para acessar esta página.');
         localStorage.removeItem('userName');
         localStorage.removeItem('loginTime');
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
         return false;
     }
     
     // NIVEL 1 = ADMIN
     if (userLevel !== '1' && userLevel !== 1 && parseInt(userLevel) !== 1) {
         alert(`Acesso Negado!\n\n${userName || 'Usuário'}, você não tem permissão para acessar esta página.\n\nApenas administradores podem gerenciar usuários.`);
-        window.location.href = 'menu.html';
+        window.location.href = '/menu.html';
         return false;
     }
     return true;

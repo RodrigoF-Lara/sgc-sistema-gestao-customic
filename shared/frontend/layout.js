@@ -19,16 +19,16 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="sidebar-header"><h3>SGC - Sistema de Gestão Customic</h3></div>
         <div class="sidebar-user-info"><span id="sidebar-username">Usuário</span></div>
         <nav class="sidebar-nav">
-          <a href="menu.html" id="nav-menu"><i class="fa fa-home"></i> Menu Principal</a>
-          <a href="requisicoes.html" id="nav-requisicoes"><i class="fa fa-file-lines"></i> Requisições</a>
-          <a href="saidaRapida.html" id="nav-saida-rapida"><i class="fa fa-qrcode"></i> Saída Rápida (QR)</a>
-          <a href="estoque.html" id="nav-estoque"><i class="fa fa-archive"></i> Gerenciar Estoque</a>
-          <a href="inventarioCiclico.html" id="nav-inventario-ciclico"><i class="fa fa-clipboard-check"></i> Inventário Cíclico</a>
-          <a href="lancamentoNF.html" id="nav-lancamento-nf"><i class="fa fa-file-invoice"></i> Lançamento NF</a>
-          <a href="statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
-          <a href="relatorios.html" id="nav-relatorios"><i class="fa fa-chart-bar"></i> Relatórios</a>
-          <a href="cadastros.html" id="nav-cadastros"><i class="fa fa-database"></i> Cadastros</a>
-          <a href="configuracoes.html" id="nav-configuracoes"><i class="fa fa-cog"></i> Configurações</a>
+          <a href="/menu.html" id="nav-menu"><i class="fa fa-home"></i> Menu Principal</a>
+          <a href="/modules/embalagem/requisicoes/requisicoes.html" id="nav-requisicoes"><i class="fa fa-file-lines"></i> Requisições</a>
+          <a href="/modules/embalagem/kardex/saidaRapida.html" id="nav-saida-rapida"><i class="fa fa-qrcode"></i> Saída Rápida (QR)</a>
+          <a href="/modules/embalagem/kardex/estoque.html" id="nav-estoque"><i class="fa fa-archive"></i> Gerenciar Estoque</a>
+          <a href="/modules/embalagem/inventario/inventarioCiclico.html" id="nav-inventario-ciclico"><i class="fa fa-clipboard-check"></i> Inventário Cíclico</a>
+          <a href="/modules/embalagem/nf/lancamentoNF.html" id="nav-lancamento-nf"><i class="fa fa-file-invoice"></i> Lançamento NF</a>
+          <a href="/modules/embalagem/nf/statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
+          <a href="/modules/embalagem/relatorios/relatorios.html" id="nav-relatorios"><i class="fa fa-chart-bar"></i> Relatórios</a>
+          <a href="/shared/cadastros/cadastros.html" id="nav-cadastros"><i class="fa fa-database"></i> Cadastros</a>
+          <a href="/shared/config/configuracoes.html" id="nav-configuracoes"><i class="fa fa-cog"></i> Configurações</a>
         </nav>
         <div class="sidebar-footer"><button id="logout-btn" class="logout-btn">Sair</button></div>
       `;
@@ -41,7 +41,7 @@ function inicializarSidebar() {
   const usernameEl = document.getElementById('sidebar-username');
   if (usernameEl) usernameEl.textContent = userName || 'Usuário';
 
-  const filename = (window.location.pathname.split('/').pop() || 'menu.html').toLowerCase();
+  const filename = (window.location.pathname.split('/').pop() || '/menu.html').toLowerCase();
   const pageKey = filename.replace('.html', '') || 'menu';
   const idMap = {
     'menu': 'nav-menu',
@@ -102,7 +102,7 @@ function inicializarSidebar() {
       if (confirm('Tem certeza que deseja sair?')) {
         localStorage.removeItem('userName');
         localStorage.removeItem('loginTime');
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
       }
     });
   }
