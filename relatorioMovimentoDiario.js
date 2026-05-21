@@ -101,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         <th>Descrição</th>
                         <th>Custo Contábil Médio</th>
                         <th>Custo Fiscal Médio</th>
-                        <th>Custo Pago</th>
                         <th>Endereço</th>
                         <th>Fornecedor</th>
                         <th>Usuário</th>
@@ -118,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             <td>${r.DESCRICAO ?? ''}</td>
                             <td>${r.CUSTO_CONTABIL_MEDIO != null ? fmtMoeda(r.CUSTO_CONTABIL_MEDIO) : '-'}</td>
                             <td>${r.CUSTO_FISCAL_MEDIO != null ? fmtMoeda(r.CUSTO_FISCAL_MEDIO) : '-'}</td>
-                            <td>${r.CUSTO_PAGO != null ? fmtMoeda(r.CUSTO_PAGO) : '-'}</td>
                             <td>${r.ENDERECO ?? ''}</td>
                             <td>${r.FORNECEDOR ?? ''}</td>
                             <td>${r.USUARIO ?? ''}</td>
@@ -160,13 +158,12 @@ tbody tr:nth-child(even) { background:#f5f7fa; }
 <div class="header"><h1>KARDEX SYSTEM</h1><h2>Posição de Estoque referente a: ${dataRef}</h2></div>
 <div class="info"><span><strong>Emitido por:</strong> ${usuarioNome}</span><span><strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</span><span><strong>Movs:</strong> ${dadosRelatorio.length}</span></div>
 <table><thead><tr>
-<th>#</th><th>Código</th><th>Qtd</th><th>Descrição</th><th>C.Contábil</th><th>C.Fiscal</th><th>C.Pago</th><th>Endereço</th><th>Fornecedor</th><th>Usuário</th><th>Data</th><th>Hora</th>
+<th>#</th><th>Código</th><th>Qtd</th><th>Descrição</th><th>C.Contábil</th><th>C.Fiscal</th><th>Endereço</th><th>Fornecedor</th><th>Usuário</th><th>Data</th><th>Hora</th>
 </tr></thead><tbody>
 ${dadosRelatorio.map((r,i)=>`<tr>
 <td>${i+1}</td><td>${r.CODIGO ?? ''}</td><td>${fmtNum(r.QNT)}</td><td>${r.DESCRICAO ?? ''}</td>
 <td>${r.CUSTO_CONTABIL_MEDIO!=null?fmtMoeda(r.CUSTO_CONTABIL_MEDIO):'-'}</td>
 <td>${r.CUSTO_FISCAL_MEDIO!=null?fmtMoeda(r.CUSTO_FISCAL_MEDIO):'-'}</td>
-<td>${r.CUSTO_PAGO!=null?fmtMoeda(r.CUSTO_PAGO):'-'}</td>
 <td>${r.ENDERECO ?? ''}</td><td>${r.FORNECEDOR ?? ''}</td><td>${r.USUARIO ?? ''}</td>
 <td>${fmtData(r.DT)}</td><td>${r.HR ?? ''}</td></tr>`).join('')}
 </tbody></table>
@@ -196,7 +193,7 @@ Valor Fiscal: ${fmtMoeda(totalizadores.valorFiscalTotal)}
         // Linha 4+: dados
         const HEADERS = [
             'CÓDIGO', 'QNT', 'DESCRICAO',
-            'CUSTO_CONTABIL_MEDIO', 'CUSTO_FISCAL_MEDIO', 'CUSTO_PAGO',
+            'CUSTO_CONTABIL_MEDIO', 'CUSTO_FISCAL_MEDIO',
             'ENDEREÇO', 'FORNECEDOR', 'USUARIO', 'DATA', 'HORA'
         ];
 
@@ -211,7 +208,6 @@ Valor Fiscal: ${fmtMoeda(totalizadores.valorFiscalTotal)}
                 r.DESCRICAO ?? '',
                 r.CUSTO_CONTABIL_MEDIO ?? '',
                 r.CUSTO_FISCAL_MEDIO ?? '',
-                r.CUSTO_PAGO ?? '',
                 r.ENDERECO ?? '',
                 r.FORNECEDOR ?? '',
                 r.USUARIO ?? '',
@@ -232,7 +228,6 @@ Valor Fiscal: ${fmtMoeda(totalizadores.valorFiscalTotal)}
             { wch: 50 }, // DESCRICAO
             { wch: 22 }, // CUSTO_CONTABIL_MEDIO
             { wch: 22 }, // CUSTO_FISCAL_MEDIO
-            { wch: 14 }, // CUSTO_PAGO
             { wch: 14 }, // ENDEREÇO
             { wch: 45 }, // FORNECEDOR
             { wch: 18 }, // USUARIO
@@ -280,8 +275,8 @@ Valor Fiscal: ${fmtMoeda(totalizadores.valorFiscalTotal)}
                     alignment: { horizontal: 'center', vertical: 'center' },
                     border: borderThin
                 };
-                // Coluna H (FORNECEDOR) — alinhar à esquerda como no VBA
-                if (c === 7) {
+                // Coluna FORNECEDOR — alinhar à esquerda como no VBA
+                if (c === 6) {
                     ws[cellRef].s.alignment = { horizontal: 'left', vertical: 'center' };
                 }
             }
