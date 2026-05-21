@@ -33,14 +33,154 @@
             gap: 30px;
         }
 
-        .content-grid.editing {
-            grid-template-columns: 450px 1fr;
+        /* Modal Overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
         }
 
-        @media (max-width: 1200px) {
-            .content-grid.editing {
-                grid-template-columns: 1fr;
-            }
+        .modal-overlay.show {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-close-modal:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        /* Paginação */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .pagination-controls button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            min-width: 36px;
+        }
+
+        .pagination-controls button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-controls button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            font-weight: 600;
+        }
+
+        .page-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .page-size-selector select {
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+            font-style: italic;
         }
 
         .card {
@@ -282,45 +422,6 @@
             </div>
 
             <div class="content-grid">
-                <!-- Formulário -->
-                <div class="card" id="cardFormulario" style="display: none;">
-                    <h2 id="form-title"><i class="fa fa-plus"></i> Novo Fornecedor</h2>
-                    
-                    <form id="fornecedorForm">
-                        <input type="hidden" id="fornecedorId">
-
-                        <div class="form-group">
-                            <label for="codigo">Código *</label>
-                            <input type="number" id="codigo" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="razaoSocial">Razão Social *</label>
-                            <input type="text" id="razaoSocial" required maxlength="255">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cnpj">CNPJ</label>
-                            <input type="text" id="cnpj" maxlength="18" placeholder="00.000.000/0000-00">
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fa fa-save"></i> Salvar
-                            </button>
-                            <button type="button" class="btn btn-secondary" id="btnLimpar">
-                                <i class="fa fa-broom"></i> Limpar
-                            </button>
-                        </div>
-
-                        <div class="form-actions" id="acoesEdicao">
-                            <button type="button" class="btn btn-danger" id="btnExcluir">
-                                <i class="fa fa-trash"></i> Excluir
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
                 <!-- Lista de Fornecedores -->
                 <div class="card">
                     <h2><i class="fa fa-list"></i> Fornecedores Cadastrados (<span id="totalFornecedores">0</span>)</h2>
@@ -330,7 +431,7 @@
                         <input 
                             type="text" 
                             id="filtroFornecedores" 
-                            placeholder="🔍 Filtrar por código, razão social ou CNPJ..." 
+                            placeholder="🔍 Buscar por código, razão social ou CNPJ..." 
                             style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95em;"
                         >
                     </div>
@@ -343,12 +444,72 @@
                     </div>
 
                     <div class="fornecedores-list" id="fornecedoresList">
-                        <div class="empty-state">
-                            <i class="fa fa-truck"></i>
-                            <p>Nenhum fornecedor cadastrado</p>
+                        <div class="loading-indicator">
+                            <i class="fa fa-spinner fa-spin"></i> Carregando...
+                        </div>
+                    </div>
+
+                    <!-- Paginação -->
+                    <div class="pagination" id="paginationContainer" style="display: none;">
+                        <div class="pagination-info" id="paginationInfo">-</div>
+                        <div class="pagination-controls" id="paginationControls"></div>
+                        <div class="page-size-selector">
+                            <label for="pageSize">Por página:</label>
+                            <select id="pageSize">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                            </select>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- MODAL de Cadastro/Edição -->
+        <div class="modal-overlay" id="modalFornecedor">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="form-title"><i class="fa fa-plus"></i> Novo Fornecedor</h2>
+                    <button type="button" class="btn-close-modal" id="btnFecharModal" title="Fechar">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                
+                <form id="fornecedorForm">
+                    <input type="hidden" id="fornecedorId">
+
+                    <div class="form-group">
+                        <label for="codigo">Código *</label>
+                        <input type="number" id="codigo" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="razaoSocial">Razão Social *</label>
+                        <input type="text" id="razaoSocial" required maxlength="255">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cnpj">CNPJ</label>
+                        <input type="text" id="cnpj" maxlength="18" placeholder="00.000.000/0000-00">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-save"></i> Salvar
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="btnLimpar">
+                            <i class="fa fa-broom"></i> Limpar
+                        </button>
+                    </div>
+
+                    <div class="form-actions" id="acoesEdicao">
+                        <button type="button" class="btn btn-danger" id="btnExcluir">
+                            <i class="fa fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </main>

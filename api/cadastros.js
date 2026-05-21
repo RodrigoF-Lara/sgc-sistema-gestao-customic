@@ -65,19 +65,50 @@ async function handleFornecedores(req, res, pool, method) {
 
 async function listarFornecedores(req, res, pool) {
   try {
-    const result = await pool.request().query(`
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = Math.min(200, Math.max(10, parseInt(req.query.pageSize) || 50));
+    const search = (req.query.search || '').trim();
+    const offset = (page - 1) * pageSize;
+
+    const request = pool.request()
+      .input('offset', sql.Int, offset)
+      .input('pageSize', sql.Int, pageSize);
+
+    let whereClause = '';
+    if (search) {
+      whereClause = `WHERE 
+        RAZAO_SOCIAL LIKE @search 
+        OR CAST(COD_FORNECEDOR AS NVARCHAR) LIKE @search 
+        OR CNPJ LIKE @search`;
+      request.input('search', sql.NVarChar, `%${search}%`);
+    }
+
+    // Total de registros (com filtro aplicado)
+    const totalResult = await request.query(`
+      SELECT COUNT(*) AS total FROM [dbo].[CAD_FORNECEDOR] ${whereClause}
+    `);
+    const total = totalResult.recordset[0].total;
+
+    // Página atual
+    const dataResult = await request.query(`
       SELECT 
         COD_FORNECEDOR,
         RAZAO_SOCIAL,
         CNPJ
       FROM [dbo].[CAD_FORNECEDOR]
+      ${whereClause}
       ORDER BY RAZAO_SOCIAL
+      OFFSET @offset ROWS
+      FETCH NEXT @pageSize ROWS ONLY
     `);
 
     return res.status(200).json({ 
       success: true,
-      fornecedores: result.recordset,
-      total: result.recordset.length
+      fornecedores: dataResult.recordset,
+      total: total,
+      page: page,
+      pageSize: pageSize,
+      totalPages: Math.ceil(total / pageSize)
     });
   } catch (error) {
     console.error("Erro ao listar fornecedores:", error);
