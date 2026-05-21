@@ -23,11 +23,17 @@
           <p id="welcomeMessage">Olá! Selecione uma opção para começar.</p>
         </div>
 
-        <!-- Seção: Operações -->
-        <section class="menu-section">
-          <h2 class="menu-section-title">
-            <i class="fa-solid fa-cubes"></i> Operações
+        <!-- ============================================================ -->
+        <!-- MÓDULO: EMBALAGENS                                            -->
+        <!-- ============================================================ -->
+        <section class="menu-section menu-module">
+          <h2 class="menu-section-title menu-module-title">
+            <i class="fa-solid fa-boxes-packing"></i> Módulo de Embalagens
           </h2>
+
+          <h3 class="menu-subsection-title">
+            <i class="fa-solid fa-cubes"></i> Operações
+          </h3>
           <div class="menu-options">
             <a href="/modules/embalagem/requisicoes/novaRequisicao.html" class="menu-option-card">
               <i class="fa-solid fa-file-circle-plus"></i>
@@ -50,13 +56,10 @@
               <h2>Inventário Cíclico</h2>
             </a>
           </div>
-        </section>
 
-        <!-- Seção: Notas Fiscais -->
-        <section class="menu-section">
-          <h2 class="menu-section-title">
+          <h3 class="menu-subsection-title">
             <i class="fa-solid fa-file-invoice-dollar"></i> Notas Fiscais
-          </h2>
+          </h3>
           <div class="menu-options">
             <a href="/modules/embalagem/nf/lancamentoNF.html" class="menu-option-card">
               <i class="fa-solid fa-file-invoice"></i>
@@ -67,13 +70,10 @@
               <h2>Status NF</h2>
             </a>
           </div>
-        </section>
 
-        <!-- Seção: Relatórios -->
-        <section class="menu-section">
-          <h2 class="menu-section-title">
+          <h3 class="menu-subsection-title">
             <i class="fa-solid fa-chart-line"></i> Relatórios
-          </h2>
+          </h3>
           <div class="menu-options">
             <a href="/modules/embalagem/relatorios/relatorioBaixaPorPeriodo.html" class="menu-option-card">
               <i class="fa-solid fa-chart-line"></i>
@@ -98,11 +98,45 @@
           </div>
         </section>
 
-        <!-- Seção: Cadastros e Configurações -->
-        <section class="menu-section">
-          <h2 class="menu-section-title">
-            <i class="fa-solid fa-gears"></i> Cadastros & Configurações
+        <!-- ============================================================ -->
+        <!-- MÓDULO: PRODUÇÃO (em desenvolvimento)                         -->
+        <!-- ============================================================ -->
+        <section class="menu-section menu-module">
+          <h2 class="menu-section-title menu-module-title">
+            <i class="fa-solid fa-industry"></i> Módulo de Produção
+            <span class="menu-badge-soon">em breve</span>
           </h2>
+          <div class="menu-options">
+            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+              <i class="fa-solid fa-list-check"></i>
+              <h2>Ordens de Produção</h2>
+            </a>
+            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <h2>Apontamentos</h2>
+            </a>
+            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+              <i class="fa-solid fa-truck-ramp-box"></i>
+              <h2>Expedição</h2>
+            </a>
+            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+              <i class="fa-solid fa-gauge-high"></i>
+              <h2>OEE / Indicadores</h2>
+            </a>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- GERAL (compartilhado entre todos os módulos)                  -->
+        <!-- ============================================================ -->
+        <section class="menu-section menu-module">
+          <h2 class="menu-section-title menu-module-title">
+            <i class="fa-solid fa-gears"></i> Geral
+          </h2>
+
+          <h3 class="menu-subsection-title">
+            <i class="fa-solid fa-address-book"></i> Cadastros
+          </h3>
           <div class="menu-options">
             <a href="/shared/cadastros/cadastroProdutos.html" class="menu-option-card">
               <i class="fa-solid fa-box-open"></i>
@@ -116,9 +150,19 @@
               <i class="fa-solid fa-users"></i>
               <h2>Usuários</h2>
             </a>
+          </div>
+
+          <h3 class="menu-subsection-title">
+            <i class="fa-solid fa-sliders"></i> Configurações
+          </h3>
+          <div class="menu-options">
             <a href="/shared/config/configuracoes.html" class="menu-option-card">
               <i class="fa-solid fa-cog"></i>
-              <h2>Configurações</h2>
+              <h2>Configurações Gerais</h2>
+            </a>
+            <a href="/shared/config/configNotificacoes.html" class="menu-option-card">
+              <i class="fa-solid fa-bell"></i>
+              <h2>Notificações</h2>
             </a>
           </div>
         </section>

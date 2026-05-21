@@ -1923,3 +1923,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* === Módulos no Menu Principal === */
+.menu-module { margin-bottom: 50px; padding: 25px; background: rgba(255,255,255,0.6); border-radius: 12px; border: 1px solid var(--cor-cinza-borda); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.menu-module-title { font-size: 1.4em !important; color: var(--cor-principal-escura) !important; border-bottom: 3px solid var(--cor-principal) !important; padding-bottom: 12px !important; margin-bottom: 25px !important; }
+.menu-module-title i { font-size: 1.1em !important; }
+.menu-subsection-title { display: flex; align-items: center; gap: 10px; font-size: 1em; color: #555; margin: 20px 0 12px 0; padding-left: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.menu-subsection-title i { color: var(--cor-principal); font-size: 0.95em; }
+.menu-badge-soon { display: inline-block; margin-left: 10px; padding: 3px 10px; background: #ffeaa7; color: #8a6d3b; font-size: 0.55em; font-weight: 700; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle; }
+.menu-option-disabled { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; filter: grayscale(0.6); }
+.menu-option-disabled:hover { transform: none !important; box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; border-color: var(--cor-cinza-borda) !important; }
