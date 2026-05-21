@@ -13,8 +13,12 @@
     <i class="fa fa-home"></i><span>Menu Principal</span>
   </a>
 
-  <!-- Grupo: Operações -->
-  <div class="nav-group" data-group="operacoes">
+  <!-- ============================================================ -->
+  <!-- MÓDULO: EMBALAGENS                                            -->
+  <!-- ============================================================ -->
+  <div class="nav-module-label"><i class="fa-solid fa-boxes-packing"></i><span>Embalagens</span></div>
+
+  <div class="nav-group" data-group="emb-operacoes">
     <button type="button" class="nav-group-toggle" aria-expanded="false">
       <i class="fa fa-cubes"></i>
       <span class="nav-group-label">Operações</span>
@@ -36,8 +40,7 @@
     </div>
   </div>
 
-  <!-- Grupo: Notas Fiscais -->
-  <div class="nav-group" data-group="notas">
+  <div class="nav-group" data-group="emb-notas">
     <button type="button" class="nav-group-toggle" aria-expanded="false">
       <i class="fa fa-file-invoice-dollar"></i>
       <span class="nav-group-label">Notas Fiscais</span>
@@ -57,7 +60,30 @@
     <i class="fa fa-chart-bar"></i><span>Relatórios</span>
   </a>
 
-  <!-- Grupo: Cadastros -->
+  <!-- ============================================================ -->
+  <!-- MÓDULO: PRODUÇÃO (em desenvolvimento)                         -->
+  <!-- ============================================================ -->
+  <div class="nav-module-label"><i class="fa-solid fa-industry"></i><span>Produção</span><span class="nav-badge-soon">em breve</span></div>
+
+  <div class="nav-group" data-group="prod-operacoes">
+    <button type="button" class="nav-group-toggle" aria-expanded="false" disabled>
+      <i class="fa fa-list-check"></i>
+      <span class="nav-group-label">Operações</span>
+      <i class="fa fa-chevron-down nav-group-caret"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="#" class="nav-disabled"><i class="fa fa-list-check"></i><span>Ordens de Produção</span></a>
+      <a href="#" class="nav-disabled"><i class="fa fa-clock-rotate-left"></i><span>Apontamentos</span></a>
+      <a href="#" class="nav-disabled"><i class="fa fa-truck-ramp-box"></i><span>Expedição</span></a>
+      <a href="#" class="nav-disabled"><i class="fa fa-gauge-high"></i><span>OEE / Indicadores</span></a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- GERAL                                                          -->
+  <!-- ============================================================ -->
+  <div class="nav-module-label"><i class="fa-solid fa-gears"></i><span>Geral</span></div>
+
   <div class="nav-group" data-group="cadastros">
     <button type="button" class="nav-group-toggle" aria-expanded="false">
       <i class="fa fa-database"></i>
@@ -77,9 +103,21 @@
     </div>
   </div>
 
-  <a href="/shared/config/configuracoes.html" id="nav-configuracoes">
-    <i class="fa fa-cog"></i><span>Configurações</span>
-  </a>
+  <div class="nav-group" data-group="config">
+    <button type="button" class="nav-group-toggle" aria-expanded="false">
+      <i class="fa fa-sliders"></i>
+      <span class="nav-group-label">Configurações</span>
+      <i class="fa fa-chevron-down nav-group-caret"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="/shared/config/configuracoes.html" id="nav-configuracoes">
+        <i class="fa fa-cog"></i><span>Configurações Gerais</span>
+      </a>
+      <a href="/shared/config/configNotificacoes.html" id="nav-config-notificacoes">
+        <i class="fa fa-bell"></i><span>Notificações</span>
+      </a>
+    </div>
+  </div>
 </nav>
 
 <div class="sidebar-footer">
