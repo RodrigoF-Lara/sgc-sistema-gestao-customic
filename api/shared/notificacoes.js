@@ -1,4 +1,4 @@
-import { getConnection, sql } from "../db.js";
+import { getConnection, sql } from "../../db.js";
 
 /**
  * API de Notificações - Gerenciamento centralizado de notificações entre usuários

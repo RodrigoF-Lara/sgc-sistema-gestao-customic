@@ -1,4 +1,4 @@
-import { getConnection, sql } from "../db.js";
+import { getConnection, sql } from "../../db.js";
 
 /**
  * API unificada de Cadastros

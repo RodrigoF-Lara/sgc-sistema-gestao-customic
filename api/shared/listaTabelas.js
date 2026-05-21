@@ -1,5 +1,5 @@
 // filepath: api/listaTabelas.js
-import { getConnection } from "../db.js";
+import { getConnection } from "../../db.js";
 
 // Esta função vai se conectar ao banco e listar todas as tabelas visíveis.
 export default async function handler(req, res) {
