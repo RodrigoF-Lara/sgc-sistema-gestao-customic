@@ -38,7 +38,43 @@ document.addEventListener('DOMContentLoaded', async function() {
         const dataRequisicao = formatarData(header.DT_REQUISICAO);
         const dataNecessidade = formatarData(header.DT_NECESSIDADE);
         const prioridade = (header.PRIORIDADE || 'NORMAL').trim();
-        headerContainer.innerHTML = `<div class="detalhe-header"><div><strong>Nº Requisição:</strong> ${header.ID_REQ}</div><div><strong>Solicitante:</strong> ${header.SOLICITANTE || 'N/A'}</div><div><strong>Data Requisição:</strong> ${dataRequisicao}</div><div><strong>Data Necessidade:</strong> ${dataNecessidade}</div><div><strong>Prioridade:</strong> <span class="prioridade-badge prioridade-${prioridade.toLowerCase()}">${prioridade}</span></div><div><strong>Status:</strong> <span class="status-badge status-${(header.STATUS || 'PENDENTE').replace(/\s/g, '-').toLowerCase()}">${header.STATUS || 'PENDENTE'}</span></div></div>`;
+        const status = (header.STATUS || 'PENDENTE').trim();
+        headerContainer.innerHTML = `
+            <div class="detalhe-header">
+                <div class="detalhe-header-title">
+                    <div class="detalhe-numero">
+                        <span class="detalhe-numero-label">Requisição</span>
+                        <span class="detalhe-numero-valor">#${header.ID_REQ}</span>
+                    </div>
+                    <div class="detalhe-header-badges">
+                        <span class="prioridade-badge prioridade-${prioridade.toLowerCase()}"><i class="fa-solid fa-flag"></i> ${prioridade}</span>
+                        <span class="status-badge status-${status.replace(/\s/g, '-').toLowerCase()}"><i class="fa-solid fa-circle-check"></i> ${status}</span>
+                    </div>
+                </div>
+                <div class="detalhe-header-grid">
+                    <div class="detalhe-info-item">
+                        <div class="detalhe-info-icon"><i class="fa-solid fa-user"></i></div>
+                        <div class="detalhe-info-body">
+                            <span class="detalhe-info-label">Solicitante</span>
+                            <span class="detalhe-info-valor">${header.SOLICITANTE || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div class="detalhe-info-item">
+                        <div class="detalhe-info-icon"><i class="fa-solid fa-calendar-plus"></i></div>
+                        <div class="detalhe-info-body">
+                            <span class="detalhe-info-label">Data da Requisição</span>
+                            <span class="detalhe-info-valor">${dataRequisicao}</span>
+                        </div>
+                    </div>
+                    <div class="detalhe-info-item">
+                        <div class="detalhe-info-icon"><i class="fa-solid fa-calendar-day"></i></div>
+                        <div class="detalhe-info-body">
+                            <span class="detalhe-info-label">Data de Necessidade</span>
+                            <span class="detalhe-info-valor">${dataNecessidade}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
     }
 
     function renderItems(items) {
