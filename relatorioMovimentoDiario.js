@@ -189,45 +189,115 @@ Valor Fiscal: ${fmtMoeda(totalizadores.valorFiscalTotal)}
         }
         const dataRef = fmtData(totalizadores.data);
 
-        const dados = dadosRelatorio.map((r, i) => ({
-            '#': i + 1,
-            'CÓDIGO': r.CODIGO,
-            'QNT': r.QNT,
-            'DESCRICAO': r.DESCRICAO,
-            'CUSTO_CONTABIL_MEDIO': r.CUSTO_CONTABIL_MEDIO ?? '',
-            'CUSTO_FISCAL_MEDIO': r.CUSTO_FISCAL_MEDIO ?? '',
-            'CUSTO_PAGO': r.CUSTO_PAGO ?? '',
-            'ENDEREÇO': r.ENDERECO ?? '',
-            'FORNECEDOR': r.FORNECEDOR ?? '',
-            'USUARIO': r.USUARIO ?? '',
-            'DATA': fmtData(r.DT),
-            'HORA': r.HR ?? ''
-        }));
-
-        const info = [
-            { Campo: 'Relatório', Valor: 'Movimento Diário - Posição de Estoque' },
-            { Campo: 'Data Referência', Valor: dataRef },
-            { Campo: 'Emissão', Valor: new Date().toLocaleString('pt-BR') },
-            { Campo: 'Emitido por', Valor: localStorage.getItem('userName') || 'Sistema' },
-            { Campo: '', Valor: '' },
-            { Campo: 'Total Movimentações', Valor: totalizadores.totalItens },
-            { Campo: 'Qtd Total', Valor: totalizadores.totalQnt },
-            { Campo: 'Valor Contábil Total', Valor: totalizadores.valorContabilTotal },
-            { Campo: 'Valor Fiscal Total', Valor: totalizadores.valorFiscalTotal }
+        // === Layout fiel ao VBA antigo ===
+        // Linha 1: título com fundo amarelo
+        // Linha 2: vazia
+        // Linha 3: cabeçalhos
+        // Linha 4+: dados
+        const HEADERS = [
+            'CÓDIGO', 'QNT', 'DESCRICAO',
+            'CUSTO_CONTABIL_MEDIO', 'CUSTO_FISCAL_MEDIO', 'CUSTO_PAGO',
+            'ENDEREÇO', 'FORNECEDOR', 'USUARIO', 'DATA', 'HORA'
         ];
+
+        const aoa = [];
+        aoa.push([`POSIÇÃO DE ESTOQUE REFERENTE À: ${dataRef}`]);
+        aoa.push([]);
+        aoa.push(HEADERS);
+        dadosRelatorio.forEach(r => {
+            aoa.push([
+                r.CODIGO ?? '',
+                r.QNT ?? '',
+                r.DESCRICAO ?? '',
+                r.CUSTO_CONTABIL_MEDIO ?? '',
+                r.CUSTO_FISCAL_MEDIO ?? '',
+                r.CUSTO_PAGO ?? '',
+                r.ENDERECO ?? '',
+                r.FORNECEDOR ?? '',
+                r.USUARIO ?? '',
+                fmtData(r.DT),
+                r.HR ?? ''
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        // Mescla A1:K1 (título) — equivalente ao Range("A1:H1") do VBA, ampliado para todas as colunas
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 1 } }];
+
+        // Larguras (similares ao AutoFit + ColumnWidth=12 do VBA)
+        ws['!cols'] = [
+            { wch: 12 }, // CÓDIGO
+            { wch: 10 }, // QNT
+            { wch: 50 }, // DESCRICAO
+            { wch: 22 }, // CUSTO_CONTABIL_MEDIO
+            { wch: 22 }, // CUSTO_FISCAL_MEDIO
+            { wch: 14 }, // CUSTO_PAGO
+            { wch: 14 }, // ENDEREÇO
+            { wch: 45 }, // FORNECEDOR
+            { wch: 18 }, // USUARIO
+            { wch: 12 }, // DATA
+            { wch: 10 }  // HORA
+        ];
+
+        // === Estilos (xlsx-js-style) ===
+        const borderThin = {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+        };
+
+        // A1 — título amarelo
+        if (ws['A1']) {
+            ws['A1'].s = {
+                font: { bold: true, sz: 12, color: { rgb: '000000' } },
+                fill: { fgColor: { rgb: 'FFFF00' } },
+                alignment: { horizontal: 'left', vertical: 'center' }
+            };
+        }
+
+        // Linha 3 — cabeçalho (negrito + bordas + fundo cinza claro)
+        for (let c = 0; c < HEADERS.length; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r: 2, c });
+            if (!ws[cellRef]) continue;
+            ws[cellRef].s = {
+                font: { bold: true, color: { rgb: '000000' } },
+                fill: { fgColor: { rgb: 'F2F2F2' } },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                border: borderThin
+            };
+        }
+
+        // Linhas de dados — bordas finas + alinhamento centralizado
+        for (let r = 3; r < aoa.length; r++) {
+            for (let c = 0; c < HEADERS.length; c++) {
+                const cellRef = XLSX.utils.encode_cell({ r, c });
+                if (!ws[cellRef]) {
+                    ws[cellRef] = { t: 's', v: '' };
+                }
+                ws[cellRef].s = {
+                    alignment: { horizontal: 'center', vertical: 'center' },
+                    border: borderThin
+                };
+                // Coluna H (FORNECEDOR) — alinhar à esquerda como no VBA
+                if (c === 7) {
+                    ws[cellRef].s.alignment = { horizontal: 'left', vertical: 'center' };
+                }
+            }
+        }
+
+        // Range usado
+        ws['!ref'] = XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: aoa.length - 1, c: HEADERS.length - 1 }
+        });
+
+        // Sem gridlines (equivalente a DisplayGridlines=False)
+        ws['!sheetView'] = [{ showGridLines: false }];
 
         const wb = XLSX.utils.book_new();
-        const wsInfo = XLSX.utils.json_to_sheet(info);
-        wsInfo['!cols'] = [{ wch: 25 }, { wch: 40 }];
-        XLSX.utils.book_append_sheet(wb, wsInfo, 'Informações');
-
-        const wsDados = XLSX.utils.json_to_sheet(dados);
-        wsDados['!cols'] = [
-            { wch: 5 }, { wch: 12 }, { wch: 10 }, { wch: 45 },
-            { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 },
-            { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 10 }
-        ];
-        XLSX.utils.book_append_sheet(wb, wsDados, 'Movimentações');
+        XLSX.utils.book_append_sheet(wb, ws, 'Planilha1');
 
         const nome = `Movimento_Diario_${dataRef.replace(/\//g, '-')}.xlsx`;
         XLSX.writeFile(wb, nome);
