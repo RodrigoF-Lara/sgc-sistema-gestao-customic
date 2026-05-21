@@ -113,12 +113,26 @@ Schema completo em `/memories/repo/database-schema.md`.
 ## Fluxo de Trabalho Obrigatório do Agente
 
 1. **Edição direta e autônoma:** aplicar mudanças nos arquivos sem pedir confirmação prévia.
-2. **Atualizar documentação no MESMO commit:** se a mudança afeta estrutura, endpoints,
-   tabelas, fluxos, padrões ou navegação — atualizar [ARCHITECTURE.md](../ARCHITECTURE.md),
-   este arquivo, e o README do módulo afetado. **Documentação desatualizada é bug.**
+2. **Antes de `git commit`, executar o Checklist de Documentação abaixo.**
+   Se algum item dispara, **incluir os docs no MESMO commit.** Documentação desatualizada é bug.
 3. **Commit e push automáticos** após sucesso, com mensagem descritiva (`feat:`, `fix:`,
    `refactor:`, `docs:`, `style:`, `chore:`).
 4. **Foco na execução:** minimizar interações; usar ferramentas em paralelo quando independentes.
+
+### ⚠️ Checklist de Documentação (rodar mentalmente antes de TODO commit)
+
+| Se a mudança envolveu… | Atualizar OBRIGATORIAMENTE |
+|---|---|
+| Criar/mover/renomear/**deletar** arquivo ou pasta | [ARCHITECTURE.md](../ARCHITECTURE.md) (seção Estrutura) + este arquivo (seção Estrutura) |
+| Novo endpoint `api/{escopo}/*` | [modules/{escopo}/README.md](../modules/embalagem/README.md) (tabela Endpoints) |
+| Nova página HTML | [modules/{escopo}/README.md](../modules/embalagem/README.md) (Estrutura) + `idMap` em [layout.js](../shared/frontend/layout.js) |
+| Nova tabela ou coluna SQL | `/memories/repo/database-schema.md` + README do módulo |
+| Mudança em sidebar, layout, autenticação, CSS global, encoding, padrão de import | [shared/README.md](../shared/README.md) + este arquivo |
+| Mudança de fluxo de negócio (NF, requisição, inventário, kardex) | README do módulo (seção Fluxos) + possivelmente CHANGELOG |
+| Remoção de subprojeto, módulo ou feature | Remover referências em TODOS os READMEs + ARCHITECTURE |
+
+**Frase-gatilho:** antes de digitar `git commit`, pergunte:
+*"qual item do checklist essa mudança dispara?"* — se a resposta for vazio E o diff toca código (não só doc), provavelmente está faltando algo.
 
 ### Adicionar novo endpoint
 
