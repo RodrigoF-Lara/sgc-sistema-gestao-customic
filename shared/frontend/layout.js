@@ -128,25 +128,59 @@ function inicializarSidebarMobile() {
   document.body.appendChild(toggleBtn);
   document.body.appendChild(overlay);
 
-  const close = () => document.body.classList.remove('sidebar-open');
-  const open  = () => document.body.classList.add('sidebar-open');
+  const isMobile = () => window.innerWidth <= 768;
+
+  // ----- Estado persistido (apenas desktop) -----
+  const SIDEBAR_KEY = 'sgcSidebarCollapsed';
+  if (!isMobile() && localStorage.getItem(SIDEBAR_KEY) === '1') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+
+  const closeMobile = () => document.body.classList.remove('sidebar-open');
+  const openMobile  = () => document.body.classList.add('sidebar-open');
+
   const toggle = () => {
-    if (document.body.classList.contains('sidebar-open')) close(); else open();
+    if (isMobile()) {
+      if (document.body.classList.contains('sidebar-open')) closeMobile();
+      else openMobile();
+    } else {
+      const collapsed = document.body.classList.toggle('sidebar-collapsed');
+      localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
+    }
   };
 
   toggleBtn.addEventListener('click', toggle);
-  overlay.addEventListener('click', close);
+  overlay.addEventListener('click', closeMobile);
 
-  // Fecha ao clicar em qualquer link de navegação (após navegar)
+  // Tooltip nos itens quando colapsado (desktop)
+  document.querySelectorAll('.sidebar-nav a, .sidebar-nav .nav-group-toggle').forEach(el => {
+    const labelEl = el.querySelector('span:not(.nav-badge-soon)');
+    const txt = (labelEl ? labelEl.textContent : el.textContent || '').trim();
+    if (txt && !el.hasAttribute('title')) el.setAttribute('title', txt);
+  });
+
+  // Fecha ao clicar em link de navegação (apenas no mobile, com sidebar aberto)
   document.querySelectorAll('.sidebar-nav a').forEach(a => {
     a.addEventListener('click', () => {
-      if (window.innerWidth <= 768) close();
+      if (isMobile()) closeMobile();
     });
   });
 
-  // Fecha com ESC
+  // Fecha com ESC (apenas mobile)
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape' && isMobile()) closeMobile();
+  });
+
+  // Ao redimensionar entre breakpoints, limpa estados conflitantes
+  window.addEventListener('resize', () => {
+    if (isMobile()) {
+      document.body.classList.remove('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-open');
+      if (localStorage.getItem(SIDEBAR_KEY) === '1') {
+        document.body.classList.add('sidebar-collapsed');
+      }
+    }
   });
 }
 

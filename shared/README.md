@@ -22,8 +22,10 @@
 ## Recursos do `frontend/`
 
 - **Sidebar** ([menu-lateral.html](frontend/menu-lateral.html)) — 3 módulos top-level colapsáveis (Embalagens, Produção, Geral) com sub-acordeões aninhados.
-- **layout.js** — carrega a sidebar via `fetch`, gerencia accordion, item ativo, notificações e **hamburger mobile** (≤768px): botão flutuante + overlay + ESC + fecha-ao-clicar-link.
-- **style.css** — variáveis CSS (`--cor-principal` etc.), regras globais, responsividade mobile da sidebar.
+- **layout.js** — carrega a sidebar via `fetch`, gerencia accordion, item ativo, notificações e botão hamburger com **comportamento dual**:
+  - **Desktop (>768px):** alterna mini-sidebar (modo só ícones, 64px) com preferência persistida em `localStorage.sgcSidebarCollapsed`.
+  - **Mobile (≤768px):** slide-out lateral com overlay, ESC e fecha-ao-clicar-link.
+- **style.css** — variáveis CSS (`--cor-principal` etc.), regras globais, mini-sidebar desktop (`body.sidebar-collapsed`), responsividade mobile (`body.sidebar-open`), tabelas com scroll horizontal e filtros em coluna única no mobile.
 - **fundos.js** — rotação de imagens de fundo configurável por `/api/shared/fundos`.
 - **script.js** — utilitários compartilhados (ex: upload de CSV de requisição).
 
