@@ -168,27 +168,22 @@ async function criarUsuario(req, res, pool) {
     const result = await pool.request()
       .input('usuario', sql.VarChar(50), usuario.toUpperCase())
       .input('senha', sql.VarChar(50), senha.toUpperCase())
-      .input('nivel', sql.VarChar(20), nivel.toUpperCase())
+      .input('nivel', sql.Int, parseInt(nivel))
       .input('cpf', sql.VarChar(14), cpf)
       .input('firstName', sql.VarChar(50), firstName.toUpperCase())
       .input('lastName', sql.VarChar(50), lastName.toUpperCase())
-      .input('setor', sql.VarChar(50), setor.toUpperCase())
-      .input('cod', sql.VarChar(20), cod.toUpperCase())
+      .input('setor', sql.VarChar(50), (setor || '').toUpperCase())
+      .input('cod', sql.VarChar(20), (cod || '').toUpperCase())
       .query(`
         INSERT INTO [dbo].[CAD_USUARIO] 
           (USUARIO, PW, NIVEL, CPF, F_NAME, L_NAME, SETOR, COD)
         VALUES 
           (@usuario, @senha, @nivel, @cpf, @firstName, @lastName, @setor, @cod);
-        
-        SELECT SCOPE_IDENTITY() as ID;
       `);
-
-    const novoId = result.recordset[0].ID;
 
     return res.status(201).json({ 
       success: true,
-      message: "USUÁRIO INCLUÍDO COM SUCESSO!",
-      id: novoId
+      message: "USUÁRIO INCLUÍDO COM SUCESSO!"
     });
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
@@ -252,7 +247,7 @@ async function atualizarUsuario(req, res, pool) {
     }
     if (nivel) {
       updateFields.push('NIVEL = @nivel');
-      request.input('nivel', sql.VarChar(20), nivel.toUpperCase());
+      request.input('nivel', sql.Int, parseInt(nivel));
     }
     if (cpf) {
       updateFields.push('CPF = @cpf');
@@ -268,11 +263,11 @@ async function atualizarUsuario(req, res, pool) {
     }
     if (setor !== undefined) {
       updateFields.push('SETOR = @setor');
-      request.input('setor', sql.VarChar(50), setor.toUpperCase());
+      request.input('setor', sql.VarChar(50), (setor || '').toUpperCase());
     }
     if (cod !== undefined) {
       updateFields.push('COD = @cod');
-      request.input('cod', sql.VarChar(20), cod.toUpperCase());
+      request.input('cod', sql.VarChar(20), (cod || '').toUpperCase());
     }
 
     if (updateFields.length === 0) {

@@ -164,9 +164,11 @@ function renderizarUsuarios(usuarios) {
     }
 
     const html = usuarios.map(usuario => {
-        const nivel = String(usuario.NIVEL || 'USER');
-        const nivelClass = nivel.toLowerCase();
-        const nivelLabel = nivel;
+        const NIVEL_LABELS = { '1': 'ADMIN', '2': 'GERENTE', '3': 'USER', '4': 'ESTOQUISTA' };
+        const NIVEL_CLASSES = { '1': 'admin', '2': 'gerente', '3': 'user', '4': 'user' };
+        const nivelRaw = String(usuario.NIVEL || '').trim();
+        const nivelLabel = NIVEL_LABELS[nivelRaw] || nivelRaw || 'USER';
+        const nivelClass = NIVEL_CLASSES[nivelRaw] || nivelLabel.toLowerCase();
         const userKey = usuario.USUARIO || '';
         const nomeCompleto = `${usuario.F_NAME || ''} ${usuario.L_NAME || ''}`;
 
@@ -250,7 +252,7 @@ async function carregarUsuarioParaEdicao(usuarioNome) {
                 document.getElementById('usuarioId').value = usuario.USUARIO || '';
                 document.getElementById('usuario').value = usuario.USUARIO || '';
                 document.getElementById('senha').value = ''; // Não mostra senha por segurança
-                document.getElementById('nivel').value = usuario.NIVEL || '';
+                document.getElementById('nivel').value = String(usuario.NIVEL || '').trim();
                 document.getElementById('cpf').value = usuario.CPF || '';
                 document.getElementById('firstName').value = usuario.F_NAME || '';
                 document.getElementById('lastName').value = usuario.L_NAME || '';
@@ -322,7 +324,10 @@ async function salvarUsuario(e) {
             esconderFormulario();
             carregarUsuarios();
         } else {
-            mostrarMensagem(data.error || 'Erro ao salvar usuário', 'error');
+            const erroMsg = data.error || data.message || 'Erro ao salvar usuário';
+            const detalhes = data.message && data.error ? `\n\nDetalhes: ${data.message}` : '';
+            console.error('Erro da API:', data);
+            mostrarMensagem(erroMsg + detalhes, 'error');
         }
     } catch (error) {
         console.error('Erro ao salvar usuário:', error);
