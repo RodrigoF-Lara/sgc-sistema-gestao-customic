@@ -83,69 +83,75 @@ async function getConfigInventario(pool, res) {
 }
 
 async function saveConfigInventario(req, res, pool) {
-  const { qtdBloco1, qtdBloco2, qtdBloco3, qtdBloco4, qtdBloco5 } = req.body;
+  const { 
+    bloco1QtdItens,
+    bloco1DiasMovimentacao,
+    bloco2QtdItens,
+    bloco2AcuracidadeMin,
+    bloco3QtdItens,
+    bloco4QtdItens,
+    bloco5QtdItens,
+    bloco5InventariosAtras,
+    usuario
+  } = req.body;
 
-  if (!qtdBloco1 || !qtdBloco2 || !qtdBloco3 || !qtdBloco4 || !qtdBloco5) {
+  // Validação
+  if (!bloco1QtdItens || !bloco2QtdItens || !bloco3QtdItens || !bloco4QtdItens || !bloco5QtdItens) {
     return res.status(400).json({ error: "Todos os blocos são obrigatórios" });
   }
 
   try {
-    const checkTable = await pool.request().query(`
-      SELECT COUNT(*) as count 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_NAME = 'TB_CONFIG_INVENTARIO'
-    `);
-
-    if (checkTable.recordset[0].count === 0) {
-      await pool.request().query(`
-        CREATE TABLE TB_CONFIG_INVENTARIO (
-          ID INT IDENTITY(1,1) PRIMARY KEY,
-          QTD_BLOCO_1 INT NOT NULL,
-          QTD_BLOCO_2 INT NOT NULL,
-          QTD_BLOCO_3 INT NOT NULL,
-          QTD_BLOCO_4 INT NOT NULL,
-          QTD_BLOCO_5 INT NOT NULL,
-          CRIADO_EM DATETIME DEFAULT GETDATE(),
-          ATUALIZADO_EM DATETIME DEFAULT GETDATE()
-        )
-      `);
-    }
-
+    // Verifica se já existe configuração
     const existing = await pool.request().query(`
-      SELECT TOP 1 ID FROM TB_CONFIG_INVENTARIO ORDER BY ID DESC
+      SELECT TOP 1 ID_CONFIG FROM TB_CONFIG_INVENTARIO ORDER BY ID_CONFIG DESC
     `);
 
     if (existing.recordset.length > 0) {
+      // UPDATE
       await pool.request()
-        .input('qtdBloco1', sql.Int, qtdBloco1)
-        .input('qtdBloco2', sql.Int, qtdBloco2)
-        .input('qtdBloco3', sql.Int, qtdBloco3)
-        .input('qtdBloco4', sql.Int, qtdBloco4)
-        .input('qtdBloco5', sql.Int, qtdBloco5)
-        .input('id', sql.Int, existing.recordset[0].ID)
+        .input('bloco1Qtd', sql.Int, bloco1QtdItens)
+        .input('bloco1Dias', sql.Int, bloco1DiasMovimentacao)
+        .input('bloco2Qtd', sql.Int, bloco2QtdItens)
+        .input('bloco2Acur', sql.Float, bloco2AcuracidadeMin)
+        .input('bloco3Qtd', sql.Int, bloco3QtdItens)
+        .input('bloco4Qtd', sql.Int, bloco4QtdItens)
+        .input('bloco5Qtd', sql.Int, bloco5QtdItens)
+        .input('bloco5Inv', sql.Int, bloco5InventariosAtras)
+        .input('usuario', sql.NVarChar, usuario || 'SISTEMA')
+        .input('id', sql.Int, existing.recordset[0].ID_CONFIG)
         .query(`
           UPDATE TB_CONFIG_INVENTARIO 
           SET 
-            QTD_BLOCO_1 = @qtdBloco1,
-            QTD_BLOCO_2 = @qtdBloco2,
-            QTD_BLOCO_3 = @qtdBloco3,
-            QTD_BLOCO_4 = @qtdBloco4,
-            QTD_BLOCO_5 = @qtdBloco5,
-            ATUALIZADO_EM = GETDATE()
-          WHERE ID = @id
+            BLOCO1_QTD_ITENS = @bloco1Qtd,
+            BLOCO1_DIAS_MOVIMENTACAO = @bloco1Dias,
+            BLOCO2_QTD_ITENS = @bloco2Qtd,
+            BLOCO2_ACURACIDADE_MIN = @bloco2Acur,
+            BLOCO3_QTD_ITENS = @bloco3Qtd,
+            BLOCO4_QTD_ITENS = @bloco4Qtd,
+            BLOCO5_QTD_ITENS = @bloco5Qtd,
+            BLOCO5_INVENTARIOS_ATRAS = @bloco5Inv,
+            USUARIO_ALTERACAO = @usuario,
+            DT_ALTERACAO = GETDATE()
+          WHERE ID_CONFIG = @id
         `);
     } else {
+      // INSERT
       await pool.request()
-        .input('qtdBloco1', sql.Int, qtdBloco1)
-        .input('qtdBloco2', sql.Int, qtdBloco2)
-        .input('qtdBloco3', sql.Int, qtdBloco3)
-        .input('qtdBloco4', sql.Int, qtdBloco4)
-        .input('qtdBloco5', sql.Int, qtdBloco5)
+        .input('bloco1Qtd', sql.Int, bloco1QtdItens)
+        .input('bloco1Dias', sql.Int, bloco1DiasMovimentacao)
+        .input('bloco2Qtd', sql.Int, bloco2QtdItens)
+        .input('bloco2Acur', sql.Float, bloco2AcuracidadeMin)
+        .input('bloco3Qtd', sql.Int, bloco3QtdItens)
+        .input('bloco4Qtd', sql.Int, bloco4QtdItens)
+        .input('bloco5Qtd', sql.Int, bloco5QtdItens)
+        .input('bloco5Inv', sql.Int, bloco5InventariosAtras)
+        .input('usuario', sql.NVarChar, usuario || 'SISTEMA')
         .query(`
           INSERT INTO TB_CONFIG_INVENTARIO 
-            (QTD_BLOCO_1, QTD_BLOCO_2, QTD_BLOCO_3, QTD_BLOCO_4, QTD_BLOCO_5)
+            (BLOCO1_QTD_ITENS, BLOCO1_DIAS_MOVIMENTACAO, BLOCO2_QTD_ITENS, BLOCO2_ACURACIDADE_MIN, 
+             BLOCO3_QTD_ITENS, BLOCO4_QTD_ITENS, BLOCO5_QTD_ITENS, BLOCO5_INVENTARIOS_ATRAS, USUARIO_ALTERACAO)
           VALUES 
-            (@qtdBloco1, @qtdBloco2, @qtdBloco3, @qtdBloco4, @qtdBloco5)
+            (@bloco1Qtd, @bloco1Dias, @bloco2Qtd, @bloco2Acur, @bloco3Qtd, @bloco4Qtd, @bloco5Qtd, @bloco5Inv, @usuario)
         `);
     }
 
