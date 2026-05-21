@@ -16,106 +16,123 @@
   <!-- ============================================================ -->
   <!-- MÓDULO: EMBALAGENS                                            -->
   <!-- ============================================================ -->
-  <div class="nav-module-label"><i class="fa-solid fa-boxes-packing"></i><span>Embalagens</span></div>
-
-  <div class="nav-group" data-group="emb-operacoes">
-    <button type="button" class="nav-group-toggle" aria-expanded="false">
-      <i class="fa fa-cubes"></i>
-      <span class="nav-group-label">Operações</span>
+  <div class="nav-group nav-module open" data-group="mod-embalagem">
+    <button type="button" class="nav-group-toggle nav-module-toggle" aria-expanded="true">
+      <i class="fa-solid fa-boxes-packing"></i>
+      <span class="nav-group-label">Módulo Embalagens</span>
       <i class="fa fa-chevron-down nav-group-caret"></i>
     </button>
     <div class="nav-group-items">
-      <a href="/modules/embalagem/requisicoes/requisicoes.html" id="nav-requisicoes">
-        <i class="fa fa-file-lines"></i><span>Requisições</span>
+
+      <div class="nav-group" data-group="emb-operacoes">
+        <button type="button" class="nav-group-toggle" aria-expanded="false">
+          <i class="fa fa-cubes"></i>
+          <span class="nav-group-label">Operações</span>
+          <i class="fa fa-chevron-down nav-group-caret"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="/modules/embalagem/requisicoes/requisicoes.html" id="nav-requisicoes">
+            <i class="fa fa-file-lines"></i><span>Requisições</span>
+          </a>
+          <a href="/modules/embalagem/kardex/saidaRapida.html" id="nav-saida-rapida">
+            <i class="fa fa-qrcode"></i><span>Saída Rápida (QR)</span>
+          </a>
+          <a href="/modules/embalagem/kardex/estoque.html" id="nav-estoque">
+            <i class="fa fa-archive"></i><span>Gerenciar Estoque</span>
+          </a>
+          <a href="/modules/embalagem/inventario/inventarioCiclico.html" id="nav-inventario-ciclico">
+            <i class="fa fa-clipboard-check"></i><span>Inventário Cíclico</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="emb-notas">
+        <button type="button" class="nav-group-toggle" aria-expanded="false">
+          <i class="fa fa-file-invoice-dollar"></i>
+          <span class="nav-group-label">Notas Fiscais</span>
+          <i class="fa fa-chevron-down nav-group-caret"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="/modules/embalagem/nf/lancamentoNF.html" id="nav-lancamento-nf">
+            <i class="fa fa-file-invoice"></i><span>Lançamento NF</span>
+          </a>
+          <a href="/modules/embalagem/nf/statusNF.html" id="nav-status-nf">
+            <i class="fa fa-barcode"></i><span>Status NF</span>
+          </a>
+        </div>
+      </div>
+
+      <a href="/modules/embalagem/relatorios/relatorios.html" id="nav-relatorios" class="nav-module-item">
+        <i class="fa fa-chart-bar"></i><span>Relatórios</span>
       </a>
-      <a href="/modules/embalagem/kardex/saidaRapida.html" id="nav-saida-rapida">
-        <i class="fa fa-qrcode"></i><span>Saída Rápida (QR)</span>
-      </a>
-      <a href="/modules/embalagem/kardex/estoque.html" id="nav-estoque">
-        <i class="fa fa-archive"></i><span>Gerenciar Estoque</span>
-      </a>
-      <a href="/modules/embalagem/inventario/inventarioCiclico.html" id="nav-inventario-ciclico">
-        <i class="fa fa-clipboard-check"></i><span>Inventário Cíclico</span>
-      </a>
+
     </div>
   </div>
-
-  <div class="nav-group" data-group="emb-notas">
-    <button type="button" class="nav-group-toggle" aria-expanded="false">
-      <i class="fa fa-file-invoice-dollar"></i>
-      <span class="nav-group-label">Notas Fiscais</span>
-      <i class="fa fa-chevron-down nav-group-caret"></i>
-    </button>
-    <div class="nav-group-items">
-      <a href="/modules/embalagem/nf/lancamentoNF.html" id="nav-lancamento-nf">
-        <i class="fa fa-file-invoice"></i><span>Lançamento NF</span>
-      </a>
-      <a href="/modules/embalagem/nf/statusNF.html" id="nav-status-nf">
-        <i class="fa fa-barcode"></i><span>Status NF</span>
-      </a>
-    </div>
-  </div>
-
-  <a href="/modules/embalagem/relatorios/relatorios.html" id="nav-relatorios">
-    <i class="fa fa-chart-bar"></i><span>Relatórios</span>
-  </a>
 
   <!-- ============================================================ -->
   <!-- MÓDULO: PRODUÇÃO (em desenvolvimento)                         -->
   <!-- ============================================================ -->
-  <div class="nav-module-label"><i class="fa-solid fa-industry"></i><span>Produção</span><span class="nav-badge-soon">em breve</span></div>
-
-  <div class="nav-group" data-group="prod-operacoes">
-    <button type="button" class="nav-group-toggle" aria-expanded="false" disabled>
-      <i class="fa fa-list-check"></i>
-      <span class="nav-group-label">Operações</span>
+  <div class="nav-group nav-module" data-group="mod-producao">
+    <button type="button" class="nav-group-toggle nav-module-toggle" aria-expanded="false">
+      <i class="fa-solid fa-industry"></i>
+      <span class="nav-group-label">Módulo Produção</span>
+      <span class="nav-badge-soon">em breve</span>
       <i class="fa fa-chevron-down nav-group-caret"></i>
     </button>
     <div class="nav-group-items">
-      <a href="#" class="nav-disabled"><i class="fa fa-list-check"></i><span>Ordens de Produção</span></a>
-      <a href="#" class="nav-disabled"><i class="fa fa-clock-rotate-left"></i><span>Apontamentos</span></a>
-      <a href="#" class="nav-disabled"><i class="fa fa-truck-ramp-box"></i><span>Expedição</span></a>
-      <a href="#" class="nav-disabled"><i class="fa fa-gauge-high"></i><span>OEE / Indicadores</span></a>
+      <a href="#" class="nav-disabled nav-module-item"><i class="fa fa-list-check"></i><span>Ordens de Produção</span></a>
+      <a href="#" class="nav-disabled nav-module-item"><i class="fa fa-clock-rotate-left"></i><span>Apontamentos</span></a>
+      <a href="#" class="nav-disabled nav-module-item"><i class="fa fa-truck-ramp-box"></i><span>Expedição</span></a>
+      <a href="#" class="nav-disabled nav-module-item"><i class="fa fa-gauge-high"></i><span>OEE / Indicadores</span></a>
     </div>
   </div>
 
   <!-- ============================================================ -->
-  <!-- GERAL                                                          -->
+  <!-- GERAL (compartilhado entre todos os módulos)                  -->
   <!-- ============================================================ -->
-  <div class="nav-module-label"><i class="fa-solid fa-gears"></i><span>Geral</span></div>
-
-  <div class="nav-group" data-group="cadastros">
-    <button type="button" class="nav-group-toggle" aria-expanded="false">
-      <i class="fa fa-database"></i>
-      <span class="nav-group-label">Cadastros</span>
+  <div class="nav-group nav-module" data-group="mod-geral">
+    <button type="button" class="nav-group-toggle nav-module-toggle" aria-expanded="false">
+      <i class="fa-solid fa-gears"></i>
+      <span class="nav-group-label">Geral</span>
       <i class="fa fa-chevron-down nav-group-caret"></i>
     </button>
     <div class="nav-group-items">
-      <a href="/shared/cadastros/cadastroProdutos.html" id="nav-produtos">
-        <i class="fa fa-box-open"></i><span>Produtos</span>
-      </a>
-      <a href="/shared/cadastros/cadastroFornecedores.html" id="nav-fornecedores">
-        <i class="fa fa-truck"></i><span>Fornecedores</span>
-      </a>
-      <a href="/shared/cadastros/cadastroUsuarios.html" id="nav-usuarios">
-        <i class="fa fa-users"></i><span>Usuários</span>
-      </a>
-    </div>
-  </div>
 
-  <div class="nav-group" data-group="config">
-    <button type="button" class="nav-group-toggle" aria-expanded="false">
-      <i class="fa fa-sliders"></i>
-      <span class="nav-group-label">Configurações</span>
-      <i class="fa fa-chevron-down nav-group-caret"></i>
-    </button>
-    <div class="nav-group-items">
-      <a href="/shared/config/configuracoes.html" id="nav-configuracoes">
-        <i class="fa fa-cog"></i><span>Configurações Gerais</span>
-      </a>
-      <a href="/shared/config/configNotificacoes.html" id="nav-config-notificacoes">
-        <i class="fa fa-bell"></i><span>Notificações</span>
-      </a>
+      <div class="nav-group" data-group="cadastros">
+        <button type="button" class="nav-group-toggle" aria-expanded="false">
+          <i class="fa fa-database"></i>
+          <span class="nav-group-label">Cadastros</span>
+          <i class="fa fa-chevron-down nav-group-caret"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="/shared/cadastros/cadastroProdutos.html" id="nav-produtos">
+            <i class="fa fa-box-open"></i><span>Produtos</span>
+          </a>
+          <a href="/shared/cadastros/cadastroFornecedores.html" id="nav-fornecedores">
+            <i class="fa fa-truck"></i><span>Fornecedores</span>
+          </a>
+          <a href="/shared/cadastros/cadastroUsuarios.html" id="nav-usuarios">
+            <i class="fa fa-users"></i><span>Usuários</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="config">
+        <button type="button" class="nav-group-toggle" aria-expanded="false">
+          <i class="fa fa-sliders"></i>
+          <span class="nav-group-label">Configurações</span>
+          <i class="fa fa-chevron-down nav-group-caret"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="/shared/config/configuracoes.html" id="nav-configuracoes">
+            <i class="fa fa-cog"></i><span>Configurações Gerais</span>
+          </a>
+          <a href="/shared/config/configNotificacoes.html" id="nav-config-notificacoes">
+            <i class="fa fa-bell"></i><span>Notificações</span>
+          </a>
+        </div>
+      </div>
+
     </div>
   </div>
 </nav>

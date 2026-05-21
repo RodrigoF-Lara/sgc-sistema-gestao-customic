@@ -1934,10 +1934,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .menu-option-disabled { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; filter: grayscale(0.6); }
 .menu-option-disabled:hover { transform: none !important; box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; border-color: var(--cor-cinza-borda) !important; }
 
-/* === Sidebar: rótulos de módulo === */
-.nav-module-label { display: flex; align-items: center; gap: 8px; padding: 14px 18px 6px 18px; font-size: 0.7em; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); }
-.nav-module-label:first-of-type { border-top: none; margin-top: 4px; }
-.nav-module-label i { font-size: 0.9em; color: rgba(255,255,255,0.7); }
-.nav-badge-soon { margin-left: auto; padding: 2px 7px; background: #ffeaa7; color: #8a6d3b; font-size: 0.85em; font-weight: 700; border-radius: 10px; letter-spacing: 0.3px; }
+/* === Sidebar: módulos top-level (ERP style) === */
+.nav-module { margin: 6px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+.nav-module:first-of-type { border-top: none; }
+.nav-module-toggle { font-size: 0.95em !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: 0.6px; padding: 14px 18px !important; background: rgba(0,0,0,0.12) !important; }
+.nav-module-toggle:hover { background: rgba(0,0,0,0.20) !important; }
+.nav-module.open > .nav-module-toggle { background: rgba(25, 118, 210, 0.25) !important; border-left: 3px solid var(--cor-principal); padding-left: 15px !important; }
+.nav-module-toggle i.fa-solid:first-child { font-size: 1.1em; color: #fff; }
+.nav-module > .nav-group-items { padding: 4px 0 8px 0; background: rgba(0,0,0,0.05); }
+.nav-module > .nav-group-items > .nav-group > .nav-group-toggle { padding-left: 28px !important; font-size: 0.88em; }
+.nav-module > .nav-group-items > .nav-group .nav-group-items a { padding-left: 48px !important; font-size: 0.85em; }
+.nav-module > .nav-group-items > a.nav-module-item { padding-left: 28px !important; font-size: 0.88em; }
+
+.nav-badge-soon { margin-left: auto; margin-right: 8px; padding: 2px 7px; background: #ffeaa7; color: #8a6d3b; font-size: 0.7em; font-weight: 700; border-radius: 10px; letter-spacing: 0.3px; text-transform: uppercase; }
 .nav-disabled { opacity: 0.45; cursor: not-allowed !important; pointer-events: none; }
 .nav-group-toggle[disabled] { opacity: 0.55; cursor: not-allowed; }
