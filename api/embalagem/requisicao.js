@@ -1,6 +1,6 @@
 import { getConnection, sql } from "../../db.js";
 
-// FunÁ„o Principal que decide o que fazer
+// Fun√ß√£o Principal que decide o que fazer
 export default async function handler(req, res) {
     const { method } = req;
     try {
@@ -18,17 +18,17 @@ export default async function handler(req, res) {
     }
 }
 
-// --- L”GICA GET (COM AJUSTE NA BUSCA DO LOG) ---
+// --- L√ìGICA GET (COM AJUSTE NA BUSCA DO LOG) ---
 async function handleGet(req, res) {
     const { id, idReqItemLog, idReqLog } = req.query;
     const pool = await getConnection();
     if (id) {
         const headerResult = await pool.request().input('idReq', sql.Int, id).query("SELECT * FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @idReq");
-        if (headerResult.recordset.length === 0) return res.status(404).json({ message: "RequisiÁ„o n„o encontrada" });
+        if (headerResult.recordset.length === 0) return res.status(404).json({ message: "Requisi√ß√£o n√£o encontrada" });
         const itemsResult = await pool.request().input('idReqItems', sql.Int, id).query(`SELECT I.*, P.DESCRICAO AS DESCRICAO_PRODUTO FROM [dbo].[TB_REQ_ITEM] I LEFT JOIN [dbo].[CAD_PROD] P ON I.CODIGO = P.CODIGO WHERE I.ID_REQ = @idReqItems ORDER BY I.ID_REQ_ITEM`);
         return res.status(200).json({ header: headerResult.recordset[0], items: itemsResult.recordset });
     } else if (idReqItemLog) {
-        // CORRE«√O: Filtra tambÈm por ID_REQ pois ID_REQ_ITEM È sequencial por requisiÁ„o (n„o È ˙nico globalmente)
+        // CORRE√á√ÉO: Filtra tamb√©m por ID_REQ pois ID_REQ_ITEM √© sequencial por requisi√ß√£o (n√£o √© √∫nico globalmente)
         const request = pool.request().input('ID_REQ_ITEM', sql.Int, idReqItemLog);
         let logQuery = "SELECT STATUS_ANTERIOR, STATUS_NOVO, RESPONSAVEL, DT_HR_ALTERACAO FROM TB_REQ_ITEM_LOG WHERE ID_REQ_ITEM = @ID_REQ_ITEM";
         if (idReqLog) {
@@ -44,7 +44,7 @@ async function handleGet(req, res) {
     }
 }
 
-// --- L”GICA POST (sem alteraÁıes) ---
+// --- L√ìGICA POST (sem altera√ß√µes) ---
 async function handlePost(req, res) {
     const { action } = req.body;
     const pool = await getConnection();
@@ -65,10 +65,10 @@ async function handlePost(req, res) {
     } else if (action === 'atender') {
         return await atenderRequisicao(req, res);
     }
-    return res.status(400).json({ message: "AÁ„o POST inv·lida." });
+    return res.status(400).json({ message: "A√ß√£o POST inv√°lida." });
 }
 
-// --- L”GICA PUT (COM AJUSTE NO LOG) ---
+// --- L√ìGICA PUT (COM AJUSTE NO LOG) ---
 async function handlePut(req, res) {
     const { action } = req.body;
     const pool = await getConnection();
@@ -88,14 +88,14 @@ async function handlePut(req, res) {
             }
         } else {
             await transaction.rollback();
-            return res.status(400).json({ message: "AÁ„o PUT inv·lida." });
+            return res.status(400).json({ message: "A√ß√£o PUT inv√°lida." });
         }
         await updateHeaderStatus(transaction, req.body.idReq);
         await transaction.commit();
-        res.status(200).json({ message: `OperaÁ„o concluÌda com sucesso!` });
+        res.status(200).json({ message: `Opera√ß√£o conclu√≠da com sucesso!` });
     } catch (err) {
         await transaction.rollback();
-        console.error("Erro na transaÁ„o de atualizaÁ„o:", err);
+        console.error("Erro na transa√ß√£o de atualiza√ß√£o:", err);
         res.status(500).json({ message: "Erro interno do servidor ao atualizar." });
     }
 }
@@ -108,7 +108,7 @@ async function updateSingleItem(transaction, { idReqItem, idReq, novoStatus, sta
     queryUpdateItem += ` WHERE ID_REQ_ITEM = @ID_REQ_ITEM AND ID_REQ = @ID_REQ;`;
     await request.input('NOVO_STATUS_ITEM', sql.NVarChar, novoStatus).input('ID_REQ_ITEM', sql.Int, idReqItem).input('ID_REQ', sql.Int, idReq).query(queryUpdateItem);
 
-    // CORRE«√O: Salva nas colunas antigas E na nova coluna
+    // CORRE√á√ÉO: Salva nas colunas antigas E na nova coluna
     const dataHoraAtual = new Date();
     await request
         .input('STATUS_ANTERIOR_LOG', sql.NVarChar, statusAntigo)
@@ -132,7 +132,7 @@ async function updateHeaderStatus(transaction, idReq) {
     const allStatuses = allItemsResult.recordset.map(item => (item.STATUS_ITEM || 'Pendente').trim().toUpperCase());
     let novoStatusHeader;
     if (allStatuses.length > 0 && allStatuses.every(s => s === 'FINALIZADO')) {
-        novoStatusHeader = 'ConcluÌdo';
+        novoStatusHeader = 'Conclu√≠do';
     } else if (allStatuses.length > 0 && allStatuses.every(s => s === 'PENDENTE')) {
         novoStatusHeader = 'Pendente';
     } else {
@@ -145,7 +145,7 @@ async function atenderRequisicao(req, res) {
     const { idReqItem, idReq, quantidadeAtendida, usuario } = req.body;
 
     if (!idReqItem || !idReq || quantidadeAtendida === undefined || !usuario) {
-        return res.status(400).json({ message: "Todos os campos (ID do Item, ID da RequisiÁ„o, Quantidade, Usu·rio) s„o obrigatÛrios." });
+        return res.status(400).json({ message: "Todos os campos (ID do Item, ID da Requisi√ß√£o, Quantidade, Usu√°rio) s√£o obrigat√≥rios." });
     }
 
     const pool = await getConnection();
@@ -154,7 +154,7 @@ async function atenderRequisicao(req, res) {
     try {
         await transaction.begin();
 
-        // 1. Atualiza o item especÌfico
+        // 1. Atualiza o item espec√≠fico
         const itemRequest = new sql.Request(transaction);
         await itemRequest
             .input('ID_REQ_ITEM', sql.Int, idReqItem)
@@ -171,7 +171,7 @@ async function atenderRequisicao(req, res) {
                 WHERE ID_REQ_ITEM = @ID_REQ_ITEM;
             `);
 
-        // 2. Verifica o status de todos os outros itens da mesma requisiÁ„o
+        // 2. Verifica o status de todos os outros itens da mesma requisi√ß√£o
         const checkStatusRequest = new sql.Request(transaction);
         const allItemsResult = await checkStatusRequest
             .input('ID_REQ', sql.Int, idReq)
@@ -179,7 +179,7 @@ async function atenderRequisicao(req, res) {
 
         const { total, pagos } = allItemsResult.recordset[0];
 
-        // 3. Se todos os itens estiverem pagos, atualiza o cabeÁalho da requisiÁ„o
+        // 3. Se todos os itens estiverem pagos, atualiza o cabe√ßalho da requisi√ß√£o
         if (total === pagos) {
             const updateHeaderRequest = new sql.Request(transaction);
             await updateHeaderRequest
@@ -193,7 +193,7 @@ async function atenderRequisicao(req, res) {
 
     } catch (err) {
         await transaction.rollback();
-        console.error("Erro na transaÁ„o de atendimento:", err);
+        console.error("Erro na transa√ß√£o de atendimento:", err);
         return res.status(500).json({ message: "Erro no servidor ao tentar atender o item.", error: err.message });
     }
 }

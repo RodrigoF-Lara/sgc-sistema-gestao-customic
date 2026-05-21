@@ -1,5 +1,5 @@
 /* =================================================================== */
-/* ESTILOS GERAIS E GLOBAIS DA APLICAÇÃO (TEMA CLARO)                */
+/* ESTILOS GERAIS E GLOBAIS DA APLICAÃ‡ÃƒO (TEMA CLARO)                */
 /* =================================================================== */
 :root {
     --cor-principal: #1976d2;
@@ -30,7 +30,7 @@ body {
     color: var(--cor-texto);
 }
 
-/* Transição suave de background para o menu principal */
+/* TransiÃ§Ã£o suave de background para o menu principal */
 .main-content::before,
 .main-content::after {
     content: '';
@@ -44,7 +44,7 @@ body {
     background-repeat: no-repeat;
     z-index: 0;
     transition: opacity 2s ease-in-out;
-    /* Melhorias de qualidade de renderização */
+    /* Melhorias de qualidade de renderizaÃ§Ã£o */
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
     filter: contrast(1.05) brightness(1.02);
@@ -81,7 +81,7 @@ h1 { margin-bottom: 25px; text-align: center; }
 h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-cinza-borda); padding-bottom: 10px; }
 
 /* =================================================================== */
-/* LAYOUT PRINCIPAL (SIDEBAR + CONTEÚDO)                             */
+/* LAYOUT PRINCIPAL (SIDEBAR + CONTEÃšDO)                             */
 /* =================================================================== */
 .sidebar {
     width: 250px;
@@ -149,7 +149,7 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
 }
 .sidebar-nav a i { width: 20px; text-align: center; }
 
-/* ===== Grupos colapsáveis no menu lateral ===== */
+/* ===== Grupos colapsÃ¡veis no menu lateral ===== */
 .nav-group { display: flex; flex-direction: column; }
 .nav-group-toggle {
     background: none;
@@ -314,8 +314,8 @@ tbody tr:hover {
 }
 .status-pendente { background-color: var(--cor-alerta); }
 .status-parcial { background-color: #17a2b8; }
-.status-concluido, .status-concluído, .status-finalizado { background-color: var(--cor-sucesso); }
-.status-em-separação { background-color: #6f42c1; }
+.status-concluido, .status-concluÃ­do, .status-finalizado { background-color: var(--cor-sucesso); }
+.status-em-separaÃ§Ã£o { background-color: #6f42c1; }
 .status-separado { background-color: #fd7e14; }
 .status-aguarda-coleta { background-color: #007bff; }
 .prioridade-normal { background-color: #6c757d; }
@@ -332,10 +332,10 @@ tbody tr:hover {
 .close-btn:hover, .close-btn:focus { color: #000; }
 
 /* =================================================================== */
-/* ESTILOS ESPECÍFICOS POR PÁGINA                                    */
+/* ESTILOS ESPECÃFICOS POR PÃGINA                                    */
 /* =================================================================== */
 
-/* --- Página de Login --- */
+/* --- PÃ¡gina de Login --- */
 .login-body { display: block; padding: 0; margin: 0; }
 .login-container { 
     min-height: 100vh; 
@@ -359,10 +359,10 @@ tbody tr:hover {
 @media (max-width: 480px) {
     .login-card { padding: 28px 20px; }
     .login-card h2 { font-size: 1.1em; }
-    .login-card input { font-size: 16px; } /* evita zoom automático no iOS */
+    .login-card input { font-size: 16px; } /* evita zoom automÃ¡tico no iOS */
 }
 
-/* --- Dropdown multi-checkbox (Exibir no Relatório de Saldo) --- */
+/* --- Dropdown multi-checkbox (Exibir no RelatÃ³rio de Saldo) --- */
 .multicheck-wrapper { position: relative; width: 100%; }
 .multicheck-trigger {
     width: 100%;
@@ -432,7 +432,7 @@ tbody tr:hover {
     margin: 6px 0;
 }
 
-/* --- Página de Menu --- */
+/* --- PÃ¡gina de Menu --- */
 .menu-header { text-align: center; margin-bottom: 40px; }
 .menu-header h1 { color: var(--cor-principal); text-align: center; }
 .menu-header p { color: #555; font-size: 1.1em; }
@@ -442,7 +442,7 @@ tbody tr:hover {
 .menu-option-card i { font-size: 3em; margin-bottom: 20px; color: var(--cor-principal); }
 .menu-option-card h2 { font-size: 1.2em; margin: 0; border: none; font-weight: 600; text-align: center; }
 
-/* Seções agrupadas no Menu Principal */
+/* SeÃ§Ãµes agrupadas no Menu Principal */
 .menu-section { margin-bottom: 40px; }
 .menu-section-title {
     display: flex;
@@ -461,7 +461,7 @@ tbody tr:hover {
 .menu-section .menu-option-card i { font-size: 2.5em; margin-bottom: 15px; }
 .menu-section .menu-option-card h2 { font-size: 1.05em; }
 
-/* --- Página de Consulta --- */
+/* --- PÃ¡gina de Consulta --- */
 #summary-container { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
 .summary-card { flex: 1 1 200px; background-color: var(--cor-branco); padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; border-left: 5px solid var(--cor-principal); }
 .summary-card h3 { margin: 0 0 10px; font-size: 16px; color: #555; text-transform: uppercase; font-weight: 600; border: none; padding: 0; }
@@ -470,7 +470,7 @@ tbody tr:hover {
 .filter-container .form-group { display: flex; flex-direction: column; }
 .filter-container label { margin-bottom: 5px; font-size: 0.9em; font-weight: bold; color: #555; }
 
-/* --- Página de Status NF --- */
+/* --- PÃ¡gina de Status NF --- */
 #status-container table { table-layout: fixed; word-wrap: break-word; }
 #status-container th.descricao-col { width: 35%; }
 #status-container th.actions-col { width: 280px; }
@@ -481,7 +481,7 @@ tbody tr:hover {
 #status-container .btn-log { background-color: var(--cor-branco); color: #6c757d; border: 1px solid #6c757d; }
 #status-container .btn-log:hover { background-color: var(--cor-cinza-claro); }
 
-/* --- Inventário Cíclico --- */
+/* --- InventÃ¡rio CÃ­clico --- */
 .info-lista {
     background-color: #e8f4f8;
     border-left: 4px solid var(--cor-principal);
@@ -523,7 +523,7 @@ tbody tr:hover {
     border: 2px solid #17a2b8;
 }
 
-/* Estilos para Inventário Cíclico */
+/* Estilos para InventÃ¡rio CÃ­clico */
 .inventario-header {
     display: flex;
     justify-content: space-between;
@@ -696,7 +696,7 @@ tbody tr:hover {
     line-height: 1.3;
 }
 
-/* Estilos para blocos de inventário */
+/* Estilos para blocos de inventÃ¡rio */
 .blocos-info {
     list-style: none;
     padding: 0;
@@ -764,7 +764,7 @@ tbody tr:hover {
 }
 
 /* =================================================================== */
-/* PÁGINA DE CONFIGURAÇÕES                                            */
+/* PÃGINA DE CONFIGURAÃ‡Ã•ES                                            */
 /* =================================================================== */
 .config-section {
     background-color: #f8f9fa;
@@ -799,7 +799,7 @@ tbody tr:hover {
     min-width: 180px;
 }
 
-/* Botão secundário (impressão) */
+/* BotÃ£o secundÃ¡rio (impressÃ£o) */
 .btn-secundario {
     background-color: #6c757d;
     color: white;
@@ -824,7 +824,7 @@ tbody tr:hover {
     opacity: 0.6;
 }
 
-/* Botão de exportar Excel */
+/* BotÃ£o de exportar Excel */
 .btn-success {
     background-color: #28a745;
     color: white;
@@ -849,7 +849,7 @@ tbody tr:hover {
     opacity: 0.6;
 }
 
-/* Ajustes nos botões de ação do inventário */
+/* Ajustes nos botÃµes de aÃ§Ã£o do inventÃ¡rio */
 .inventario-acoes {
     display: flex;
     gap: 10px;
@@ -860,7 +860,7 @@ tbody tr:hover {
     flex: 0 1 auto;
 }
 
-/* Botão de excluir item */
+/* BotÃ£o de excluir item */
 .btn-excluir-item {
     background-color: #e74c3c;
     color: white;
@@ -880,7 +880,7 @@ tbody tr:hover {
     pointer-events: none;
 }
 
-/* Badge de divergências */
+/* Badge de divergÃªncias */
 .badge-divergencia {
     display: inline-block;
     padding: 4px 10px;
@@ -892,7 +892,7 @@ tbody tr:hover {
     font-size: 0.9em;
 }
 
-/* Oculta elementos na impressão */
+/* Oculta elementos na impressÃ£o */
 @media print {
     .sidebar,
     .no-print,
@@ -911,7 +911,7 @@ tbody tr:hover {
 }
 
 /* =================================================================== */
-/* ESTILOS PARA RELATÓRIOS                                            */
+/* ESTILOS PARA RELATÃ“RIOS                                            */
 /* =================================================================== */
 .table-actions {
     display: flex;
@@ -956,7 +956,7 @@ tbody tr:hover {
 }
 
 /* =================================================================== */
-/* ESTILOS PARA INPUTS DE DATA (RELATÓRIOS)                          */
+/* ESTILOS PARA INPUTS DE DATA (RELATÃ“RIOS)                          */
 /* =================================================================== */
 .filter-container input[type="date"] {
     font-size: 16px;
@@ -986,7 +986,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin-bottom: 8px;
 }
 
-/* Novos estilos para estatísticas e saldo por local */
+/* Novos estilos para estatÃ­sticas e saldo por local */
 .estatisticas-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1295,7 +1295,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: linear-gradient(135deg, #ffa726 0%, #e65100 100%);
 }
 
-/* Estilos para badges genéricos */
+/* Estilos para badges genÃ©ricos */
 .badge {
     padding: 5px 12px;
     border-radius: 15px;
@@ -1323,7 +1323,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #212529;
 }
 
-/* Prioridade Média */
+/* Prioridade MÃ©dia */
 .prioridade-media {
     background-color: #ffc107;
     color: #212529;
@@ -1382,7 +1382,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* === MODAL === */
 .modal {
-    display: none; /* Oculto por padrão */
+    display: none; /* Oculto por padrÃ£o */
     position: fixed;
     z-index: 2000;
     left: 0;
@@ -1513,7 +1513,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: white;
 }
 
-/* === ESTATÍSTICAS === */
+/* === ESTATÃSTICAS === */
 .stat-card.destaque-saldo {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
     transform: scale(1.05);
@@ -1555,10 +1555,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* =================================================================== */
-/* SISTEMA DE NOTIFICAÇÕES                                             */
+/* SISTEMA DE NOTIFICAÃ‡Ã•ES                                             */
 /* =================================================================== */
 
-/* Container raiz: ancora o botão + painel no canto inferior direito */
+/* Container raiz: ancora o botÃ£o + painel no canto inferior direito */
 #sgc-notif-root {
     position: fixed;
     bottom: 24px;
@@ -1566,7 +1566,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     z-index: 9999;
 }
 
-/* Botão sino */
+/* BotÃ£o sino */
 #sgc-notif-bell {
     width: 52px;
     height: 52px;
@@ -1589,7 +1589,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     box-shadow: 0 6px 20px rgba(25,118,210,0.55);
 }
 
-/* Badge de não lidos */
+/* Badge de nÃ£o lidos */
 #sgc-notif-badge {
     position: absolute;
     top: -4px;
@@ -1613,7 +1613,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     50%       { transform: scale(1.18); }
 }
 
-/* Painel de histórico */
+/* Painel de histÃ³rico */
 #sgc-notif-panel {
     position: absolute;
     bottom: 64px;
@@ -1720,7 +1720,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .sgc-notif-item-time  { font-size: 11px; color: #bbb; margin-top: 4px; }
 .sgc-notif-empty      { text-align: center; color: #aaa; padding: 30px 16px; font-size: 14px; }
 
-/* Container de toasts (fora do root para não sobrepor o painel) */
+/* Container de toasts (fora do root para nÃ£o sobrepor o painel) */
 #sgc-notif-toasts {
     position: fixed;
     bottom: 90px;
@@ -1787,7 +1787,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .sgc-toast-close:hover { color: #666; background: #f0f0f0; }
 
-/* Barra de progresso no rodapé do toast */
+/* Barra de progresso no rodapÃ© do toast */
 .sgc-toast-progress {
     position: absolute;
     bottom: 0;
@@ -1797,7 +1797,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: var(--cor-principal);
     border-radius: 0 0 10px 10px;
 }
-/* ===== Filtros do Hist�rico de Movimentos (estoque.html) ===== */
+/* ===== Filtros do Histórico de Movimentos (estoque.html) ===== */
 #historicoTable thead tr.filter-row th {
     background: #f5f7fa;
     padding: 4px 6px;
@@ -1821,7 +1821,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* =================================================================== */
-/* Cabe�alho da Tela de Detalhes da Requisi��o                         */
+/* Cabeçalho da Tela de Detalhes da Requisição                         */
 /* =================================================================== */
 .detalhe-header {
     padding: 0;

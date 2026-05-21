@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const historicoContainer = document.getElementById("historicoContainer");
   const historicoBody = document.getElementById("historicoBody");
   
-  // Novos elementos para estatÌsticas
+  // Novos elementos para estat√≠sticas
   const estatisticasContainer = document.getElementById("estatisticasContainer");
   const saldoPorLocalContainer = document.getElementById("saldoPorLocalContainer");
 
@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       statusEl.textContent = "";
       
-      // Habilita botıes de entrada e saÌda
+      // Habilita bot√µes de entrada e sa√≠da
       btnEntrada.disabled = false;
       btnSaida.disabled = false;
       btnZerarEndereco.disabled = false;
@@ -130,11 +130,11 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const movimentos = data.movimentos || [];
     const entradas = movimentos.filter(m => m.OPERACAO === 'ENTRADA');
-    const saidas = movimentos.filter(m => m.OPERACAO === 'SAÕDA');
+    const saidas = movimentos.filter(m => m.OPERACAO === 'SA√çDA');
     const saldoTotal = data.saldo || 0;
     
     estatisticasContainer.innerHTML = `
-      <h3>?? EstatÌsticas R·pidas</h3>
+      <h3>?? Estat√≠sticas R√°pidas</h3>
       <div class="estatisticas-grid">
         <div class="stat-card destaque-saldo">
           <i class="fa-solid fa-boxes-stacked"></i>
@@ -148,12 +148,12 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div class="stat-card">
           <i class="fa-solid fa-arrow-down" style="color: #f44336;"></i>
-          <span class="stat-label">Total SaÌdas</span>
+          <span class="stat-label">Total Sa√≠das</span>
           <span class="stat-value">${saidas.length}</span>
         </div>
         <div class="stat-card">
           <i class="fa-solid fa-calendar-days"></i>
-          <span class="stat-label">⁄ltima MovimentaÁ„o</span>
+          <span class="stat-label">√öltima Movimenta√ß√£o</span>
           <span class="stat-value">${movimentos[0]?.DT ? movimentos[0].DT.split('-').reverse().join('/') : '-'}</span>
         </div>
       </div>
@@ -166,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
     historicoBody.innerHTML = "";
     if (!rows || rows.length === 0) {
       historicoBody.innerHTML =
-        '<tr><td colspan="9" style="text-align:center;">Nenhum histÛrico encontrado</td></tr>';
+        '<tr><td colspan="9" style="text-align:center;">Nenhum hist√≥rico encontrado</td></tr>';
       return;
     }
 
@@ -231,14 +231,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function gerarEtiqueta100x150(dadosOuArray) {
     const etiquetas = Array.isArray(dadosOuArray) ? dadosOuArray : [dadosOuArray];
     if (etiquetas.length === 0) {
-      console.error("gerarEtiqueta100x150 foi chamada sem dados de etiqueta v·lidos.");
+      console.error("gerarEtiqueta100x150 foi chamada sem dados de etiqueta v√°lidos.");
       return;
     }
 
     const janelaEtiqueta = window.open("", "_blank", "width=800,height=600");
 
     if (!janelaEtiqueta || typeof janelaEtiqueta.closed == 'undefined' || janelaEtiqueta.closed) {
-      alert("A janela de impress„o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do histÛrico.");
+      alert("A janela de impress√£o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do hist√≥rico.");
       return;
     }
 
@@ -253,7 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         <div class="codigo-principal">
             <div class="descricao-card">
-                <div class="descricao-label">DESCRI«√O DO PRODUTO:</div>
+                <div class="descricao-label">DESCRI√á√ÉO DO PRODUTO:</div>
                 <div class="descricao-text">${dados.descricao || "N/A"}</div>
             </div>
         </div>
@@ -270,12 +270,12 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             
             <div class="info-row">
-                <span class="info-label">ENDERE«O:</span>
+                <span class="info-label">ENDERE√áO:</span>
                 <span class="info-value">${dados.endereco || "-"}</span>
             </div>
             
             <div class="info-row">
-                <span class="info-label">ARMAZ…M:</span>
+                <span class="info-label">ARMAZ√âM:</span>
                 <span class="info-value">${dados.armazem ? String(dados.armazem).padStart(2, "0") : "-"}</span>
             </div>
         </div>
@@ -566,7 +566,7 @@ document.addEventListener("DOMContentLoaded", () => {
     janelaEtiqueta.document.write(htmlEtiqueta);
     janelaEtiqueta.document.close();
 
-    // Adiciona um pequeno delay para garantir que o conte˙do foi renderizado antes de imprimir
+    // Adiciona um pequeno delay para garantir que o conte√∫do foi renderizado antes de imprimir
     setTimeout(() => {
       janelaEtiqueta.print();
     }, 500);
@@ -578,7 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const janelaEtiqueta = window.open("", "_blank", "width=420,height=360");
     if (!janelaEtiqueta || typeof janelaEtiqueta.closed == 'undefined' || janelaEtiqueta.closed) {
-      alert("A janela de impress„o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do histÛrico.");
+      alert("A janela de impress√£o foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do hist√≥rico.");
       return;
     }
 
@@ -773,14 +773,14 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => { janelaEtiqueta.print(); }, 500);
   }
 
-  // --- LÛgica de Zerar CÛdigo ---
+  // --- L√≥gica de Zerar C√≥digo ---
 
   btnZerarCodigo.addEventListener("click", () => {
     if (!codigoAtual) return;
     const descricao = document.getElementById("infoDescricao").textContent.trim();
     const saldo = document.getElementById("infoQuantidade").textContent.trim();
     document.getElementById("msgZerarCodigo").textContent =
-      `VocÍ est· prestes a zerar TODAS as ${saldo} unidades do produto ${descricao} (${codigoAtual}) em todos os endereÁos.`;
+      `Voc√™ est√° prestes a zerar TODAS as ${saldo} unidades do produto ${descricao} (${codigoAtual}) em todos os endere√ßos.`;
     modalZerarCodigo.style.display = "flex";
   });
 
@@ -818,17 +818,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       modalZerarCodigo.style.display = "none";
       statusEl.style.color = "#28a745";
-      statusEl.textContent = data.message || "CÛdigo zerado com sucesso!";
+      statusEl.textContent = data.message || "C√≥digo zerado com sucesso!";
       setTimeout(() => consultar(codigoAtual), 500);
     } catch (err) {
-      alert(`Erro ao zerar cÛdigo: ${err.message}`);
+      alert(`Erro ao zerar c√≥digo: ${err.message}`);
     } finally {
       btn.disabled = false;
       btn.textContent = "?? SIM, ZERAR TUDO";
     }
   });
 
-  // --- LÛgica de Alterar EndereÁo ---
+  // --- L√≥gica de Alterar Endere√ßo ---
 
   btnAlterarEndereco.addEventListener("click", () => {
     if (!codigoAtual) return;
@@ -879,7 +879,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         if (lotesFiltrados.length === 0) {
-          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armazÈm ${armAtual} / endereÁo ${endAtual}.`);
+          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armaz√©m ${armAtual} / endere√ßo ${endAtual}.`);
           btn.disabled = false;
           btn.textContent = "?? Localizar Saldo";
           return;
@@ -891,7 +891,7 @@ document.addEventListener("DOMContentLoaded", () => {
           `Transferir ${totalSaldo} unidades de "${descricao}" (${codigoAtual}) ` +
           `de ARM:${armAtual} END:${endAtual} ? ARM:${armNovo} END:${endNovo}?`;
         document.getElementById("confirmarAlterarContainer").style.display = "block";
-        btn.textContent = "? CONFIRMAR TRANSFER NCIA";
+        btn.textContent = "? CONFIRMAR TRANSFER√äNCIA";
         btn.dataset.step = "confirmar";
         btn.disabled = false;
       } catch (err) {
@@ -923,17 +923,17 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.disabled = false;
         modalAlterarEndereco.style.display = "none";
         statusEl.style.color = "#28a745";
-        statusEl.textContent = data.message || "EndereÁo alterado com sucesso!";
+        statusEl.textContent = data.message || "Endere√ßo alterado com sucesso!";
         setTimeout(() => consultar(codigoAtual), 500);
       } catch (err) {
-        alert(`Erro ao alterar endereÁo: ${err.message}`);
+        alert(`Erro ao alterar endere√ßo: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = "? CONFIRMAR TRANSFER NCIA";
+        btn.textContent = "? CONFIRMAR TRANSFER√äNCIA";
       }
     }
   });
 
-  // --- LÛgica de Zerar EndereÁo ---
+  // --- L√≥gica de Zerar Endere√ßo ---
 
   btnZerarEndereco.addEventListener("click", () => {
     if (!codigoAtual) return;
@@ -970,7 +970,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const step = submitBtn.dataset.step || "localizar";
 
     if (step === "localizar") {
-      // Passo 1: buscar o saldo do endereÁo e confirmar
+      // Passo 1: buscar o saldo do endere√ßo e confirmar
       submitBtn.disabled = true;
       submitBtn.textContent = "Buscando...";
       try {
@@ -983,7 +983,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         if (lotesFiltrados.length === 0) {
-          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armazÈm ${arm} / endereÁo ${end}.`);
+          alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armaz√©m ${arm} / endere√ßo ${end}.`);
           submitBtn.disabled = false;
           submitBtn.textContent = "? Localizar Saldo";
           return;
@@ -992,8 +992,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalSaldo = lotesFiltrados.reduce((sum, l) => sum + (l.SALDO || 0), 0);
         const descricao = document.getElementById("infoDescricao").textContent.trim();
         document.getElementById("mensagemConfirmarZerar").textContent =
-          `Confirmar SAÕDA de ${totalSaldo} unidades do produto ${descricao} (${codigoAtual}) ` +
-          `no armazÈm ${arm} / endereÁo ${end}?`;
+          `Confirmar SA√çDA de ${totalSaldo} unidades do produto ${descricao} (${codigoAtual}) ` +
+          `no armaz√©m ${arm} / endere√ßo ${end}?`;
         document.getElementById("confirmarZerarContainer").style.display = "block";
         submitBtn.textContent = "?? CONFIRMAR ZERAMENTO";
         submitBtn.dataset.step = "confirmar";
@@ -1026,17 +1026,17 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.disabled = false;
         modalZerarEndereco.style.display = "none";
         statusEl.style.color = "#28a745";
-        statusEl.textContent = data.message || "EndereÁo zerado com sucesso!";
+        statusEl.textContent = data.message || "Endere√ßo zerado com sucesso!";
         setTimeout(() => consultar(codigoAtual), 500);
       } catch (err) {
-        alert(`Erro ao zerar endereÁo: ${err.message}`);
+        alert(`Erro ao zerar endere√ßo: ${err.message}`);
         submitBtn.disabled = false;
         submitBtn.textContent = "?? CONFIRMAR ZERAMENTO";
       }
     }
   });
 
-  // --- LÛgica de Eventos ---
+  // --- L√≥gica de Eventos ---
 
   btnConsultar.addEventListener("click", () => {
     const codigo = codigoEl.value.trim();
@@ -1060,9 +1060,9 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.className = "btn-movimento entrada";
     submitBtn.textContent = "? Registrar Entrada";
 
-    // Mostra/oculta campos e ajusta validaÁ„o
+    // Mostra/oculta campos e ajusta valida√ß√£o
     document.getElementById('loteSelectorContainer').style.display = 'none';
-    document.getElementById('loteIdModal').required = false; // <-- CorreÁ„o
+    document.getElementById('loteIdModal').required = false; // <-- Corre√ß√£o
     document.getElementById('entradaFields').style.display = 'block';
     document.getElementById('repeticoesContainer').style.display = 'block';
     
@@ -1071,30 +1071,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btnSaida.addEventListener("click", async () => {
     if (!codigoAtual) {
-      alert('Consulte um produto antes de registrar uma saÌda.');
+      alert('Consulte um produto antes de registrar uma sa√≠da.');
       return;
     }
-    tituloModal.textContent = `?? Registrar SAÕDA`;
+    tituloModal.textContent = `?? Registrar SA√çDA`;
     tituloModal.style.color = "#f44336";
     iconModal.textContent = "??";
     iconModal.style.color = "#f44336";
     inputTipoMovimento.value = "SAIDA";
     submitBtn.className = "btn-movimento saida";
-    submitBtn.textContent = "? Registrar SaÌda";
+    submitBtn.textContent = "? Registrar Sa√≠da";
 
-    // Mostra/oculta campos e ajusta validaÁ„o
+    // Mostra/oculta campos e ajusta valida√ß√£o
     document.getElementById('loteSelectorContainer').style.display = 'block';
-    document.getElementById('loteIdModal').required = true; // <-- CorreÁ„o
+    document.getElementById('loteIdModal').required = true; // <-- Corre√ß√£o
     document.getElementById('entradaFields').style.display = 'none';
     document.getElementById('repeticoesContainer').style.display = 'none';
     
     modalMovimento.style.display = "flex";
 
-    // Busca e popula os lotes disponÌveis
+    // Busca e popula os lotes dispon√≠veis
     const loteSelect = document.getElementById('loteIdModal');
     loteSelect.innerHTML = '<option value="">Carregando lotes...</option>';
     loteSelect.disabled = true;
-    loteSelecionado = null; // Reseta seleÁ„o anterior
+    loteSelecionado = null; // Reseta sele√ß√£o anterior
 
     try {
         const res = await fetch(`/api/embalagem/inventory?action=saldoPorLote&codigo=${encodeURIComponent(codigoAtual)}`);
@@ -1142,15 +1142,15 @@ document.addEventListener("DOMContentLoaded", () => {
             id: selectedOption.value,
             saldo: parseFloat(selectedOption.dataset.saldo)
         };
-        // Atualiza o tÌtulo do modal com o ID selecionado
-        tituloModal.textContent = `?? Registrar SAÕDA (Lote ID: ${loteSelecionado.id})`;
+        // Atualiza o t√≠tulo do modal com o ID selecionado
+        tituloModal.textContent = `?? Registrar SA√çDA (Lote ID: ${loteSelecionado.id})`;
     } else {
         loteSelecionado = null;
-        tituloModal.textContent = `?? Registrar SAÕDA`;
+        tituloModal.textContent = `?? Registrar SA√çDA`;
     }
   });
 
-  // ===== Filtros do HistÛrico de Movimentos =====
+  // ===== Filtros do Hist√≥rico de Movimentos =====
   function aplicarFiltrosHistorico() {
     const filtros = Array.from(document.querySelectorAll('.filtro-hist')).map(el => ({
       col: parseInt(el.dataset.col, 10),
@@ -1159,7 +1159,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const rows = historicoBody.querySelectorAll('tr');
     rows.forEach(tr => {
-      // N„o filtra linhas de mensagem (sem data-id-movimento)
+      // N√£o filtra linhas de mensagem (sem data-id-movimento)
       if (!tr.hasAttribute('data-id-movimento')) return;
       let visivel = true;
       for (const f of filtros) {
@@ -1185,14 +1185,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Reaplica filtros sempre que o histÛrico for renderizado novamente
+  // Reaplica filtros sempre que o hist√≥rico for renderizado novamente
   const _origRenderHistorico = renderHistorico;
   renderHistorico = function(rows) {
     _origRenderHistorico(rows);
     aplicarFiltrosHistorico();
   };
 
-  // Listener para o bot„o de reimprimir etiqueta
+  // Listener para o bot√£o de reimprimir etiqueta
   document.getElementById('historicoBody').addEventListener('click', function(event) {
     const target = event.target.closest('.btn-reimprimir');
     if (target) {
@@ -1200,7 +1200,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const operacao = row.cells[1].textContent.trim().replace('??', '').replace('??', '').trim();
         
         if (operacao !== 'ENTRADA') {
-            alert('A reimpress„o de etiquetas est· disponÌvel apenas para movimentaÁıes de ENTRADA.');
+            alert('A reimpress√£o de etiquetas est√° dispon√≠vel apenas para movimenta√ß√µes de ENTRADA.');
             return;
         }
 
@@ -1235,11 +1235,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (tipo === 'SAIDA') {
       if (!loteSelecionado) {
-        alert("Erro fatal: Nenhum lote selecionado. A operaÁ„o n„o pode continuar.");
+        alert("Erro fatal: Nenhum lote selecionado. A opera√ß√£o n√£o pode continuar.");
         return;
       }
       if (quantidade > loteSelecionado.saldo) {
-        alert(`Quantidade inv·lida. O lote selecionado (${loteSelecionado.id}) possui saldo de apenas ${loteSelecionado.saldo}.`);
+        alert(`Quantidade inv√°lida. O lote selecionado (${loteSelecionado.id}) possui saldo de apenas ${loteSelecionado.saldo}.`);
         return;
       }
     }
@@ -1247,7 +1247,7 @@ document.addEventListener("DOMContentLoaded", () => {
     statusEl.style.color = "#222";
     statusEl.textContent = "Registrando...";
 
-    // Bloqueia o bot„o para evitar cliques duplicados
+    // Bloqueia o bot√£o para evitar cliques duplicados
     submitBtn.disabled = true;
     const textoOriginalBtn = submitBtn.textContent;
     submitBtn.textContent = "? Aguarde...";

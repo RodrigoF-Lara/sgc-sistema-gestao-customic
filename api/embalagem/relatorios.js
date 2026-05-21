@@ -37,10 +37,10 @@ export default async function handler(req, res) {
         } else if (acao === 'movimentoDiario') {
             return await relatorioMovimentoDiario(req, res);
         }
-        return res.status(400).json({ message: "AÁ„o n„o reconhecida" });
+        return res.status(400).json({ message: "A√ß√£o n√£o reconhecida" });
     }
 
-    return res.status(405).json({ message: "MÈtodo n„o permitido" });
+    return res.status(405).json({ message: "M√©todo n√£o permitido" });
 }
 
 async function relatorioBaixaPorPeriodo(req, res) {
@@ -49,7 +49,7 @@ async function relatorioBaixaPorPeriodo(req, res) {
 
         if (!dataInicio || !dataFim) {
             return res.status(400).json({ 
-                message: "Data de inÌcio e fim s„o obrigatÛrias" 
+                message: "Data de in√≠cio e fim s√£o obrigat√≥rias" 
             });
         }
 
@@ -59,22 +59,22 @@ async function relatorioBaixaPorPeriodo(req, res) {
         const dataInicioObj = new Date(dataInicio + 'T00:00:00Z');
         const dataFimObj = new Date(dataFim + 'T00:00:00Z');
         
-        // Apenas adiciona 1 dia ao dataFim para incluir todo o ˙ltimo dia (atÈ 23:59:59)
+        // Apenas adiciona 1 dia ao dataFim para incluir todo o √∫ltimo dia (at√© 23:59:59)
         const dataFimAjustada = new Date(dataFimObj);
         dataFimAjustada.setDate(dataFimAjustada.getDate() + 1);
         
-        console.log('?? Data InÌcio (recebida):', dataInicio);
+        console.log('?? Data In√≠cio (recebida):', dataInicio);
         console.log('?? Data Fim (recebida):', dataFim);
         console.log('??? Tipo de Produto:', tipoProduto || 'Todos');
-        console.log('?? Data InÌcio (processada):', dataInicioObj.toISOString());
+        console.log('?? Data In√≠cio (processada):', dataInicioObj.toISOString());
         console.log('?? Data Fim Ajustada (processada):', dataFimAjustada.toISOString());
         
-        // Query base para verificaÁ„o
+        // Query base para verifica√ß√£o
         let queryVerificacao = `
             SELECT COUNT(*) as TOTAL
             FROM [dbo].[KARDEX_2026] k
             LEFT JOIN [dbo].[CAD_PROD] cp ON k.CODIGO = cp.CODIGO
-            WHERE k.OPERACAO = 'SAÕDA'
+            WHERE k.OPERACAO = 'SA√çDA'
                 AND k.USUARIO <> 'BEATRIZ JULHAO'
                 AND k.DT >= @DATA_INICIO
                 AND k.DT < @DATA_FIM`;
@@ -100,15 +100,15 @@ async function relatorioBaixaPorPeriodo(req, res) {
         let query = `
                 SELECT 
                     k.CODIGO,
-                    ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
-                    ISNULL(cp.TIPO, 'N√O INFORMADO') AS TIPO,
+                    ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
+                    ISNULL(cp.TIPO, 'N√ÉO INFORMADO') AS TIPO,
                     SUM(ABS(k.QNT)) AS TOTAL_SAIDAS,
                     COUNT(*) AS QUANTIDADE_MOVIMENTACOES,
                     MIN(k.DT) AS PRIMEIRA_BAIXA,
                     MAX(k.DT) AS ULTIMA_BAIXA
                 FROM [dbo].[KARDEX_2026] k
                 LEFT JOIN [dbo].[CAD_PROD] cp ON k.CODIGO = cp.CODIGO
-                WHERE k.OPERACAO = 'SAÕDA'
+                WHERE k.OPERACAO = 'SA√çDA'
                     AND k.USUARIO <> 'BEATRIZ JULHAO'
                     AND k.DT >= @DATA_INICIO
                     AND k.DT < @DATA_FIM`;
@@ -138,7 +138,7 @@ async function relatorioBaixaPorPeriodo(req, res) {
         const totalProdutos = result.recordset.length;
         const totalMovimentacoes = result.recordset.reduce((acc, item) => acc + item.QUANTIDADE_MOVIMENTACOES, 0);
 
-        console.log('?? Total de saÌdas:', totalSaidas);
+        console.log('?? Total de sa√≠das:', totalSaidas);
 
         return res.status(200).json({
             dados: result.recordset,
@@ -161,9 +161,9 @@ async function relatorioBaixaPorPeriodo(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro ao gerar relatÛrio de baixa:", err);
+        console.error("? Erro ao gerar relat√≥rio de baixa:", err);
         return res.status(500).json({ 
-            message: "Erro ao gerar relatÛrio", 
+            message: "Erro ao gerar relat√≥rio", 
             error: err.message,
             stack: err.stack
         });
@@ -176,25 +176,25 @@ async function gerarRelatorioConsumo(req, res) {
 
         if (!periodo) {
             return res.status(400).json({ 
-                message: "PerÌodo È obrigatÛrio (formato: YYYY-MM)" 
+                message: "Per√≠odo √© obrigat√≥rio (formato: YYYY-MM)" 
             });
         }
 
-        // Extrai ano e mÍs
+        // Extrai ano e m√™s
         const [ano, mes] = periodo.split('-');
         
         if (isNaN(ano) || isNaN(mes) || mes < 1 || mes > 12) {
             return res.status(400).json({ 
-                message: "PerÌodo inv·lido (use formato YYYY-MM)" 
+                message: "Per√≠odo inv√°lido (use formato YYYY-MM)" 
             });
         }
 
-        console.log('?? Gerando relatÛrio de consumo para:', { ano, mes });
+        console.log('?? Gerando relat√≥rio de consumo para:', { ano, mes });
 
         const pool = await getConnection();
         
-        // Query para buscar saldo atual, preÁo da ˙ltima NF e fornecedor
-        // Data de corte: apenas movimentaÁıes a partir de Abril/2026
+        // Query para buscar saldo atual, pre√ßo da √∫ltima NF e fornecedor
+        // Data de corte: apenas movimenta√ß√µes a partir de Abril/2026
         const DATA_CORTE = '2026-04-01';
 
         let query = `
@@ -225,7 +225,7 @@ async function gerarRelatorioConsumo(req, res) {
                     unf.CODIGO,
                     unf.PRECO_UNITARIO,
                     unf.COD_FORNECEDOR,
-                    ISNULL(cf.RAZAO_SOCIAL, 'N√O INFORMADO') AS FORNECEDOR,
+                    ISNULL(cf.RAZAO_SOCIAL, 'N√ÉO INFORMADO') AS FORNECEDOR,
                     unf.CAB_DT_EMISSAO
                 FROM UltimaNFPorProduto unf
                 LEFT JOIN [dbo].[CAD_FORNECEDOR] cf ON unf.COD_FORNECEDOR = cf.COD_FORNECEDOR
@@ -234,8 +234,8 @@ async function gerarRelatorioConsumo(req, res) {
             ConsumoMedio AS (
                 SELECT 
                     k.CODIGO,
-                    -- Consumo mÈdio MENSAL: total de saÌdas no perÌodo ˜ n˙mero de meses da janela
-                    -- 1 mÍs (30 dias): total / 1  = o prÛprio total consumido no mÍs
+                    -- Consumo m√©dio MENSAL: total de sa√≠das no per√≠odo √∑ n√∫mero de meses da janela
+                    -- 1 m√™s (30 dias): total / 1  = o pr√≥prio total consumido no m√™s
                     ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -30, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 30, 0) AS CONSUMO_1MES,
                     -- Bimestral (60 dias): total / 2 meses
                     ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -60, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 60, 0) AS CONSUMO_BIMESTRAL,
@@ -244,7 +244,7 @@ async function gerarRelatorioConsumo(req, res) {
                     -- Anual (365 dias): total / 12.17 meses
                     ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -365, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 365, 0) AS CONSUMO_ANUAL
                 FROM [dbo].[KARDEX_2026] k
-                WHERE k.OPERACAO = 'SAÕDA'
+                WHERE k.OPERACAO = 'SA√çDA'
                     AND k.USUARIO <> 'BEATRIZ JULHAO'
                     AND k.DT >= '2026-04-01'
                 GROUP BY k.CODIGO
@@ -252,10 +252,10 @@ async function gerarRelatorioConsumo(req, res) {
             SELECT 
                 sa.CODIGO,
                 sa.SALDO_ATUAL,
-                ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
+                ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
                 ISNULL(uf.PRECO_UNITARIO, 0) AS PRECO_UNITARIO,
                 ISNULL(sa.SALDO_ATUAL, 0) * ISNULL(uf.PRECO_UNITARIO, 0) AS VALOR_TOTAL_ESTOQUE,
-                ISNULL(uf.FORNECEDOR, 'N√O INFORMADO') AS FORNECEDOR,
+                ISNULL(uf.FORNECEDOR, 'N√ÉO INFORMADO') AS FORNECEDOR,
                 ISNULL(cm.CONSUMO_1MES, 0) AS CONSUMO_MEDIO_1MES,
                 ISNULL(cm.CONSUMO_BIMESTRAL, 0) AS CONSUMO_MEDIO_BIMESTRAL,
                 ISNULL(cm.CONSUMO_SEMESTRAL, 0) AS CONSUMO_MEDIO_SEMESTRAL,
@@ -307,7 +307,7 @@ async function gerarRelatorioConsumo(req, res) {
         const fornecedoresUnicos = new Set(
             result.recordset
                 .map(item => item.FORNECEDOR)
-                .filter(f => f && f !== 'N√O INFORMADO')
+                .filter(f => f && f !== 'N√ÉO INFORMADO')
         );
 
         const totalizadores = {
@@ -324,9 +324,9 @@ async function gerarRelatorioConsumo(req, res) {
         });
 
     } catch (error) {
-        console.error('? Erro ao gerar relatÛrio de consumo:', error);
+        console.error('? Erro ao gerar relat√≥rio de consumo:', error);
         return res.status(500).json({ 
-            message: `Erro ao gerar relatÛrio: ${error.message}` 
+            message: `Erro ao gerar relat√≥rio: ${error.message}` 
         });
     }
 }
@@ -334,7 +334,7 @@ async function gerarRelatorioConsumo(req, res) {
 async function movimentacoesProduto(req, res) {
     try {
         const { codigo, janela } = req.query;
-        if (!codigo) return res.status(400).json({ message: 'CÛdigo È obrigatÛrio' });
+        if (!codigo) return res.status(400).json({ message: 'C√≥digo √© obrigat√≥rio' });
 
         const janelaDias = parseInt(janela) || 30;
         const DATA_CORTE = '2026-04-01';
@@ -354,7 +354,7 @@ async function movimentacoesProduto(req, res) {
                     MOTIVO
                 FROM [dbo].[KARDEX_2026]
                 WHERE CODIGO = @CODIGO
-                    AND OPERACAO = 'SAÕDA'
+                    AND OPERACAO = 'SA√çDA'
                     AND USUARIO <> 'BEATRIZ JULHAO'
                     AND CONVERT(DATE, DT) >= '2026-04-01'
                     AND CONVERT(DATE, DT) >= CONVERT(DATE, DATEADD(DAY, -@JANELA, GETDATE()))
@@ -368,7 +368,7 @@ async function movimentacoesProduto(req, res) {
             totalSaidas
         });
     } catch (error) {
-        console.error('? Erro ao buscar movimentaÁıes:', error);
+        console.error('? Erro ao buscar movimenta√ß√µes:', error);
         return res.status(500).json({ message: `Erro: ${error.message}` });
     }
 }
@@ -406,7 +406,7 @@ async function relatorioSaldoEstoque(req, res) {
 
         const pool = await getConnection();
         
-        console.log('?? RelatÛrio de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo, saldoZero, saldoNegativo, ativos, inativos });
+        console.log('?? Relat√≥rio de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo, saldoZero, saldoNegativo, ativos, inativos });
         
         // Query principal
         let query = `
@@ -483,7 +483,7 @@ async function relatorioSaldoEstoque(req, res) {
             request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
         }
         
-        // Filtro por saldo removido ó agora tratado diretamente via params no WHERE
+        // Filtro por saldo removido ‚Äî agora tratado diretamente via params no WHERE
         
         query += ` ORDER BY CURVA_A_B_C, cp.CODIGO`;
 
@@ -512,9 +512,9 @@ async function relatorioSaldoEstoque(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro ao gerar relatÛrio de saldo:", err);
+        console.error("? Erro ao gerar relat√≥rio de saldo:", err);
         return res.status(500).json({ 
-            message: "Erro ao gerar relatÛrio", 
+            message: "Erro ao gerar relat√≥rio", 
             error: err.message,
             stack: err.stack
         });
@@ -527,7 +527,7 @@ async function relatorioRequisicoes(req, res) {
 
         if (!dataInicio || !dataFim) {
             return res.status(400).json({ 
-                message: "Data de inÌcio e fim s„o obrigatÛrias" 
+                message: "Data de in√≠cio e fim s√£o obrigat√≥rias" 
             });
         }
 
@@ -537,14 +537,14 @@ async function relatorioRequisicoes(req, res) {
         const dataInicioObj = new Date(dataInicio + 'T00:00:00Z');
         const dataFimObj = new Date(dataFim + 'T00:00:00Z');
         
-        // Adiciona 1 dia ao dataFim para incluir todo o ˙ltimo dia
+        // Adiciona 1 dia ao dataFim para incluir todo o √∫ltimo dia
         const dataFimAjustada = new Date(dataFimObj);
         dataFimAjustada.setDate(dataFimAjustada.getDate() + 1);
         
-        console.log('?? RelatÛrio de RequisiÁıes - Data InÌcio:', dataInicioObj.toISOString());
-        console.log('?? RelatÛrio de RequisiÁıes - Data Fim:', dataFimAjustada.toISOString());
+        console.log('?? Relat√≥rio de Requisi√ß√µes - Data In√≠cio:', dataInicioObj.toISOString());
+        console.log('?? Relat√≥rio de Requisi√ß√µes - Data Fim:', dataFimAjustada.toISOString());
         
-        // Query principal para buscar requisiÁıes
+        // Query principal para buscar requisi√ß√µes
         let query = `
             SELECT 
                 R.ID_REQ,
@@ -577,16 +577,16 @@ async function relatorioRequisicoes(req, res) {
 
         const result = await request.query(query);
 
-        console.log('?? RequisiÁıes encontradas:', result.recordset.length);
+        console.log('?? Requisi√ß√µes encontradas:', result.recordset.length);
 
         // Calcula totalizadores
         const totalRequisicoes = result.recordset.length;
         const totalItens = result.recordset.reduce((acc, item) => acc + (item.TOTAL_ITENS || 0), 0);
-        const totalConcluidas = result.recordset.filter(r => r.STATUS === 'ConcluÌdo').length;
+        const totalConcluidas = result.recordset.filter(r => r.STATUS === 'Conclu√≠do').length;
         const totalPendentes = result.recordset.filter(r => r.STATUS === 'Pendente').length;
         const totalParciais = result.recordset.filter(r => r.STATUS === 'Parcial').length;
         
-        // Totalizadores por prioridade (os valores no banco est„o em MAI⁄SCULAS)
+        // Totalizadores por prioridade (os valores no banco est√£o em MAI√öSCULAS)
         const totalPrioridadeAlta = result.recordset.filter(r => 
             r.PRIORIDADE === 'ALTA' || r.PRIORIDADE === 'Alta'
         ).length;
@@ -627,9 +627,9 @@ async function relatorioRequisicoes(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro ao gerar relatÛrio de requisiÁıes:", err);
+        console.error("? Erro ao gerar relat√≥rio de requisi√ß√µes:", err);
         return res.status(500).json({ 
-            message: "Erro ao gerar relatÛrio", 
+            message: "Erro ao gerar relat√≥rio", 
             error: err.message,
             stack: err.stack
         });
@@ -642,7 +642,7 @@ async function relatorioAcuracidade(req, res) {
 
         if (!dataInicio || !dataFim) {
             return res.status(400).json({ 
-                message: "Data de inÌcio e fim s„o obrigatÛrias" 
+                message: "Data de in√≠cio e fim s√£o obrigat√≥rias" 
             });
         }
 
@@ -652,14 +652,14 @@ async function relatorioAcuracidade(req, res) {
         const dataInicioObj = new Date(dataInicio + 'T00:00:00Z');
         const dataFimObj = new Date(dataFim + 'T00:00:00Z');
         
-        // Adiciona 1 dia ao dataFim para incluir todo o ˙ltimo dia
+        // Adiciona 1 dia ao dataFim para incluir todo o √∫ltimo dia
         const dataFimAjustada = new Date(dataFimObj);
         dataFimAjustada.setDate(dataFimAjustada.getDate() + 1);
         
-        console.log('?? RelatÛrio de Acuracidade - Data InÌcio:', dataInicioObj.toISOString());
-        console.log('?? RelatÛrio de Acuracidade - Data Fim:', dataFimAjustada.toISOString());
+        console.log('?? Relat√≥rio de Acuracidade - Data In√≠cio:', dataInicioObj.toISOString());
+        console.log('?? Relat√≥rio de Acuracidade - Data Fim:', dataFimAjustada.toISOString());
         
-        // Query principal para buscar invent·rios
+        // Query principal para buscar invent√°rios
         const request = pool.request();
         
         request.input('dataInicio', sql.DateTime, dataInicioObj);
@@ -712,7 +712,7 @@ async function relatorioAcuracidade(req, res) {
 
         const result = await request.query(query);
 
-        console.log('?? Invent·rios encontrados:', result.recordset.length);
+        console.log('?? Invent√°rios encontrados:', result.recordset.length);
 
         // Calcula totalizadores
         const totalInventarios = result.recordset.length;
@@ -745,9 +745,9 @@ async function relatorioAcuracidade(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro ao gerar relatÛrio de acuracidade:", err);
+        console.error("? Erro ao gerar relat√≥rio de acuracidade:", err);
         return res.status(500).json({ 
-            message: "Erro ao gerar relatÛrio", 
+            message: "Erro ao gerar relat√≥rio", 
             error: err.message,
             stack: err.stack
         });
@@ -760,13 +760,13 @@ async function detalhesInventario(req, res) {
 
         if (!idInventario) {
             return res.status(400).json({ 
-                message: "ID do invent·rio È obrigatÛrio" 
+                message: "ID do invent√°rio √© obrigat√≥rio" 
             });
         }
 
         const pool = await getConnection();
         
-        // Busca informaÁıes do invent·rio
+        // Busca informa√ß√µes do invent√°rio
         const inventarioResult = await pool.request()
             .input('idInventario', sql.Int, idInventario)
             .query(`
@@ -787,13 +787,13 @@ async function detalhesInventario(req, res) {
 
         if (inventarioResult.recordset.length === 0) {
             return res.status(404).json({ 
-                message: "Invent·rio n„o encontrado" 
+                message: "Invent√°rio n√£o encontrado" 
             });
         }
 
         const inventario = inventarioResult.recordset[0];
 
-        // Busca itens do invent·rio
+        // Busca itens do invent√°rio
         const itensResult = await pool.request()
             .input('idInventario', sql.Int, idInventario)
             .query(`
@@ -811,7 +811,7 @@ async function detalhesInventario(req, res) {
                 ORDER BY CODIGO
             `);
 
-        console.log(`?? Detalhes do invent·rio #${idInventario}: ${itensResult.recordset.length} itens`);
+        console.log(`?? Detalhes do invent√°rio #${idInventario}: ${itensResult.recordset.length} itens`);
 
         return res.status(200).json({
             inventario,
@@ -819,7 +819,7 @@ async function detalhesInventario(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro ao buscar detalhes do invent·rio:", err);
+        console.error("? Erro ao buscar detalhes do invent√°rio:", err);
         return res.status(500).json({ 
             message: "Erro ao buscar detalhes", 
             error: err.message,
@@ -835,16 +835,16 @@ async function relatorioMovimentoDiario(req, res) {
         const { data, tipoProduto } = req.query;
 
         if (!data) {
-            return res.status(400).json({ message: "Data È obrigatÛria" });
+            return res.status(400).json({ message: "Data √© obrigat√≥ria" });
         }
 
         const pool = await getConnection();
         const dataObj = new Date(data + 'T00:00:00Z');
 
-        console.log('?? Movimento Di·rio - Data:', data, '| Tipo:', tipoProduto || 'EMBALAGEM');
+        console.log('?? Movimento Di√°rio - Data:', data, '| Tipo:', tipoProduto || 'EMBALAGEM');
 
-        // Query principal: movimentaÁıes do dia + custos (˙ltimo PROD_DT_EMISSAO <= data)
-        // Usa STRING_AGG para concatenar fornecedores em uma ˙nica query (evita N+1)
+        // Query principal: movimenta√ß√µes do dia + custos (√∫ltimo PROD_DT_EMISSAO <= data)
+        // Usa STRING_AGG para concatenar fornecedores em uma √∫nica query (evita N+1)
         let query = `
             WITH MOV AS (
                 SELECT 
@@ -952,9 +952,9 @@ async function relatorioMovimentoDiario(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro no relatÛrio de movimento di·rio:", err);
+        console.error("? Erro no relat√≥rio de movimento di√°rio:", err);
         return res.status(500).json({
-            message: "Erro ao gerar relatÛrio de movimento di·rio",
+            message: "Erro ao gerar relat√≥rio de movimento di√°rio",
             error: err.message,
             stack: err.stack
         });

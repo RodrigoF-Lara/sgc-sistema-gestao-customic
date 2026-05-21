@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       const { codigo, action } = req.query;
       
-      // AÁ„o para buscar saldo agrupado por local
+      // A√ß√£o para buscar saldo agrupado por local
       if (action === 'saldoLocal' && codigo) {
         const result = await pool.request()
           .input("CODIGO", sql.VarChar(10), codigo)
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ locais: result.recordset });
       }
 
-      // AÁ„o para buscar info de um lote especÌfico pelo ID (usado no scan de QR)
+      // A√ß√£o para buscar info de um lote espec√≠fico pelo ID (usado no scan de QR)
       if (action === 'loteById' && req.query.id) {
         const result = await pool.request()
           .input('ID', sql.Int, parseInt(req.query.id, 10))
@@ -48,12 +48,12 @@ export default async function handler(req, res) {
             WHERE k.ID = @ID AND k.D_E_L_E_T_ <> '*'
           `);
         if (result.recordset.length === 0) {
-          return res.status(404).json({ message: 'Lote n„o encontrado' });
+          return res.status(404).json({ message: 'Lote n√£o encontrado' });
         }
         return res.status(200).json({ lote: result.recordset[0] });
       }
 
-      // Nova aÁ„o para buscar saldo individual por lote
+      // Nova a√ß√£o para buscar saldo individual por lote
       if (action === 'saldoPorLote' && codigo) {
         const result = await pool.request()
           .input("CODIGO", sql.VarChar(10), codigo)
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       
       // Endpoint original de consulta
       const codigoQuery = String((req.query && req.query.codigo) || "").trim();
-      if (!codigoQuery) return res.status(400).json({ message: "codigo È obrigatÛrio" });
+      if (!codigoQuery) return res.status(400).json({ message: "codigo √© obrigat√≥rio" });
 
       const prod = await pool.request()
         .input("CODIGO", sql.VarChar(10), codigoQuery)
@@ -126,14 +126,14 @@ export default async function handler(req, res) {
         endereco,
         armazem,
         observacao,
-        idTbResumo, // ID do lote para a saÌda
+        idTbResumo, // ID do lote para a sa√≠da
       } = req.body;
       
       if (!codigo || !tipo || !usuario) {
         return res.status(400).json({ message: "Dados insuficientes para registrar movimento." });
       }
 
-      // OperaÁıes que n„o usam quantidade direta n„o precisam valida-la
+      // Opera√ß√µes que n√£o usam quantidade direta n√£o precisam valida-la
       const operacoesSeQuantidade = ['ZERAR_ENDERECO', 'ZERAR_CODIGO', 'ALTERAR_ENDERECO'];
       if (!operacoesSeQuantidade.includes(tipo.toUpperCase()) && !quantidade) {
         return res.status(400).json({ message: "Dados insuficientes para registrar movimento." });
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
         await transaction.begin();
 
         if (operacao === 'ENTRADA') {
-          // LÛgica de ENTRADA
+          // L√≥gica de ENTRADA
           const embResult = await transaction
             .request()
             .input("D_E_L_E_T_", sql.VarChar, "")
@@ -174,7 +174,7 @@ export default async function handler(req, res) {
 
           const ultimoId = embResult.recordset[0]?.ID;
           if (!ultimoId) {
-            throw new Error("Falha ao obter o ID da inserÁ„o em EMBALAGEM.");
+            throw new Error("Falha ao obter o ID da inser√ß√£o em EMBALAGEM.");
           }
 
           // Inserir em KARDEX_2026
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
               VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
             `);
           
-          // Busca a descriÁ„o do produto para retornar para a etiqueta
+          // Busca a descri√ß√£o do produto para retornar para a etiqueta
           const prod = await transaction.request()
               .input("CODIGO_PROD", sql.VarChar, codigo)
               .query("SELECT DESCRICAO FROM [dbo].[CAD_PROD] WHERE CODIGO = @CODIGO_PROD");
@@ -215,14 +215,14 @@ export default async function handler(req, res) {
               endereco: endereco || '',
               armazem: armazem || '',
               usuario: usuario,
-              dataHora: null, // ser· preenchido pelo frontend com hor·rio local
+              dataHora: null, // ser√° preenchido pelo frontend com hor√°rio local
               tipoMovimento: 'ENTRADA'
           };
 
         } else if (operacao === 'SAIDA') {
-          // LÛgica de SAÕDA (refeita)
+          // L√≥gica de SA√çDA (refeita)
           if (!idTbResumo) {
-            return res.status(400).json({ message: "ID do lote È obrigatÛrio para a saÌda." });
+            return res.status(400).json({ message: "ID do lote √© obrigat√≥rio para a sa√≠da." });
           }
 
           const loteInfo = await transaction.request()
@@ -230,7 +230,7 @@ export default async function handler(req, res) {
             .query("SELECT SALDO, QNT_SAIDA, ENDERECO, ARMAZEM, QNT FROM [dbo].[KARDEX_2026_EMBALAGEM] WHERE ID = @ID");
 
           if (loteInfo.recordset.length === 0) {
-            throw new Error(`Lote com ID ${idTbResumo} n„o encontrado.`);
+            throw new Error(`Lote com ID ${idTbResumo} n√£o encontrado.`);
           }
 
           const { SALDO, QNT_SAIDA, ENDERECO, ARMAZEM, QNT: TAM_LOTE } = loteInfo.recordset[0];
@@ -264,7 +264,7 @@ export default async function handler(req, res) {
             .input("ENDERECO_log", sql.VarChar, ENDERECO)
             .input("ARMAZEM_log", sql.VarChar, ARMAZEM)
             .input("QNT_log", sql.Float, -quantidade)
-            .input("OPERACAO_log", sql.VarChar, "SAÕDA")
+            .input("OPERACAO_log", sql.VarChar, "SA√çDA")
             .input("USUARIO_log", sql.VarChar, usuario)
             .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
             .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
@@ -278,10 +278,10 @@ export default async function handler(req, res) {
                 VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
             `);
         } else if (operacao === 'ZERAR_ENDERECO') {
-          // LÛgica de ZERAR ENDERE«O: saÌda total de todos os lotes de um endereÁo
+          // L√≥gica de ZERAR ENDERE√áO: sa√≠da total de todos os lotes de um endere√ßo
           const { armazem: arm, endereco: end } = req.body;
           if (!arm || !end) {
-            throw new Error("ArmazÈm e endereÁo s„o obrigatÛrios para zerar endereÁo.");
+            throw new Error("Armaz√©m e endere√ßo s√£o obrigat√≥rios para zerar endere√ßo.");
           }
 
           const lotesResult = await transaction.request()
@@ -300,7 +300,7 @@ export default async function handler(req, res) {
             `);
 
           if (lotesResult.recordset.length === 0) {
-            throw new Error("Nenhum lote com saldo encontrado neste endereÁo.");
+            throw new Error("Nenhum lote com saldo encontrado neste endere√ßo.");
           }
 
           let totalZerado = 0;
@@ -331,11 +331,11 @@ export default async function handler(req, res) {
               .input("ENDERECO_log", sql.VarChar, end)
               .input("ARMAZEM_log", sql.VarChar, arm)
               .input("QNT_log", sql.Float, -SALDO)
-              .input("OPERACAO_log", sql.VarChar, "SAÕDA")
+              .input("OPERACAO_log", sql.VarChar, "SA√çDA")
               .input("USUARIO_log", sql.VarChar, usuario)
               .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
               .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO_log", sql.VarChar, "ZERAR ENDERE«O")
+              .input("MOTIVO_log", sql.VarChar, "ZERAR ENDERE√áO")
               .input("OBS_log", sql.VarChar, observacao || "")
               .input("KARDEX_log", sql.Int, 2026)
               .input("CAIXA_log", sql.Float, TAM_LOTE)
@@ -348,9 +348,9 @@ export default async function handler(req, res) {
             totalZerado += SALDO;
           }
 
-          responseData = { message: `EndereÁo zerado com sucesso! ${totalZerado} unidade(s) removida(s) em ${lotesResult.recordset.length} lote(s).`, totalZerado };
+          responseData = { message: `Endere√ßo zerado com sucesso! ${totalZerado} unidade(s) removida(s) em ${lotesResult.recordset.length} lote(s).`, totalZerado };
         } else if (operacao === 'ZERAR_CODIGO') {
-          // LÛgica de ZERAR C”DIGO: saÌda total de todos os lotes do cÛdigo em todos os endereÁos
+          // L√≥gica de ZERAR C√ìDIGO: sa√≠da total de todos os lotes do c√≥digo em todos os endere√ßos
           const lotesResult = await transaction.request()
             .input("CODIGO", sql.VarChar(10), codigo)
             .query(`
@@ -363,7 +363,7 @@ export default async function handler(req, res) {
             `);
 
           if (lotesResult.recordset.length === 0) {
-            throw new Error("Nenhum lote com saldo encontrado para este cÛdigo.");
+            throw new Error("Nenhum lote com saldo encontrado para este c√≥digo.");
           }
 
           let totalZerado = 0;
@@ -394,11 +394,11 @@ export default async function handler(req, res) {
               .input("ENDERECO_log", sql.VarChar, loteEnd || "")
               .input("ARMAZEM_log", sql.VarChar, loteArm || "")
               .input("QNT_log", sql.Float, -SALDO)
-              .input("OPERACAO_log", sql.VarChar, "SAÕDA")
+              .input("OPERACAO_log", sql.VarChar, "SA√çDA")
               .input("USUARIO_log", sql.VarChar, usuario)
               .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
               .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO_log", sql.VarChar, "ZERAR C”DIGO")
+              .input("MOTIVO_log", sql.VarChar, "ZERAR C√ìDIGO")
               .input("OBS_log", sql.VarChar, observacao || "")
               .input("KARDEX_log", sql.Int, 2026)
               .input("CAIXA_log", sql.Float, TAM_LOTE)
@@ -411,12 +411,12 @@ export default async function handler(req, res) {
             totalZerado += SALDO;
           }
 
-          responseData = { message: `CÛdigo zerado com sucesso! ${totalZerado} unidade(s) removida(s) em ${lotesResult.recordset.length} lote(s).`, totalZerado };
+          responseData = { message: `C√≥digo zerado com sucesso! ${totalZerado} unidade(s) removida(s) em ${lotesResult.recordset.length} lote(s).`, totalZerado };
         } else if (operacao === 'ALTERAR_ENDERECO') {
-          // LÛgica de ALTERAR ENDERE«O: saÌda no endereÁo antigo + entrada no novo
+          // L√≥gica de ALTERAR ENDERE√áO: sa√≠da no endere√ßo antigo + entrada no novo
           const { armazem: armAtual, endereco: endAtual, novoArmazem, novoEndereco } = req.body;
           if (!armAtual || !endAtual || !novoArmazem || !novoEndereco) {
-            throw new Error("ArmazÈm/endereÁo atual e novo s„o obrigatÛrios.");
+            throw new Error("Armaz√©m/endere√ßo atual e novo s√£o obrigat√≥rios.");
           }
 
           const obsTransferencia = `TRANSFERIDO DE ARM:${armAtual} END:${endAtual} PARA ARM:${novoArmazem} END:${novoEndereco}`;
@@ -437,7 +437,7 @@ export default async function handler(req, res) {
             `);
 
           if (lotesResult.recordset.length === 0) {
-            throw new Error("Nenhum lote com saldo encontrado neste endereÁo.");
+            throw new Error("Nenhum lote com saldo encontrado neste endere√ßo.");
           }
 
           let totalTransferido = 0;
@@ -445,7 +445,7 @@ export default async function handler(req, res) {
             const { ID, SALDO, QNT_SAIDA, QNT: TAM_LOTE } = lote;
             const novaQntSaida = (QNT_SAIDA || 0) + SALDO;
 
-            // 1. Atualiza EMBALAGEM: registra saÌda no lote original
+            // 1. Atualiza EMBALAGEM: registra sa√≠da no lote original
             await transaction.request()
               .input('ID_upd', sql.Int, ID)
               .input('NOVA_QNT_SAIDA', sql.Float, novaQntSaida)
@@ -461,7 +461,7 @@ export default async function handler(req, res) {
                 WHERE ID = @ID_upd
               `);
 
-            // 2. Log de SAÕDA no KARDEX_2026
+            // 2. Log de SA√çDA no KARDEX_2026
             await transaction.request()
               .input("D_E_L_E_T_", sql.VarChar, "")
               .input("APLICATIVO", sql.VarChar, "SGC-WEB")
@@ -470,11 +470,11 @@ export default async function handler(req, res) {
               .input("ENDERECO_log", sql.VarChar, endAtual)
               .input("ARMAZEM_log", sql.VarChar, armAtual)
               .input("QNT_log", sql.Float, -SALDO)
-              .input("OPERACAO_log", sql.VarChar, "SAÕDA")
+              .input("OPERACAO_log", sql.VarChar, "SA√çDA")
               .input("USUARIO_log", sql.VarChar, usuario)
               .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
               .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO_log", sql.VarChar, "ALTERAR ENDERE«O")
+              .input("MOTIVO_log", sql.VarChar, "ALTERAR ENDERE√áO")
               .input("OBS_log", sql.VarChar, obsTransferencia)
               .input("KARDEX_log", sql.Int, 2026)
               .input("CAIXA_log", sql.Float, TAM_LOTE)
@@ -484,7 +484,7 @@ export default async function handler(req, res) {
                 VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
               `);
 
-            // 3. Cria novo registro na EMBALAGEM com novo endereÁo
+            // 3. Cria novo registro na EMBALAGEM com novo endere√ßo
             const embNovoResult = await transaction.request()
               .input("D_E_L_E_T_", sql.VarChar, "")
               .input("CODIGO", sql.VarChar, codigo)
@@ -494,7 +494,7 @@ export default async function handler(req, res) {
               .input("USUARIO", sql.VarChar, usuario)
               .input("DT", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
               .input("HR", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO", sql.VarChar, "ALTERAR ENDERE«O")
+              .input("MOTIVO", sql.VarChar, "ALTERAR ENDERE√áO")
               .input("OBS", sql.VarChar, obsTransferencia)
               .input("QNT_SAIDA", sql.Float, 0)
               .input("USUARIO_SAIDA", sql.VarChar, "")
@@ -523,7 +523,7 @@ export default async function handler(req, res) {
               .input("USUARIO_log", sql.VarChar, usuario)
               .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
               .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO_log", sql.VarChar, "ALTERAR ENDERE«O")
+              .input("MOTIVO_log", sql.VarChar, "ALTERAR ENDERE√áO")
               .input("OBS_log", sql.VarChar, obsTransferencia)
               .input("KARDEX_log", sql.Int, 2026)
               .input("CAIXA_log", sql.Float, TAM_LOTE)
@@ -536,7 +536,7 @@ export default async function handler(req, res) {
             totalTransferido += SALDO;
           }
 
-          responseData = { message: `EndereÁo alterado com sucesso! ${totalTransferido} unidade(s) transferida(s) em ${lotesResult.recordset.length} lote(s) de ARM:${armAtual} END:${endAtual} ? ARM:${novoArmazem} END:${novoEndereco}.`, totalTransferido };
+          responseData = { message: `Endere√ßo alterado com sucesso! ${totalTransferido} unidade(s) transferida(s) em ${lotesResult.recordset.length} lote(s) de ARM:${armAtual} END:${endAtual} ? ARM:${novoArmazem} END:${novoEndereco}.`, totalTransferido };
         }
 
         await transaction.commit();
@@ -551,7 +551,7 @@ export default async function handler(req, res) {
       }
     }
   } catch (error) {
-    console.error("Erro na API de invent·rio:", error);
+    console.error("Erro na API de invent√°rio:", error);
     res.status(500).json({ message: "Erro interno no servidor.", error: error.message });
   }
 }

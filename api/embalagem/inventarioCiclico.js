@@ -3,7 +3,7 @@ import { getConnection, sql } from "../../db.js";
 export default async function handler(req, res) {
     const { acao } = req.query;
 
-    // GET: Gerar, Listar ou Abrir invent·rio
+    // GET: Gerar, Listar ou Abrir invent√°rio
     if (req.method === "GET") {
         if (acao === 'gerarLista') {
             return await gerarListaInventario(req, res);
@@ -33,16 +33,16 @@ export default async function handler(req, res) {
         }
     }
 
-    return res.status(400).json({ message: "AÁ„o n„o especificada ou inv·lida" });
+    return res.status(400).json({ message: "A√ß√£o n√£o especificada ou inv√°lida" });
 }
 
-// Gera uma nova lista de invent·rio com 3 blocos
+// Gera uma nova lista de invent√°rio com 3 blocos
 async function gerarListaInventario(req, res) {
     try {
         const pool = await getConnection();
         let todosItens = [];
         
-        // BUSCA AS CONFIGURA«’ES SALVAS
+        // BUSCA AS CONFIGURA√á√ïES SALVAS
         const configResult = await pool.request().query(`
             SELECT TOP 1 *
             FROM [dbo].[TB_CONFIG_INVENTARIO]
@@ -51,7 +51,7 @@ async function gerarListaInventario(req, res) {
 
         if (configResult.recordset.length === 0) {
             return res.status(500).json({ 
-                message: "ConfiguraÁıes de invent·rio n„o encontradas. Configure primeiro em ConfiguraÁıes." 
+                message: "Configura√ß√µes de invent√°rio n√£o encontradas. Configure primeiro em Configura√ß√µes." 
             });
         }
 
@@ -65,13 +65,13 @@ async function gerarListaInventario(req, res) {
         const BLOCO5_QTD = config.BLOCO5_QTD_ITENS || 10;
         const BLOCO5_INV_ATRAS = config.BLOCO5_INVENTARIOS_ATRAS || 3;
 
-        console.log('?? ConfiguraÁıes carregadas:', {
+        console.log('?? Configura√ß√µes carregadas:', {
             BLOCO1_QTD, BLOCO1_DIAS, BLOCO2_QTD, BLOCO2_ACURACIDADE, 
             BLOCO3_QTD, BLOCO4_QTD, BLOCO5_QTD, BLOCO5_INV_ATRAS
         });
 
-        // -- BLOCO 2 roda PRIMEIRO (tem prioridade sobre movimentaÁ„o) ----------
-        // Itens com baixa acuracidade no ˙ltimo invent·rio FINALIZADO
+        // -- BLOCO 2 roda PRIMEIRO (tem prioridade sobre movimenta√ß√£o) ----------
+        // Itens com baixa acuracidade no √∫ltimo invent√°rio FINALIZADO
         const debugBloco2 = { etapa: 'nao_iniciado' };
         try {
             const ultimoInv = await pool.request().query(`
@@ -81,19 +81,19 @@ async function gerarListaInventario(req, res) {
                 ORDER BY ID_INVENTARIO DESC;
             `);
 
-            console.log('?? ⁄ltimo invent·rio FINALIZADO encontrado:', ultimoInv.recordset);
+            console.log('?? √öltimo invent√°rio FINALIZADO encontrado:', ultimoInv.recordset);
 
             if (ultimoInv.recordset.length === 0) {
-                console.log('?? Nenhum invent·rio FINALIZADO encontrado. Pulando Bloco 2.');
+                console.log('?? Nenhum invent√°rio FINALIZADO encontrado. Pulando Bloco 2.');
                 debugBloco2.etapa = 'sem_inventario_finalizado';
             } else {
                 const idUltimoInventario = ultimoInv.recordset[0].ID_INVENTARIO;
                 debugBloco2.idInventarioFinalizado = idUltimoInventario;
                 debugBloco2.acuracidadeMinima = BLOCO2_ACURACIDADE;
                 debugBloco2.qtdMaxima = BLOCO2_QTD;
-                console.log(`?? Buscando itens com acuracidade < ${BLOCO2_ACURACIDADE}% do invent·rio #${idUltimoInventario}`);
+                console.log(`?? Buscando itens com acuracidade < ${BLOCO2_ACURACIDADE}% do invent√°rio #${idUltimoInventario}`);
 
-                // DiagnÛstico completo
+                // Diagn√≥stico completo
                 const todosItensInv = await pool.request()
                     .input('ID_INV_DEBUG', sql.Int, idUltimoInventario)
                     .query(`
@@ -167,7 +167,7 @@ async function gerarListaInventario(req, res) {
 
         const codigosBloco2 = todosItens.map(item => item.CODIGO);
 
-        // -- BLOCO 1: Mais movimentados (exclui o que bloco 2 j· pegou) ----------
+        // -- BLOCO 1: Mais movimentados (exclui o que bloco 2 j√° pegou) ----------
         try {
             const bloco1 = await pool.request()
                 .input('DIAS', sql.Int, BLOCO1_DIAS)
@@ -204,7 +204,7 @@ async function gerarListaInventario(req, res) {
                 )
                 SELECT TOP (@QTD_ITENS)
                     m.CODIGO,
-                    ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
+                    ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
                     m.TOTAL_MOVIMENTACOES,
                     m.TOTAL_QUANTIDADE_MOVIMENTADA,
                     ISNULL(s.SALDO_ATUAL, 0) AS SALDO_ATUAL,
@@ -221,12 +221,12 @@ async function gerarListaInventario(req, res) {
             console.log(`? Bloco 1 retornou ${bloco1.recordset.length} itens`);
             todosItens.push(...bloco1.recordset);
         } catch (err) {
-            console.warn('Erro ao buscar bloco 1 (movimentaÁ„o):', err.message);
+            console.warn('Erro ao buscar bloco 1 (movimenta√ß√£o):', err.message);
         }
 
         const codigosBloco1e2 = todosItens.map(item => item.CODIGO);
 
-        // BLOCO 3: Maior valor em estoque (usando configuraÁ„o)
+        // BLOCO 3: Maior valor em estoque (usando configura√ß√£o)
         try {
             const bloco3 = await pool.request()
                 .input('QTD_ITENS', sql.Int, BLOCO3_QTD)
@@ -269,7 +269,7 @@ async function gerarListaInventario(req, res) {
                 )
                 SELECT TOP (@QTD_ITENS)
                     sv.CODIGO,
-                    ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
+                    ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
                     sv.SALDO_ATUAL,
                     sv.CUSTO_UNITARIO AS PRECO_UNITARIO,
                     sv.VALOR_TOTAL_ESTOQUE,
@@ -287,7 +287,7 @@ async function gerarListaInventario(req, res) {
 
         const codigosBloco1e2e3 = todosItens.map(item => item.CODIGO);
 
-        // BLOCO 4: Maior valor unit·rio
+        // BLOCO 4: Maior valor unit√°rio
         try {
             const bloco4 = await pool.request()
                 .input('QTD_ITENS', sql.Int, BLOCO4_QTD)
@@ -318,7 +318,7 @@ async function gerarListaInventario(req, res) {
                 )
                 SELECT TOP (@QTD_ITENS)
                     c.CODIGO,
-                    ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
+                    ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
                     ISNULL(s.SALDO_ATUAL, 0) AS SALDO_ATUAL,
                     c.CUSTO_UNITARIO AS CUSTO_UNITARIO,
                     c.CUSTO_UNITARIO AS PRECO_UNITARIO,
@@ -341,7 +341,7 @@ async function gerarListaInventario(req, res) {
 
         const codigosBloco1e2e3e4 = todosItens.map(item => item.CODIGO);
 
-        // BLOCO 5: N„o contados nos ˙ltimos N invent·rios
+        // BLOCO 5: N√£o contados nos √∫ltimos N invent√°rios
         try {
             const bloco5 = await pool.request()
                 .input('QTD_ITENS', sql.Int, BLOCO5_QTD)
@@ -381,7 +381,7 @@ async function gerarListaInventario(req, res) {
                 )
                 SELECT TOP (@QTD_ITENS)
                     s.CODIGO,
-                    ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
+                    ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
                     s.SALDO_ATUAL,
                     ISNULL(cu.CUSTO_UNIT, 0) AS PRECO_UNITARIO,
                     s.SALDO_ATUAL * ISNULL(cu.CUSTO_UNIT, 0) AS VALOR_TOTAL_ESTOQUE,
@@ -412,11 +412,11 @@ async function gerarListaInventario(req, res) {
 
         if (todosItens.length === 0) {
             return res.status(400).json({ 
-                message: "Nenhum item encontrado para invent·rio. Verifique se h· dados no sistema." 
+                message: "Nenhum item encontrado para invent√°rio. Verifique se h√° dados no sistema." 
             });
         }
 
-        // Busca localizaÁıes (ARMAZEM + ENDERECO) de todos os itens de uma vez
+        // Busca localiza√ß√µes (ARMAZEM + ENDERECO) de todos os itens de uma vez
         const todosCodigosUnicos = [...new Set(todosItens.map(i => i.CODIGO))];
         let localizacoesPorCodigo = {};
         if (todosCodigosUnicos.length > 0) {
@@ -442,11 +442,11 @@ async function gerarListaInventario(req, res) {
                     localizacoesPorCodigo[r.CODIGO] = r.LOCALIZACAO;
                 });
             } catch (err) {
-                console.warn('Aviso: n„o foi possÌvel buscar localizaÁıes:', err.message);
+                console.warn('Aviso: n√£o foi poss√≠vel buscar localiza√ß√µes:', err.message);
             }
         }
 
-        // Mescla localizaÁ„o em cada item
+        // Mescla localiza√ß√£o em cada item
         todosItens = todosItens.map(item => ({
             ...item,
             LOCALIZACAO: localizacoesPorCodigo[item.CODIGO] || ''
@@ -461,7 +461,7 @@ async function gerarListaInventario(req, res) {
         return res.status(200).json({
             itens: todosItens,
             dataGeracao: new Date().toISOString(),
-            criterio: `Bloco 1: ${blocosCont.movimentacao} movimentados | Bloco 2: ${blocosCont.baixaAcuracidade} acurac.<${BLOCO2_ACURACIDADE}% | Bloco 3: ${blocosCont.maiorValor} maior valor | Bloco 4: ${blocosCont.maiorValorUnitario} maior vlr unit. | Bloco 5: ${blocosCont.naoContado} n„o contados`,
+            criterio: `Bloco 1: ${blocosCont.movimentacao} movimentados | Bloco 2: ${blocosCont.baixaAcuracidade} acurac.<${BLOCO2_ACURACIDADE}% | Bloco 3: ${blocosCont.maiorValor} maior valor | Bloco 4: ${blocosCont.maiorValorUnitario} maior vlr unit. | Bloco 5: ${blocosCont.naoContado} n√£o contados`,
             blocos: blocosCont,
             valorTotalGeral: valorTotalGeral,
             debugBloco2: debugBloco2,
@@ -480,14 +480,14 @@ async function gerarListaInventario(req, res) {
     } catch (err) {
         console.error("ERRO DETALHADO ao gerar lista:", err);
         return res.status(500).json({ 
-            message: "Erro ao gerar lista de invent·rio", 
+            message: "Erro ao gerar lista de invent√°rio", 
             error: err.message,
             stack: err.stack 
         });
     }
 }
 
-// Salva um novo invent·rio
+// Salva um novo invent√°rio
 async function salvarInventario(req, res) {
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -500,7 +500,7 @@ async function salvarInventario(req, res) {
         // Calcula valor total geral
         const valorTotalGeral = inventario.itens.reduce((sum, item) => sum + (item.VALOR_TOTAL_ESTOQUE || 0), 0);
 
-        // Insere o cabeÁalho do invent·rio
+        // Insere o cabe√ßalho do invent√°rio
         const headerResult = await transaction.request()
             .input('DT_GERACAO', sql.DateTime, new Date(inventario.dataGeracao))
             .input('CRITERIO', sql.NVarChar, inventario.criterio)
@@ -517,7 +517,7 @@ async function salvarInventario(req, res) {
 
         const idInventario = headerResult.recordset[0].ID_INVENTARIO;
 
-        // Insere os itens do invent·rio
+        // Insere os itens do invent√°rio
         for (const item of inventario.itens) {
             await transaction.request()
                 .input('ID_INVENTARIO', sql.Int, idInventario)
@@ -539,20 +539,20 @@ async function salvarInventario(req, res) {
         await transaction.commit();
 
         return res.status(200).json({ 
-            message: "Invent·rio salvo com sucesso",
+            message: "Invent√°rio salvo com sucesso",
             idInventario: idInventario
         });
 
     } catch (err) {
-        console.error("ERRO ao salvar invent·rio:", err);
+        console.error("ERRO ao salvar invent√°rio:", err);
         return res.status(500).json({ 
-            message: "Erro ao salvar invent·rio", 
+            message: "Erro ao salvar invent√°rio", 
             error: err.message 
         });
     }
 }
 
-// Lista todos os invent·rios
+// Lista todos os invent√°rios
 async function listarInventarios(req, res) {
     try {
         const pool = await getConnection();
@@ -570,7 +570,7 @@ async function listarInventarios(req, res) {
                 ic.DT_CRIACAO,
                 ic.USUARIO_FINALIZACAO,
                 ic.DT_FINALIZACAO,
-                -- Calcula itens com divergÍncia (diferenÁa != 0)
+                -- Calcula itens com diverg√™ncia (diferen√ßa != 0)
                 (SELECT COUNT(*) 
                  FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM] ici
                  WHERE ici.ID_INVENTARIO = ic.ID_INVENTARIO 
@@ -582,21 +582,21 @@ async function listarInventarios(req, res) {
         return res.status(200).json({ inventarios: result.recordset });
 
     } catch (err) {
-        console.error("ERRO ao listar invent·rios:", err);
+        console.error("ERRO ao listar invent√°rios:", err);
         return res.status(500).json({ 
-            message: "Erro ao listar invent·rios", 
+            message: "Erro ao listar invent√°rios", 
             error: err.message 
         });
     }
 }
 
-// Abre um invent·rio especÌfico
+// Abre um invent√°rio espec√≠fico
 async function abrirInventario(req, res) {
     try {
         const { id } = req.query;
         const pool = await getConnection();
 
-        // Busca o cabeÁalho
+        // Busca o cabe√ßalho
         const headerResult = await pool.request()
             .input('ID_INVENTARIO', sql.Int, id)
             .query(`
@@ -605,7 +605,7 @@ async function abrirInventario(req, res) {
             `);
 
         if (headerResult.recordset.length === 0) {
-            return res.status(404).json({ message: "Invent·rio n„o encontrado" });
+            return res.status(404).json({ message: "Invent√°rio n√£o encontrado" });
         }
 
         const header = headerResult.recordset[0];
@@ -620,10 +620,10 @@ async function abrirInventario(req, res) {
                 ORDER BY CODIGO;
             `);
 
-        // Calcula o total a partir dos itens para garantir consistÍncia com as linhas exibidas
+        // Calcula o total a partir dos itens para garantir consist√™ncia com as linhas exibidas
         const valorTotalGeralCalculado = itemsResult.recordset.reduce((sum, item) => sum + (item.VALOR_TOTAL_ESTOQUE || 0), 0);
 
-        // Busca localizaÁıes com saldo > 0 para os itens do invent·rio
+        // Busca localiza√ß√µes com saldo > 0 para os itens do invent√°rio
         let localizacoesPorCodigo = {};
         const codigos = itemsResult.recordset.map(i => i.CODIGO);
         if (codigos.length > 0) {
@@ -649,11 +649,11 @@ async function abrirInventario(req, res) {
                     localizacoesPorCodigo[r.CODIGO] = r.LOCALIZACAO;
                 });
             } catch (err) {
-                console.warn('Aviso: n„o foi possÌvel buscar localizaÁıes:', err.message);
+                console.warn('Aviso: n√£o foi poss√≠vel buscar localiza√ß√µes:', err.message);
             }
         }
 
-        // Monta o objeto invent·rio
+        // Monta o objeto invent√°rio
         const inventario = {
             id: header.ID_INVENTARIO,
             status: header.STATUS,
@@ -679,15 +679,15 @@ async function abrirInventario(req, res) {
         return res.status(200).json({ inventario });
 
     } catch (err) {
-        console.error("ERRO ao abrir invent·rio:", err);
+        console.error("ERRO ao abrir invent√°rio:", err);
         return res.status(500).json({ 
-            message: "Erro ao abrir invent·rio", 
+            message: "Erro ao abrir invent√°rio", 
             error: err.message 
         });
     }
 }
 
-// Finaliza um invent·rio e calcula acuracidade
+// Finaliza um invent√°rio e calcula acuracidade
 async function finalizarInventario(req, res) {
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -697,7 +697,7 @@ async function finalizarInventario(req, res) {
 
         await transaction.begin();
 
-        // Atualiza as contagens fÌsicas dos itens
+        // Atualiza as contagens f√≠sicas dos itens
         for (const item of itens) {
             await transaction.request()
                 .input('ID_INVENTARIO', sql.Int, idInventario)
@@ -732,7 +732,7 @@ async function finalizarInventario(req, res) {
 
         const stats = acuracidadeResult.recordset[0];
 
-        // Atualiza o cabeÁalho do invent·rio
+        // Atualiza o cabe√ßalho do invent√°rio
         await transaction.request()
             .input('ID_INVENTARIO', sql.Int, idInventario)
             .input('STATUS', sql.NVarChar, 'FINALIZADO')
@@ -750,7 +750,7 @@ async function finalizarInventario(req, res) {
         await transaction.commit();
 
         return res.status(200).json({ 
-            message: "Invent·rio finalizado com sucesso",
+            message: "Invent√°rio finalizado com sucesso",
             acuracidadeGeral: stats.ACURACIDADE_GERAL,
             totalItens: stats.TOTAL_ITENS,
             itensCorretos: stats.ITENS_CORRETOS,
@@ -758,15 +758,15 @@ async function finalizarInventario(req, res) {
         });
 
     } catch (err) {
-        console.error("ERRO ao finalizar invent·rio:", err);
+        console.error("ERRO ao finalizar invent√°rio:", err);
         return res.status(500).json({ 
-            message: "Erro ao finalizar invent·rio", 
+            message: "Erro ao finalizar invent√°rio", 
             error: err.message 
         });
     }
 }
 
-// Salva contagem individual com usu·rio e data/hora
+// Salva contagem individual com usu√°rio e data/hora
 async function salvarContagemIndividual(req, res) {
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -802,7 +802,7 @@ async function salvarContagemIndividual(req, res) {
     }
 }
 
-// Busca informaÁıes de um produto especÌfico
+// Busca informa√ß√µes de um produto espec√≠fico
 async function buscarProduto(req, res) {
     try {
         const { codigo } = req.query;
@@ -833,7 +833,7 @@ async function buscarProduto(req, res) {
                 )
                 SELECT 
                     @CODIGO AS CODIGO,
-                    ISNULL(cp.DESCRICAO, 'SEM DESCRI«√O') AS DESCRICAO,
+                    ISNULL(cp.DESCRICAO, 'SEM DESCRI√á√ÉO') AS DESCRICAO,
                     ISNULL(s.SALDO_ATUAL, 0) AS SALDO_ATUAL,
                     ISNULL(u.CUSTO_UNITARIO, 0) AS CUSTO_UNITARIO
                 FROM (SELECT @CODIGO AS CODIGO) base
@@ -842,8 +842,8 @@ async function buscarProduto(req, res) {
                 LEFT JOIN UltimaNFPorProduto u ON base.CODIGO = u.CODIGO AND u.RN = 1;
             `);
 
-        if (result.recordset.length === 0 || result.recordset[0].DESCRICAO === 'SEM DESCRI«√O') {
-            return res.status(404).json({ message: "Produto n„o encontrado no cadastro" });
+        if (result.recordset.length === 0 || result.recordset[0].DESCRICAO === 'SEM DESCRI√á√ÉO') {
+            return res.status(404).json({ message: "Produto n√£o encontrado no cadastro" });
         }
 
         return res.status(200).json({ produto: result.recordset[0] });
@@ -857,36 +857,36 @@ async function buscarProduto(req, res) {
     }
 }
 
-// Adiciona um item a um invent·rio j· salvo (EM_ANDAMENTO)
+// Adiciona um item a um invent√°rio j√° salvo (EM_ANDAMENTO)
 async function adicionarItemInventario(req, res) {
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { idInventario, item } = body;
 
         if (!idInventario || !item || !item.CODIGO) {
-            return res.status(400).json({ message: "idInventario e item.CODIGO s„o obrigatÛrios." });
+            return res.status(400).json({ message: "idInventario e item.CODIGO s√£o obrigat√≥rios." });
         }
 
         const pool = await getConnection();
 
-        // Verifica se invent·rio existe e est· EM_ANDAMENTO
+        // Verifica se invent√°rio existe e est√° EM_ANDAMENTO
         const inv = await pool.request()
             .input('ID', sql.Int, idInventario)
             .query(`SELECT STATUS FROM [dbo].[TB_INVENTARIO_CICLICO] WHERE ID_INVENTARIO = @ID`);
 
         if (inv.recordset.length === 0)
-            return res.status(404).json({ message: "Invent·rio n„o encontrado." });
+            return res.status(404).json({ message: "Invent√°rio n√£o encontrado." });
         if (inv.recordset[0].STATUS === 'FINALIZADO')
-            return res.status(409).json({ message: "N„o È possÌvel alterar um invent·rio finalizado." });
+            return res.status(409).json({ message: "N√£o √© poss√≠vel alterar um invent√°rio finalizado." });
 
-        // Verifica se item j· est· no invent·rio
+        // Verifica se item j√° est√° no invent√°rio
         const existe = await pool.request()
             .input('ID', sql.Int, idInventario)
             .input('CODIGO', sql.NVarChar, item.CODIGO)
             .query(`SELECT 1 FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM] WHERE ID_INVENTARIO = @ID AND CODIGO = @CODIGO`);
 
         if (existe.recordset.length > 0)
-            return res.status(409).json({ message: "Item j· est· no invent·rio." });
+            return res.status(409).json({ message: "Item j√° est√° no invent√°rio." });
 
         const valorTotalEstoque = (item.SALDO_ATUAL || 0) * (item.CUSTO_UNITARIO || 0);
 
@@ -906,7 +906,7 @@ async function adicionarItemInventario(req, res) {
                 VALUES (@ID_INVENTARIO, @CODIGO, @DESCRICAO, @SALDO_SISTEMA, @CONTAGEM_FISICA, @TOTAL_MOVIMENTACOES, @BLOCO, @CUSTO_UNITARIO, @VALOR_TOTAL_ESTOQUE)
             `);
 
-        // Atualiza TOTAL_ITENS e VALOR_TOTAL_GERAL no cabeÁalho
+        // Atualiza TOTAL_ITENS e VALOR_TOTAL_GERAL no cabe√ßalho
         await pool.request()
             .input('ID', sql.Int, idInventario)
             .query(`
@@ -924,34 +924,34 @@ async function adicionarItemInventario(req, res) {
     }
 }
 
-// Remove um item de um invent·rio j· salvo (EM_ANDAMENTO)
+// Remove um item de um invent√°rio j√° salvo (EM_ANDAMENTO)
 async function removerItemInventario(req, res) {
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { idInventario, codigo } = body;
 
         if (!idInventario || !codigo) {
-            return res.status(400).json({ message: "idInventario e codigo s„o obrigatÛrios." });
+            return res.status(400).json({ message: "idInventario e codigo s√£o obrigat√≥rios." });
         }
 
         const pool = await getConnection();
 
-        // Verifica se invent·rio existe e est· EM_ANDAMENTO
+        // Verifica se invent√°rio existe e est√° EM_ANDAMENTO
         const inv = await pool.request()
             .input('ID', sql.Int, idInventario)
             .query(`SELECT STATUS FROM [dbo].[TB_INVENTARIO_CICLICO] WHERE ID_INVENTARIO = @ID`);
 
         if (inv.recordset.length === 0)
-            return res.status(404).json({ message: "Invent·rio n„o encontrado." });
+            return res.status(404).json({ message: "Invent√°rio n√£o encontrado." });
         if (inv.recordset[0].STATUS === 'FINALIZADO')
-            return res.status(409).json({ message: "N„o È possÌvel alterar um invent·rio finalizado." });
+            return res.status(409).json({ message: "N√£o √© poss√≠vel alterar um invent√°rio finalizado." });
 
         await pool.request()
             .input('ID', sql.Int, idInventario)
             .input('CODIGO', sql.NVarChar, codigo)
             .query(`DELETE FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM] WHERE ID_INVENTARIO = @ID AND CODIGO = @CODIGO`);
 
-        // Atualiza TOTAL_ITENS e VALOR_TOTAL_GERAL no cabeÁalho
+        // Atualiza TOTAL_ITENS e VALOR_TOTAL_GERAL no cabe√ßalho
         await pool.request()
             .input('ID', sql.Int, idInventario)
             .query(`

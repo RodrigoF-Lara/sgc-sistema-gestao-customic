@@ -10,7 +10,7 @@ export default async function handler(req, res) {
             case "POST": return await handlePost(req, res);
             default:
                 res.setHeader("Allow", ["GET", "POST"]);
-                return res.status(405).json({ message: "MÈtodo n„o permitido" });
+                return res.status(405).json({ message: "M√©todo n√£o permitido" });
         }
     } catch (err) {
         console.error("Erro geral no handler de /api/statusNF:", err);
@@ -21,12 +21,12 @@ export default async function handler(req, res) {
 async function handleGet(req, res) {
     const { acao, nf, codigo } = req.query;
     
-    // Endpoint para buscar log de uma NF especÌfica
+    // Endpoint para buscar log de uma NF espec√≠fica
     if (acao === 'log' && nf && codigo) {
         return await buscarLog(req, res);
     }
     
-    // Endpoint padr„o para listar status
+    // Endpoint padr√£o para listar status
     return await listarStatus(req, res);
 }
 
@@ -37,7 +37,7 @@ async function handlePost(req, res) {
         return await atualizarStatus(req, res);
     }
     
-    return res.status(400).json({ message: "AÁ„o n„o reconhecida" });
+    return res.status(400).json({ message: "A√ß√£o n√£o reconhecida" });
 }
 
 async function listarStatus(req, res) {
@@ -85,7 +85,7 @@ async function buscarLog(req, res) {
     const { nf, codigo } = req.query;
 
     if (!nf || !codigo) {
-        return res.status(400).json({ message: "Os par‚metros 'nf' e 'codigo' s„o obrigatÛrios." });
+        return res.status(400).json({ message: "Os par√¢metros 'nf' e 'codigo' s√£o obrigat√≥rios." });
     }
 
     try {
@@ -119,7 +119,7 @@ async function atualizarStatus(req, res) {
     const { nf, codigo, processo, usuario, id_nf, id_nf_prod, qnt } = req.body || {};
 
     if (!nf || !codigo || !processo || !usuario) {
-        return res.status(400).json({ message: "Par‚metros obrigatÛrios: nf, codigo, processo, usuario" });
+        return res.status(400).json({ message: "Par√¢metros obrigat√≥rios: nf, codigo, processo, usuario" });
     }
 
     try {
