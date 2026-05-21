@@ -45,29 +45,18 @@ function inicializarEventos() {
     const btnLimpar = document.getElementById('btnLimpar');
     const btnExcluir = document.getElementById('btnExcluir');
     const filtroInput = document.getElementById('filtroUsuarios');
+    const btnNovoUsuario = document.getElementById('btnNovoUsuario');
+    const btnFecharForm = document.getElementById('btnFecharForm');
 
     form.addEventListener('submit', salvarUsuario);
     btnLimpar.addEventListener('click', limparFormulario);
     btnExcluir.addEventListener('click', excluirUsuario);
+    btnNovoUsuario.addEventListener('click', mostrarFormulario);
+    btnFecharForm.addEventListener('click', esconderFormulario);
 
     // Filtro de usuários
     filtroInput.addEventListener('input', function(e) {
         filtrarUsuarios(e.target.value);
-    });
-
-    // Delegação de eventos para cliques nos usuários da lista
-    document.getElementById('usuariosList').addEventListener('click', function(e) {
-        const usuarioItem = e.target.closest('.usuario-item');
-        if (usuarioItem) {
-            const usuarioNome = usuarioItem.dataset.usuario;
-            console.log('Item clicado, USUARIO:', usuarioNome);
-            
-            if (usuarioNome) {
-                selecionarUsuario(usuarioNome);
-            } else {
-                console.error('USUARIO inválido:', usuarioItem.dataset);
-            }
-        }
     });
 
     // Força uppercase em campos específicos
@@ -77,6 +66,50 @@ function inicializarEventos() {
             e.target.value = e.target.value.toUpperCase();
         });
     });
+}
+
+function mostrarFormulario() {
+    document.getElementById('formularioSection').classList.add('show');
+    document.getElementById('form-title').textContent = 'Novo Usuário';
+    document.getElementById('acoesEdicao').style.display = 'none';
+    limparFormulario();
+    // Scroll suave para o formulário
+    document.getElementById('formularioSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function esconderFormulario() {
+    document.getElementById('formularioSection').classList.remove('show');
+    limparFormulario();
+}
+
+window.editarUsuario = function(usuarioNome) {
+    console.log('Editando usuário:', usuarioNome);
+    mostrarFormulario();
+    carregarUsuarioParaEdicao(usuarioNome);
+};
+
+window.excluirUsuarioConfirm = async function(usuarioNome, nomeCompleto) {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${usuarioNome}"?\n${nomeCompleto}\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/auth?usuario=${encodeURIComponent(usuarioNome)}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            mostrarMensagem(data.message, 'success');
+            carregarUsuarios();
+        } else {
+            mostrarMensagem(data.error || 'Erro ao excluir usuário', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir usuário:', error);
+        mostrarMensagem('Erro ao excluir usuário: ' + error.message, 'error');
+    }
 }
 
 function configurarMascaras() {
@@ -135,14 +168,25 @@ function renderizarUsuarios(usuarios) {
         const nivelClass = nivel.toLowerCase();
         const nivelLabel = nivel;
         const userKey = usuario.USUARIO || '';
+        const nomeCompleto = `${usuario.F_NAME || ''} ${usuario.L_NAME || ''}`;
 
         return `
-            <div class="usuario-item" data-usuario="${userKey}">
-                <div class="usuario-info">
-                    <h3>${usuario.USUARIO || ''}</h3>
-                    <p>${usuario.F_NAME || ''} ${usuario.L_NAME || ''}</p>
+            <div class="usuario-item" data-usuario="${userKey}" style="display: grid; grid-template-columns: 2fr 1fr 2fr 120px; gap: 10px; align-items: center;">
+                <div class="usuario-info" style="flex: none;">
+                    <h3 style="margin: 0;">${usuario.USUARIO || ''}</h3>
                 </div>
-                <span class="usuario-badge ${nivelClass}">${nivelLabel}</span>
+                <span class="usuario-badge ${nivelClass}" style="margin: 0; width: fit-content;">${nivelLabel}</span>
+                <div style="flex: none;">
+                    <p style="margin: 0; font-size: 0.9em; color: #666;">${nomeCompleto}</p>
+                </div>
+                <div class="usuario-acoes" style="justify-content: center;">
+                    <button class="btn-icon edit" onclick="editarUsuario('${userKey}')" title="Editar">
+                        <i class="fa fa-edit"></i>
+                    </button>
+                    <button class="btn-icon delete" onclick="excluirUsuarioConfirm('${userKey}', '${nomeCompleto}')" title="Excluir">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
     }).join('');
@@ -185,21 +229,7 @@ function filtrarUsuarios(termo) {
 }
 
 function selecionarUsuario(usuarioNome) {
-    console.log('Selecionando USUARIO:', usuarioNome);
-    
-    // Remove seleção anterior
-    document.querySelectorAll('.usuario-item').forEach(item => {
-        item.classList.remove('selecionado');
-    });
-
-    // Adiciona seleção ao item clicado
-    const item = document.querySelector(`[data-usuario="${usuarioNome}"]`);
-    if (item) {
-        item.classList.add('selecionado');
-    }
-
-    // Carrega dados do usuário no formulário
-    carregarUsuarioParaEdicao(usuarioNome);
+    // Função removida - agora usa os botões de ação diretamente
 }
 
 async function carregarUsuarioParaEdicao(usuarioNome) {
@@ -225,7 +255,6 @@ async function carregarUsuarioParaEdicao(usuarioNome) {
                 document.getElementById('firstName').value = usuario.F_NAME || '';
                 document.getElementById('lastName').value = usuario.L_NAME || '';
                 document.getElementById('setor').value = usuario.SETOR || '';
-                document.getElementById('cod').value = usuario.COD || '';
 
                 // Altera título do formulário
                 document.getElementById('form-title').textContent = 'Editar Usuário';
@@ -256,8 +285,7 @@ async function salvarUsuario(e) {
         cpf: document.getElementById('cpf').value.replace(/\D/g, ''),
         firstName: document.getElementById('firstName').value,
         lastName: document.getElementById('lastName').value,
-        setor: document.getElementById('setor').value,
-        cod: document.getElementById('cod').value
+        setor: document.getElementById('setor').value
     };
 
     try {
@@ -290,7 +318,7 @@ async function salvarUsuario(e) {
 
         if (response.ok) {
             mostrarMensagem(data.message, 'success');
-            limparFormulario();
+            esconderFormulario();
             carregarUsuarios();
         } else {
             mostrarMensagem(data.error || 'Erro ao salvar usuário', 'error');
@@ -344,11 +372,6 @@ function limparFormulario() {
     document.getElementById('acoesEdicao').style.display = 'none';
     
     usuarioSelecionado = null;
-
-    // Remove seleção da lista
-    document.querySelectorAll('.usuario-item').forEach(item => {
-        item.classList.remove('selecionado');
-    });
 }
 
 function mostrarMensagem(mensagem, tipo) {

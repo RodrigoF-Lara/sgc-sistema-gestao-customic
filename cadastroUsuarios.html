@@ -28,9 +28,38 @@
         }
 
         .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
+            display: flex;
+            flex-direction: column;
             gap: 25px;
+        }
+
+        .formulario-section {
+            display: none;
+        }
+
+        .formulario-section.show {
+            display: block;
+        }
+
+        .btn-novo-usuario {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .btn-novo-usuario:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
 
         .card {
@@ -151,19 +180,43 @@
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             margin-bottom: 10px;
-            cursor: pointer;
             transition: all 0.3s;
         }
 
         .usuario-item:hover {
             background: #f8f9fa;
             border-color: var(--cor-principal);
-            transform: translateX(5px);
         }
 
-        .usuario-item.selecionado {
+        .usuario-acoes {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-size: 1.1em;
+        }
+
+        .btn-icon.edit {
+            color: #1976d2;
+        }
+
+        .btn-icon.edit:hover {
             background: #e3f2fd;
-            border-color: var(--cor-principal);
+        }
+
+        .btn-icon.delete {
+            color: #dc3545;
+        }
+
+        .btn-icon.delete:hover {
+            background: #f8d7da;
         }
 
         .usuario-info {
@@ -229,7 +282,7 @@
             border-radius: 8px;
             margin-bottom: 15px;
             display: grid;
-            grid-template-columns: 2fr 1fr 2fr;
+            grid-template-columns: 2fr 1fr 2fr 120px;
             gap: 10px;
             font-weight: 700;
             font-size: 0.9em;
@@ -248,10 +301,19 @@
             display: block;
         }
 
-        @media (max-width: 1024px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
+        .btn-fechar-form {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .btn-fechar-form:hover {
+            background: #5a6268;
         }
     </style>
 </head>
@@ -268,8 +330,45 @@
             <div id="status-message" class="status-message"></div>
 
             <div class="content-grid">
-                <!-- Formulário de Cadastro/Edição -->
+                <!-- Lista de Usuários -->
                 <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0;"><i class="fa fa-list"></i> Usuários Cadastrados (<span id="totalUsuarios">0</span>)</h2>
+                        <button class="btn-novo-usuario" id="btnNovoUsuario">
+                            <i class="fa fa-user-plus"></i> Novo Usuário
+                        </button>
+                    </div>
+                    
+                    <!-- Campo de Filtro -->
+                    <div class="filtro-container" style="margin-bottom: 15px;">
+                        <input 
+                            type="text" 
+                            id="filtroUsuarios" 
+                            placeholder="🔍 Filtrar por usuário, nome ou CPF..." 
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95em;"
+                        >
+                    </div>
+                    
+                    <div class="lista-header">
+                        <div>USUÁRIO</div>
+                        <div>NÍVEL</div>
+                        <div>NOME</div>
+                        <div style="text-align: center;">AÇÕES</div>
+                    </div>
+
+                    <div class="usuarios-list" id="usuariosList">
+                        <div class="empty-state">
+                            <i class="fa fa-users"></i>
+                            <p>Nenhum usuário cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulário de Cadastro/Edição (inicialmente escondido) -->
+                <div class="card formulario-section" id="formularioSection">
+                    <button class="btn-fechar-form" id="btnFecharForm">
+                        <i class="fa fa-times"></i> Fechar Formulário
+                    </button>
                     <h2><i class="fa fa-user-plus"></i> <span id="form-title">Novo Usuário</span></h2>
                     
                     <form id="usuarioForm">
@@ -316,11 +415,6 @@
                             <input type="text" id="setor" class="uppercase" maxlength="50">
                         </div>
 
-                        <div class="form-group">
-                            <label for="cod">Código</label>
-                            <input type="text" id="cod" class="uppercase" maxlength="20">
-                        </div>
-
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" id="btnSalvar">
                                 <i class="fa fa-save"></i> Salvar
@@ -336,34 +430,6 @@
                             </button>
                         </div>
                     </form>
-                </div>
-
-                <!-- Lista de Usuários -->
-                <div class="card">
-                    <h2><i class="fa fa-list"></i> Usuários Cadastrados (<span id="totalUsuarios">0</span>)</h2>
-                    
-                    <!-- Campo de Filtro -->
-                    <div class="filtro-container" style="margin-bottom: 15px;">
-                        <input 
-                            type="text" 
-                            id="filtroUsuarios" 
-                            placeholder="🔍 Filtrar por usuário, nome ou CPF..." 
-                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95em;"
-                        >
-                    </div>
-                    
-                    <div class="lista-header">
-                        <div>USUÁRIO</div>
-                        <div>NÍVEL</div>
-                        <div>NOME</div>
-                    </div>
-
-                    <div class="usuarios-list" id="usuariosList">
-                        <div class="empty-state">
-                            <i class="fa fa-users"></i>
-                            <p>Nenhum usuário cadastrado</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
