@@ -5,7 +5,24 @@ document.addEventListener('DOMContentLoaded', function() {
     carregarFornecedores();
     inicializarEventos();
     configurarMascaraCNPJ();
+    configurarBotaoNovo();
 });
+
+function configurarBotaoNovo() {
+    const btnNovo = document.getElementById('btnNovoFornecedor');
+    const cardFormulario = document.getElementById('cardFormulario');
+    const contentGrid = document.querySelector('.content-grid');
+
+    btnNovo.addEventListener('click', function() {
+        limparFormulario();
+        cardFormulario.style.display = 'block';
+        contentGrid.classList.add('editing');
+        btnNovo.style.display = 'none';
+        
+        // Scroll suave até o formulário
+        cardFormulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+}
 
 function inicializarEventos() {
     const form = document.getElementById('fornecedorForm');
@@ -22,13 +39,23 @@ function inicializarEventos() {
         filtrarFornecedores(e.target.value);
     });
 
-    // Delegação de eventos para cliques nos fornecedores da lista
+    // Delegação de eventos para botões de editar e excluir
     document.getElementById('fornecedoresList').addEventListener('click', function(e) {
-        const fornecedorItem = e.target.closest('.fornecedor-item');
-        if (fornecedorItem) {
-            const codigo = parseInt(fornecedorItem.dataset.codigo);
+        const btnEdit = e.target.closest('.btn-edit');
+        const btnDelete = e.target.closest('.btn-delete');
+        
+        if (btnEdit) {
+            e.stopPropagation();
+            const codigo = parseInt(btnEdit.dataset.codigo);
             if (!isNaN(codigo)) {
                 selecionarFornecedor(codigo);
+            }
+        } else if (btnDelete) {
+            e.stopPropagation();
+            const codigo = parseInt(btnDelete.dataset.codigo);
+            const razao = btnDelete.dataset.razao;
+            if (!isNaN(codigo)) {
+                excluirFornecedorDireto(codigo, razao);
             }
         }
     });
@@ -70,6 +97,14 @@ function renderizarFornecedores(fornecedores) {
                 <div class="fornecedor-codigo">${fornecedor.COD_FORNECEDOR}</div>
                 <div class="fornecedor-razao">${fornecedor.RAZAO_SOCIAL || ''}</div>
                 <div class="fornecedor-cnpj">${formatarCNPJ(fornecedor.CNPJ) || '-'}</div>
+                <div class="item-actions">
+                    <button class="btn-icon btn-edit" data-codigo="${fornecedor.COD_FORNECEDOR}" title="Editar">
+                        <i class="fa fa-edit"></i> Editar
+                    </button>
+                    <button class="btn-icon btn-delete" data-codigo="${fornecedor.COD_FORNECEDOR}" data-razao="${fornecedor.RAZAO_SOCIAL}" title="Excluir">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
     }).join('');
@@ -111,19 +146,20 @@ function filtrarFornecedores(termo) {
 }
 
 function selecionarFornecedor(codigo) {
-    // Remove seleção anterior
-    document.querySelectorAll('.fornecedor-item').forEach(item => {
-        item.classList.remove('selecionado');
-    });
+    const cardFormulario = document.getElementById('cardFormulario');
+    const contentGrid = document.querySelector('.content-grid');
+    const btnNovo = document.getElementById('btnNovoFornecedor');
 
-    // Adiciona seleção ao item clicado
-    const item = document.querySelector(`[data-codigo="${codigo}"]`);
-    if (item) {
-        item.classList.add('selecionado');
-    }
+    // Mostra o formulário
+    cardFormulario.style.display = 'block';
+    contentGrid.classList.add('editing');
+    btnNovo.style.display = 'none';
 
     // Carrega dados do fornecedor no formulário
     carregarFornecedorParaEdicao(codigo);
+    
+    // Scroll suave até o formulário
+    cardFormulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function carregarFornecedorParaEdicao(codigo) {
@@ -197,6 +233,30 @@ async function salvarFornecedor(e) {
     }
 }
 
+async function excluirFornecedorDireto(codigo, razao) {
+    if (!confirm(`Deseja realmente excluir o fornecedor ${codigo} - ${razao}?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/cadastros?tipo=fornecedores&codFornecedor=${codigo}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            mostrarMensagem(data.message, 'success');
+            await carregarFornecedores();
+        } else {
+            mostrarMensagem(data.error || 'Erro ao excluir fornecedor', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir fornecedor:', error);
+        mostrarMensagem('Erro ao excluir fornecedor: ' + error.message, 'error');
+    }
+}
+
 async function excluirFornecedor() {
     const codigo = document.getElementById('fornecedorId').value;
     const razao = document.getElementById('razaoSocial').value;
@@ -237,10 +297,14 @@ function limparFormulario() {
     document.getElementById('acoesEdicao').style.display = 'none';
     fornecedorSelecionado = null;
 
-    // Remove seleção visual
-    document.querySelectorAll('.fornecedor-item').forEach(item => {
-        item.classList.remove('selecionado');
-    });
+    // Esconde o formulário e mostra botão "Novo"
+    const cardFormulario = document.getElementById('cardFormulario');
+    const contentGrid = document.querySelector('.content-grid');
+    const btnNovo = document.getElementById('btnNovoFornecedor');
+    
+    cardFormulario.style.display = 'none';
+    contentGrid.classList.remove('editing');
+    btnNovo.style.display = 'block';
 }
 
 function mostrarMensagem(texto, tipo) {

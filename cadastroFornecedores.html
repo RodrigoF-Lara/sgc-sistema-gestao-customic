@@ -29,12 +29,16 @@
 
         .content-grid {
             display: grid;
-            grid-template-columns: 450px 1fr;
+            grid-template-columns: 1fr;
             gap: 30px;
         }
 
+        .content-grid.editing {
+            grid-template-columns: 450px 1fr;
+        }
+
         @media (max-width: 1200px) {
-            .content-grid {
+            .content-grid.editing {
                 grid-template-columns: 1fr;
             }
         }
@@ -158,20 +162,19 @@
 
         .fornecedor-item {
             display: grid;
-            grid-template-columns: 100px 2fr 150px;
+            grid-template-columns: 100px 2fr 150px 140px;
             gap: 15px;
             padding: 15px;
             border: 1px solid #eee;
             border-radius: 8px;
             margin-bottom: 8px;
-            cursor: pointer;
             transition: all 0.3s;
+            align-items: center;
         }
 
         .fornecedor-item:hover {
             background: #f8f9fa;
             border-color: #667eea;
-            transform: translateX(5px);
         }
 
         .fornecedor-item.selecionado {
@@ -225,6 +228,44 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .btn-icon {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-edit {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -239,9 +280,16 @@
 
             <div id="status-message" class="status-message" style="display: none;"></div>
 
+            <!-- Botão para mostrar formulário -->
+            <div style="margin-bottom: 20px;">
+                <button id="btnNovoFornecedor" class="btn btn-primary" style="width: auto; padding: 12px 30px;">
+                    <i class="fa fa-plus"></i> Novo Fornecedor
+                </button>
+            </div>
+
             <div class="content-grid">
                 <!-- Formulário -->
-                <div class="card">
+                <div class="card" id="cardFormulario" style="display: none;">
                     <h2 id="form-title"><i class="fa fa-plus"></i> Novo Fornecedor</h2>
                     
                     <form id="fornecedorForm">
@@ -297,6 +345,7 @@
                         <div>CÓDIGO</div>
                         <div>RAZÃO SOCIAL</div>
                         <div>CNPJ</div>
+                        <div>AÇÕES</div>
                     </div>
 
                     <div class="fornecedores-list" id="fornecedoresList">
