@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             logContent.innerHTML = '<div class="loader"></div>';
             logModal.style.display = 'block';
             try {
-                const response = await fetch(`/api/requisicao?idReqItemLog=${idReqItem}`);
+                const response = await fetch(`/api/requisicao?idReqItemLog=${idReqItem}&idReqLog=${idReq}`);
                 const logData = await response.json();
                 if (!response.ok) throw new Error(logData.message || 'Erro ao buscar histórico.');
                 if (logData.length === 0) {

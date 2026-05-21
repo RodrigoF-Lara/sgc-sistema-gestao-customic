@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
 // --- LÓGICA GET (COM AJUSTE NA BUSCA DO LOG) ---
 async function handleGet(req, res) {
-    const { id, idReqItemLog } = req.query;
+    const { id, idReqItemLog, idReqLog } = req.query;
     const pool = await getConnection();
     if (id) {
         const headerResult = await pool.request().input('idReq', sql.Int, id).query("SELECT * FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @idReq");
@@ -28,8 +28,15 @@ async function handleGet(req, res) {
         const itemsResult = await pool.request().input('idReqItems', sql.Int, id).query(`SELECT I.*, P.DESCRICAO AS DESCRICAO_PRODUTO FROM [dbo].[TB_REQ_ITEM] I LEFT JOIN [dbo].[CAD_PROD] P ON I.CODIGO = P.CODIGO WHERE I.ID_REQ = @idReqItems ORDER BY I.ID_REQ_ITEM`);
         return res.status(200).json({ header: headerResult.recordset[0], items: itemsResult.recordset });
     } else if (idReqItemLog) {
-        // CORREÇÃO: Busca a nova coluna DT_HR_ALTERACAO para a conversão de fuso
-        const result = await pool.request().input('ID_REQ_ITEM', sql.Int, idReqItemLog).query("SELECT STATUS_ANTERIOR, STATUS_NOVO, RESPONSAVEL, DT_HR_ALTERACAO FROM TB_REQ_ITEM_LOG WHERE ID_REQ_ITEM = @ID_REQ_ITEM ORDER BY DT_HR_ALTERACAO DESC;");
+        // CORREÇÃO: Filtra também por ID_REQ pois ID_REQ_ITEM é sequencial por requisição (não é único globalmente)
+        const request = pool.request().input('ID_REQ_ITEM', sql.Int, idReqItemLog);
+        let logQuery = "SELECT STATUS_ANTERIOR, STATUS_NOVO, RESPONSAVEL, DT_HR_ALTERACAO FROM TB_REQ_ITEM_LOG WHERE ID_REQ_ITEM = @ID_REQ_ITEM";
+        if (idReqLog) {
+            request.input('ID_REQ', sql.Int, idReqLog);
+            logQuery += " AND ID_REQ = @ID_REQ";
+        }
+        logQuery += " ORDER BY DT_HR_ALTERACAO DESC;";
+        const result = await request.query(logQuery);
         return res.status(200).json(result.recordset);
     } else {
         const result = await pool.request().query("SELECT H.ID_REQ, H.DT_REQUISICAO, H.DT_NECESSIDADE, H.STATUS, H.PRIORIDADE, H.SOLICITANTE, (SELECT COUNT(*) FROM [dbo].[TB_REQ_ITEM] I WHERE I.ID_REQ = H.ID_REQ) AS TOTAL_ITENS FROM [dbo].[TB_REQUISICOES] H ORDER BY H.ID_REQ DESC;");
