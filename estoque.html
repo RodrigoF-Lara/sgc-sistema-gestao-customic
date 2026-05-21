@@ -154,6 +154,23 @@
                             <th>Hora</th>
                             <th>Ações</th>
                         </tr>
+                        <tr class="filter-row">
+                            <th><input type="text" class="filtro-hist" data-col="0" placeholder="Filtrar..." /></th>
+                            <th>
+                                <select class="filtro-hist" data-col="1">
+                                    <option value="">Todos</option>
+                                    <option value="ENTRADA">Entrada</option>
+                                    <option value="SAÍDA">Saída</option>
+                                </select>
+                            </th>
+                            <th><input type="text" class="filtro-hist" data-col="2" placeholder="Filtrar..." /></th>
+                            <th><input type="text" class="filtro-hist" data-col="3" placeholder="Filtrar..." /></th>
+                            <th><input type="text" class="filtro-hist" data-col="4" placeholder="Filtrar..." /></th>
+                            <th><input type="text" class="filtro-hist" data-col="5" placeholder="Filtrar..." /></th>
+                            <th><input type="text" class="filtro-hist" data-col="6" placeholder="dd/mm/aaaa" /></th>
+                            <th><input type="text" class="filtro-hist" data-col="7" placeholder="hh:mm" /></th>
+                            <th><button type="button" id="btnLimparFiltrosHist" title="Limpar filtros" style="background:#eee;border:1px solid #ccc;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;">✕</button></th>
+                        </tr>
                     </thead>
                     <tbody id="historicoBody"></tbody>
                 </table>

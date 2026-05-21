@@ -1150,6 +1150,48 @@
     }
   });
 
+  // ===== Filtros do Histórico de Movimentos =====
+  function aplicarFiltrosHistorico() {
+    const filtros = Array.from(document.querySelectorAll('.filtro-hist')).map(el => ({
+      col: parseInt(el.dataset.col, 10),
+      val: (el.value || '').trim().toLowerCase()
+    })).filter(f => f.val !== '');
+
+    const rows = historicoBody.querySelectorAll('tr');
+    rows.forEach(tr => {
+      // Não filtra linhas de mensagem (sem data-id-movimento)
+      if (!tr.hasAttribute('data-id-movimento')) return;
+      let visivel = true;
+      for (const f of filtros) {
+        const cell = tr.cells[f.col];
+        if (!cell) { visivel = false; break; }
+        const texto = cell.textContent.toLowerCase();
+        if (!texto.includes(f.val)) { visivel = false; break; }
+      }
+      tr.style.display = visivel ? '' : 'none';
+    });
+  }
+
+  document.querySelectorAll('.filtro-hist').forEach(el => {
+    const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(evt, aplicarFiltrosHistorico);
+  });
+
+  const btnLimparFiltrosHist = document.getElementById('btnLimparFiltrosHist');
+  if (btnLimparFiltrosHist) {
+    btnLimparFiltrosHist.addEventListener('click', () => {
+      document.querySelectorAll('.filtro-hist').forEach(el => { el.value = ''; });
+      aplicarFiltrosHistorico();
+    });
+  }
+
+  // Reaplica filtros sempre que o histórico for renderizado novamente
+  const _origRenderHistorico = renderHistorico;
+  renderHistorico = function(rows) {
+    _origRenderHistorico(rows);
+    aplicarFiltrosHistorico();
+  };
+
   // Listener para o botão de reimprimir etiqueta
   document.getElementById('historicoBody').addEventListener('click', function(event) {
     const target = event.target.closest('.btn-reimprimir');

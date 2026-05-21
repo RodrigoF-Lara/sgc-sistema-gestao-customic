@@ -1797,3 +1797,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: var(--cor-principal);
     border-radius: 0 0 10px 10px;
 }
+/* ===== Filtros do Histórico de Movimentos (estoque.html) ===== */
+#historicoTable thead tr.filter-row th {
+    background: #f5f7fa;
+    padding: 4px 6px;
+    border-top: 1px solid #e0e0e0;
+}
+#historicoTable thead tr.filter-row input,
+#historicoTable thead tr.filter-row select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #fff;
+}
+#historicoTable thead tr.filter-row input:focus,
+#historicoTable thead tr.filter-row select:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+}
