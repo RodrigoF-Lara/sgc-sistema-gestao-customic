@@ -21,13 +21,13 @@ document.addEventListener('DOMContentLoaded', function () {
         <nav class="sidebar-nav">
           <a href="menu.html" id="nav-menu"><i class="fa fa-home"></i> Menu Principal</a>
           <a href="requisicoes.html" id="nav-requisicoes"><i class="fa fa-file-lines"></i> Requisições</a>
-          <a href="estoque.html" id="nav-estoque"><i class="fa fa-archive"></i> Gerenciar Estoque</a>
           <a href="saidaRapida.html" id="nav-saida-rapida"><i class="fa fa-qrcode"></i> Saída Rápida (QR)</a>
-          <a href="statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
+          <a href="estoque.html" id="nav-estoque"><i class="fa fa-archive"></i> Gerenciar Estoque</a>
           <a href="inventarioCiclico.html" id="nav-inventario-ciclico"><i class="fa fa-clipboard-check"></i> Inventário Cíclico</a>
+          <a href="lancamentoNF.html" id="nav-lancamento-nf"><i class="fa fa-file-invoice"></i> Lançamento NF</a>
+          <a href="statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
           <a href="relatorios.html" id="nav-relatorios"><i class="fa fa-chart-bar"></i> Relatórios</a>
-          <a href="cadastroFornecedores.html" id="nav-fornecedores"><i class="fa fa-truck"></i> Fornecedores</a>
-          <a href="cadastroUsuarios.html" id="nav-usuarios"><i class="fa fa-users"></i> Usuários</a>
+          <a href="cadastros.html" id="nav-cadastros"><i class="fa fa-database"></i> Cadastros</a>
           <a href="configuracoes.html" id="nav-configuracoes"><i class="fa fa-cog"></i> Configurações</a>
         </nav>
         <div class="sidebar-footer"><button id="logout-btn" class="logout-btn">Sair</button></div>
@@ -45,23 +45,55 @@ function inicializarSidebar() {
   const pageKey = filename.replace('.html', '') || 'menu';
   const idMap = {
     'menu': 'nav-menu',
+    'index': 'nav-menu',
     'nova-requisicao': 'nav-requisicoes',
     'novarequisicao': 'nav-requisicoes',
     'consultar': 'nav-requisicoes',
     'consulta': 'nav-requisicoes',
+    'detalhes': 'nav-requisicoes',
     'requisicoes': 'nav-requisicoes',
     'estoque': 'nav-estoque',
     'saidarapida': 'nav-saida-rapida',
     'status-nf': 'nav-status-nf',
     'statusnf': 'nav-status-nf',
+    'lancamentonf': 'nav-lancamento-nf',
     'inventariociclico': 'nav-inventario-ciclico',
     'relatorios': 'nav-relatorios',
-    'configinventario': 'nav-config-inventario',
-    'index': 'nav-menu'
+    'relatoriobaixaporperiodo': 'nav-relatorios',
+    'relatoriorequisicoes': 'nav-relatorios',
+    'relatoriosaldo': 'nav-relatorios',
+    'relatorioacuracidade': 'nav-relatorios',
+    'consumomedio': 'nav-relatorios',
+    'cadastros': 'nav-cadastros-group',
+    'cadastroprodutos': 'nav-produtos',
+    'cadastrofornecedores': 'nav-fornecedores',
+    'cadastrousuarios': 'nav-usuarios',
+    'configuracoes': 'nav-configuracoes',
+    'configinventario': 'nav-configuracoes',
+    'confignotificacoes': 'nav-configuracoes'
   };
   const navId = idMap[pageKey] || `nav-${pageKey}`;
   const navLink = document.getElementById(navId);
   if (navLink) navLink.classList.add('active');
+
+  // Inicializa grupos colapsáveis e expande o grupo do item ativo
+  const groups = document.querySelectorAll('.sidebar-nav .nav-group');
+  groups.forEach(group => {
+    const toggle = group.querySelector('.nav-group-toggle');
+    const items = group.querySelector('.nav-group-items');
+    if (!toggle || !items) return;
+
+    const hasActive = items.querySelector('a.active');
+    if (hasActive) {
+      group.classList.add('open');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+
+    toggle.addEventListener('click', () => {
+      const isOpen = group.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+  });
 
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) {

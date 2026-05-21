@@ -9,42 +9,77 @@
 </div>
 
 <nav class="sidebar-nav">
-  <a href="menu.html" id="nav-menu"
-    ><i class="fa fa-home"></i><span>Menu Principal</span></a
-  >
-  <a href="requisicoes.html" id="nav-requisicoes"
-    ><i class="fa fa-file-lines"></i><span>Requisições</span></a
-  >
-  <a href="estoque.html" id="nav-estoque"
-    ><i class="fa fa-archive"></i><span>Gerenciar Estoque</span></a
-  >
-  <a href="saidaRapida.html" id="nav-saida-rapida"
-    ><i class="fa fa-qrcode"></i><span>Saída Rápida (QR)</span></a
-  >
-  <a href="statusNF.html" id="nav-status-nf"
-    ><i class="fa fa-barcode"></i><span>Status NF</span></a
-  >
-  <a href="lancamentoNF.html" id="nav-lancamento-nf"
-    ><i class="fa fa-file-invoice"></i><span>Lançamento NF</span></a
-  >
-  <a href="inventarioCiclico.html" id="nav-inventario-ciclico"
-    ><i class="fa fa-clipboard-check"></i><span>Inventário Cíclico</span></a
-  >
-  <a href="relatorios.html" id="nav-relatorios"
-    ><i class="fa fa-chart-bar"></i><span>Relatórios</span></a
-  >
-  <a href="cadastros.html" id="nav-cadastros"
-    ><i class="fa fa-database"></i><span>Cadastros</span></a
-  >
-  <a href="cadastroFornecedores.html" id="nav-fornecedores"
-    ><i class="fa fa-truck"></i><span>Fornecedores</span></a
-  >
-  <a href="cadastroUsuarios.html" id="nav-usuarios"
-    ><i class="fa fa-users"></i><span>Usuários</span></a
-  >
-  <a href="configuracoes.html" id="nav-configuracoes"
-    ><i class="fa fa-cog"></i><span>Configurações</span></a
-  >
+  <a href="menu.html" id="nav-menu">
+    <i class="fa fa-home"></i><span>Menu Principal</span>
+  </a>
+
+  <!-- Grupo: Operações -->
+  <div class="nav-group" data-group="operacoes">
+    <button type="button" class="nav-group-toggle" aria-expanded="false">
+      <i class="fa fa-cubes"></i>
+      <span class="nav-group-label">Operações</span>
+      <i class="fa fa-chevron-down nav-group-caret"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="requisicoes.html" id="nav-requisicoes">
+        <i class="fa fa-file-lines"></i><span>Requisições</span>
+      </a>
+      <a href="saidaRapida.html" id="nav-saida-rapida">
+        <i class="fa fa-qrcode"></i><span>Saída Rápida (QR)</span>
+      </a>
+      <a href="estoque.html" id="nav-estoque">
+        <i class="fa fa-archive"></i><span>Gerenciar Estoque</span>
+      </a>
+      <a href="inventarioCiclico.html" id="nav-inventario-ciclico">
+        <i class="fa fa-clipboard-check"></i><span>Inventário Cíclico</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Grupo: Notas Fiscais -->
+  <div class="nav-group" data-group="notas">
+    <button type="button" class="nav-group-toggle" aria-expanded="false">
+      <i class="fa fa-file-invoice-dollar"></i>
+      <span class="nav-group-label">Notas Fiscais</span>
+      <i class="fa fa-chevron-down nav-group-caret"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="lancamentoNF.html" id="nav-lancamento-nf">
+        <i class="fa fa-file-invoice"></i><span>Lançamento NF</span>
+      </a>
+      <a href="statusNF.html" id="nav-status-nf">
+        <i class="fa fa-barcode"></i><span>Status NF</span>
+      </a>
+    </div>
+  </div>
+
+  <a href="relatorios.html" id="nav-relatorios">
+    <i class="fa fa-chart-bar"></i><span>Relatórios</span>
+  </a>
+
+  <!-- Grupo: Cadastros -->
+  <div class="nav-group" data-group="cadastros">
+    <button type="button" class="nav-group-toggle" aria-expanded="false">
+      <i class="fa fa-database"></i>
+      <span class="nav-group-label">Cadastros</span>
+      <i class="fa fa-chevron-down nav-group-caret"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="cadastroProdutos.html" id="nav-produtos">
+        <i class="fa fa-box-open"></i><span>Produtos</span>
+      </a>
+      <a href="cadastroFornecedores.html" id="nav-fornecedores">
+        <i class="fa fa-truck"></i><span>Fornecedores</span>
+      </a>
+      <a href="cadastroUsuarios.html" id="nav-usuarios">
+        <i class="fa fa-users"></i><span>Usuários</span>
+      </a>
+    </div>
+  </div>
+
+  <a href="configuracoes.html" id="nav-configuracoes">
+    <i class="fa fa-cog"></i><span>Configurações</span>
+  </a>
 </nav>
 
 <div class="sidebar-footer">

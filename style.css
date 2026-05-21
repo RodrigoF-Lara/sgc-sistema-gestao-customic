@@ -149,6 +149,49 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
 }
 .sidebar-nav a i { width: 20px; text-align: center; }
 
+/* ===== Grupos colapsáveis no menu lateral ===== */
+.nav-group { display: flex; flex-direction: column; }
+.nav-group-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    padding: 13px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+}
+.nav-group-toggle:hover {
+    background-color: #e3eafc;
+    color: var(--cor-principal-escura);
+}
+.nav-group-toggle i:first-child { width: 20px; text-align: center; }
+.nav-group-label { flex-grow: 1; }
+.nav-group-caret {
+    font-size: 0.75em;
+    transition: transform 0.25s ease;
+    color: #888;
+}
+.nav-group.open .nav-group-caret { transform: rotate(180deg); }
+.nav-group-items {
+    display: none;
+    flex-direction: column;
+    background-color: rgba(0,0,0,0.02);
+}
+.nav-group.open .nav-group-items { display: flex; }
+.nav-group-items a {
+    padding-left: 48px;
+    font-size: 13px;
+}
+.nav-group-items a i { font-size: 0.95em; }
+
 .sidebar-footer {
     padding: 10px 20px;
     border-top: 1px solid var(--cor-cinza-borda);
