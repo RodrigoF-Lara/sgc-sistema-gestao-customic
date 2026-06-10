@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const saldoTotal = data.saldo || 0;
     
     estatisticasContainer.innerHTML = `
-      <h3>?? Estatísticas Rápidas</h3>
+      <h3>📊 Estatísticas Rápidas</h3>
       <div class="estatisticas-grid">
         <div class="stat-card destaque-saldo">
           <i class="fa-solid fa-boxes-stacked"></i>
@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${row.ID_TB_RESUMO || "-"}</td>
           <td><span class="badge ${
             row.OPERACAO === "ENTRADA" ? "badge-entrada" : "badge-saida"
-          }">${row.OPERACAO === "ENTRADA" ? "??" : "??"} ${
+          }">${row.OPERACAO === "ENTRADA" ? "📥" : "📤"} ${
         row.OPERACAO || "-"
       }</span></td>
           <td>${row.ENDERECO || "-"}</td>
@@ -542,7 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </style>
 </head>
 <body>
-    <button class="btn-imprimir no-print" onclick="window.print()">??? Imprimir Etiqueta</button>
+    <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir Etiqueta</button>
     ${etiquetasHtml}    
     <script>
         const etiquetasData = ${JSON.stringify(etiquetas)};
@@ -747,7 +747,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </style>
 </head>
 <body>
-    <button class="btn-imprimir no-print" onclick="window.print()">??? Imprimir Etiqueta</button>
+    <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir Etiqueta</button>
     ${etiquetasHtml}
     <script>
         const etiquetasData = ${JSON.stringify(etiquetas)};
@@ -824,7 +824,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert(`Erro ao zerar código: ${err.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = "?? SIM, ZERAR TUDO";
+      btn.textContent = "🗑️ SIM, ZERAR TUDO";
     }
   });
 
@@ -838,7 +838,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("endNovoAlterar").value = "";
     document.getElementById("confirmarAlterarContainer").style.display = "none";
     const btn = document.getElementById("submitAlterar");
-    btn.textContent = "?? Localizar Saldo";
+    btn.textContent = "🔍 Localizar Saldo";
     btn.dataset.step = "localizar";
     btn.disabled = false;
     modalAlterarEndereco.style.display = "flex";
@@ -881,7 +881,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lotesFiltrados.length === 0) {
           alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armazém ${armAtual} / endereço ${endAtual}.`);
           btn.disabled = false;
-          btn.textContent = "?? Localizar Saldo";
+          btn.textContent = "🔍 Localizar Saldo";
           return;
         }
 
@@ -889,15 +889,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const descricao = document.getElementById("infoDescricao").textContent.trim();
         document.getElementById("mensagemConfirmarAlterar").textContent =
           `Transferir ${totalSaldo} unidades de "${descricao}" (${codigoAtual}) ` +
-          `de ARM:${armAtual} END:${endAtual} ? ARM:${armNovo} END:${endNovo}?`;
+          `de ARM:${armAtual} END:${endAtual} → ARM:${armNovo} END:${endNovo}?`;
         document.getElementById("confirmarAlterarContainer").style.display = "block";
-        btn.textContent = "? CONFIRMAR TRANSFERÊNCIA";
+        btn.textContent = "✅ CONFIRMAR TRANSFERÊNCIA";
         btn.dataset.step = "confirmar";
         btn.disabled = false;
       } catch (err) {
         alert(`Erro: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = "?? Localizar Saldo";
+        btn.textContent = "🔍 Localizar Saldo";
       }
     } else {
       btn.disabled = true;
@@ -928,7 +928,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         alert(`Erro ao alterar endereço: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = "? CONFIRMAR TRANSFERÊNCIA";
+        btn.textContent = "✅ CONFIRMAR TRANSFERÊNCIA";
       }
     }
   });
@@ -941,7 +941,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("enderecoZerar").value = "";
     document.getElementById("confirmarZerarContainer").style.display = "none";
     const submitBtn = document.getElementById("submitZerarEndereco");
-    submitBtn.textContent = "? Localizar Saldo";
+    submitBtn.textContent = "🔍 Localizar Saldo";
     submitBtn.dataset.step = "localizar";
     submitBtn.disabled = false;
     modalZerarEndereco.style.display = "flex";
@@ -985,7 +985,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lotesFiltrados.length === 0) {
           alert(`Nenhum saldo encontrado para o produto ${codigoAtual} no armazém ${arm} / endereço ${end}.`);
           submitBtn.disabled = false;
-          submitBtn.textContent = "? Localizar Saldo";
+          submitBtn.textContent = "🔍 Localizar Saldo";
           return;
         }
 
@@ -995,13 +995,13 @@ document.addEventListener("DOMContentLoaded", () => {
           `Confirmar SAÍDA de ${totalSaldo} unidades do produto ${descricao} (${codigoAtual}) ` +
           `no armazém ${arm} / endereço ${end}?`;
         document.getElementById("confirmarZerarContainer").style.display = "block";
-        submitBtn.textContent = "?? CONFIRMAR ZERAMENTO";
+        submitBtn.textContent = "⚠️ CONFIRMAR ZERAMENTO";
         submitBtn.dataset.step = "confirmar";
         submitBtn.disabled = false;
       } catch (err) {
         alert(`Erro: ${err.message}`);
         submitBtn.disabled = false;
-        submitBtn.textContent = "? Localizar Saldo";
+        submitBtn.textContent = "🔍 Localizar Saldo";
       }
     } else {
       // Passo 2: executar o zeramento
@@ -1031,7 +1031,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         alert(`Erro ao zerar endereço: ${err.message}`);
         submitBtn.disabled = false;
-        submitBtn.textContent = "?? CONFIRMAR ZERAMENTO";
+        submitBtn.textContent = "⚠️ CONFIRMAR ZERAMENTO";
       }
     }
   });
@@ -1052,13 +1052,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btnEntrada.addEventListener("click", () => {
     if (!codigoAtual) return;
-    tituloModal.textContent = "?? Registrar ENTRADA";
+    tituloModal.textContent = "📥 Registrar ENTRADA";
     tituloModal.style.color = "#4caf50";
-    iconModal.textContent = "??";
+    iconModal.textContent = "📥";
     iconModal.style.color = "#4caf50";
     inputTipoMovimento.value = "ENTRADA";
     submitBtn.className = "btn-movimento entrada";
-    submitBtn.textContent = "? Registrar Entrada";
+    submitBtn.textContent = "✅ Registrar Entrada";
 
     // Mostra/oculta campos e ajusta validação
     document.getElementById('loteSelectorContainer').style.display = 'none';
@@ -1074,13 +1074,13 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('Consulte um produto antes de registrar uma saída.');
       return;
     }
-    tituloModal.textContent = `?? Registrar SAÍDA`;
+    tituloModal.textContent = `📤 Registrar SAÍDA`;
     tituloModal.style.color = "#f44336";
-    iconModal.textContent = "??";
+    iconModal.textContent = "📤";
     iconModal.style.color = "#f44336";
     inputTipoMovimento.value = "SAIDA";
     submitBtn.className = "btn-movimento saida";
-    submitBtn.textContent = "? Registrar Saída";
+    submitBtn.textContent = "✅ Registrar Saída";
 
     // Mostra/oculta campos e ajusta validação
     document.getElementById('loteSelectorContainer').style.display = 'block';
@@ -1143,10 +1143,10 @@ document.addEventListener("DOMContentLoaded", () => {
             saldo: parseFloat(selectedOption.dataset.saldo)
         };
         // Atualiza o título do modal com o ID selecionado
-        tituloModal.textContent = `?? Registrar SAÍDA (Lote ID: ${loteSelecionado.id})`;
+        tituloModal.textContent = `📤 Registrar SAÍDA (Lote ID: ${loteSelecionado.id})`;
     } else {
         loteSelecionado = null;
-        tituloModal.textContent = `?? Registrar SAÍDA`;
+        tituloModal.textContent = `📤 Registrar SAÍDA`;
     }
   });
 
@@ -1197,7 +1197,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const target = event.target.closest('.btn-reimprimir');
     if (target) {
         const row = target.closest('tr');
-        const operacao = row.cells[1].textContent.trim().replace('??', '').replace('??', '').trim();
+        const operacao = row.cells[1].textContent.replace(/[^A-Za-zÀ-ɏ ]/g, '').trim();
         
         if (operacao !== 'ENTRADA') {
             alert('A reimpressão de etiquetas está disponível apenas para movimentações de ENTRADA.');
@@ -1250,7 +1250,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Bloqueia o botão para evitar cliques duplicados
     submitBtn.disabled = true;
     const textoOriginalBtn = submitBtn.textContent;
-    submitBtn.textContent = "? Aguarde...";
+    submitBtn.textContent = "⏳ Aguarde...";
 
     const etiquetasParaImprimir = [];
 
