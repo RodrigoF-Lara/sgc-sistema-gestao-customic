@@ -15,6 +15,7 @@
 - 📋 **Inventário Cíclico** com 5 blocos de prioridade
 - 📊 **Relatórios** gerenciais
 - ⚡ **Saída Rápida** via QR Code
+- 💰 **Saving de Compras** — metas de redução de custo para itens curva A
 
 ---
 
@@ -26,6 +27,7 @@ modules/embalagem/
 ├── kardex/        estoque, consumoMedio, saidaRapida, inventoryManagement
 ├── nf/            lancamentoNF, statusNF (+ statusNF-page.js, NF.frm/frx)
 ├── inventario/    inventarioCiclico, configInventario
+├── saving/        savingCompras (planejamento + indicador planejado x realizado)
 └── relatorios/    relatorios, relatorioRequisicoes, relatorioBaixaPorPeriodo,
                    relatorioSaldo, relatorioAcuracidade, relatorioMovimentoDiario
 ```
@@ -44,6 +46,7 @@ modules/embalagem/
 | `/api/embalagem/statusNF` | GET, POST | [api/embalagem/statusNF.js](../../api/embalagem/statusNF.js) | Status e bipagem de NFs |
 | `/api/embalagem/inventarioCiclico` | GET, POST, PUT | [api/embalagem/inventarioCiclico.js](../../api/embalagem/inventarioCiclico.js) | Logs e blocos de inventário |
 | `/api/embalagem/relatorios` | GET | [api/embalagem/relatorios.js](../../api/embalagem/relatorios.js) | Relatórios consolidados |
+| `/api/embalagem/saving` | GET, POST, DELETE | [api/embalagem/saving.js](../../api/embalagem/saving.js) | Saving de compras: listagem por período, metas (upsert/batch/delete) e indicador planejado×realizado |
 
 ### Compartilhados (`/api/shared/`)
 
@@ -72,6 +75,7 @@ modules/embalagem/
 | `TB_CONFIG_INVENTARIO` | Quantidades por bloco (1–5) |
 | `TB_LOG_NF` | Notas fiscais lançadas |
 | `TB_STATUS_NF` | Status e bipagem |
+| `TB_SAVING_META` | Metas de redução de custo (%) por item e mês-âncora |
 
 ### Compartilhadas
 
@@ -133,6 +137,27 @@ flowchart LR
 ```
 
 > Detalhes em [CHANGELOG_BLOCOS_4_5.md](../../CHANGELOG_BLOCOS_4_5.md).
+
+### Saving de Compras
+
+```mermaid
+flowchart LR
+    A[Usuário escolhe período<br/>dtIni - dtFim] --> B[Backend lista itens<br/>curva A ativos]
+    B --> C[Para cada item:<br/>última NF por mês]
+    C --> D[Mês-âncora =<br/>último mês do período]
+    D --> E[Custo Base =<br/>custo NF do mês-âncora]
+    E --> F[Usuário define Meta %]
+    F --> G[Saving R$/un = Base × Meta%<br/>Custo Target = Base − Saving]
+    G --> H[Salvar em TB_SAVING_META<br/>CODIGO + ANO_MES]
+    H --> I[Indicador:<br/>compara com custo<br/>do mês seguinte]
+```
+
+**Regras:**
+- **Itens elegíveis:** `CAD_PROD.CURVA_A_B_C = 'A' AND ATIVO = 1`
+- **Custo por mês:** última NF do mês em `NF_PRODUTOS.PROD_CUSTO_FISCAL_MEDIO_NOVO`, ordenada por `NF_CABECALHO.CAB_DT_EMISSAO DESC`.
+- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES)` — granularidade mensal, permite mudar mês a mês.
+- **Saving Realizado:** `CustoBase − CustoUltimaNF(mêsSeguinte)`.
+- **Atingimento %:** `SavingRealizado / SavingPlanejado × 100`.
 
 ---
 

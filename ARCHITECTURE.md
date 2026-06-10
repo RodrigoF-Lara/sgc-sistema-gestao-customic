@@ -30,7 +30,7 @@ flowchart TB
 
     subgraph Vercel[" Vercel (Serverless) "]
         SHARED_API["/api/shared/*<br/>auth, cadastros, fundos, notificações"]
-        EMB_API["/api/embalagem/*<br/>requisição, NF, kardex, inventário"]
+        EMB_API["/api/embalagem/*<br/>requisição, NF, kardex, inventário, saving"]
         PROD_API["/api/producao/*<br/>(em desenvolvimento)"]
     end
 
@@ -98,6 +98,7 @@ requisicoes/
 │   │   ├── kardex/              ← estoque, consumoMedio, saidaRapida
 │   │   ├── nf/                  ← lancamentoNF, statusNF
 │   │   ├── inventario/          ← inventarioCiclico, configInventario
+│   │   ├── saving/              ← savingCompras (metas redução curva A)
 │   │   └── relatorios/          ← relatorio* (todos)
 │   │
 │   └── producao/
@@ -124,6 +125,7 @@ requisicoes/
 │   │   ├── statusNF.js
 │   │   ├── inventarioCiclico.js
 │   │   ├── config.js
+│   │   ├── saving.js
 │   │   └── relatorios.js
 │   └── producao/
 │       └── (vazio inicialmente)

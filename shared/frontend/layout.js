@@ -64,6 +64,7 @@ function inicializarSidebar() {
     'relatoriosaldo': 'nav-relatorios',
     'relatorioacuracidade': 'nav-relatorios',
     'consumomedio': 'nav-relatorios',
+    'savingcompras': 'nav-saving',
     'cadastros': 'nav-cadastros-group',
     'cadastroprodutos': 'nav-produtos',
     'cadastrofornecedores': 'nav-fornecedores',

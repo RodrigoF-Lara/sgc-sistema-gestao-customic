@@ -39,12 +39,13 @@ requisicoes/
 │   │   ├── kardex/             ← estoque, consumoMedio, saidaRapida, inventoryManagement
 │   │   ├── nf/                 ← lancamentoNF, statusNF
 │   │   ├── inventario/         ← inventarioCiclico, configInventario
+│   │   ├── saving/             ← savingCompras (metas de redução curva A)
 │   │   └── relatorios/         ← relatorio* (todos)
 │   └── producao/               ← em desenvolvimento (somente README)
 │
 ├── api/
 │   ├── shared/                 ← auth, cadastros, config, fundos, notificacoes, listaTabelas
-│   └── embalagem/              ← requisicao, inventory, lancamentoNF, statusNF, inventarioCiclico, relatorios
+│   └── embalagem/              ← requisicao, inventory, lancamentoNF, statusNF, inventarioCiclico, relatorios, saving
 │
 └── sql/
     ├── shared/
@@ -102,6 +103,7 @@ item ativo seja destacado automaticamente.
 | `TB_INVENTARIO_CICLICO_LOG` / `_ITEM` | Embalagem | Logs e itens de inventário |
 | `TB_CONFIG_INVENTARIO` | Embalagem | Quantidades por bloco 1-5 |
 | `TB_LOG_NF` / `TB_STATUS_NF` | Embalagem | Lançamento e bipagem de NFs |
+| `TB_SAVING_META` | Embalagem | Metas de redução de custo % por item e mês-âncora |
 | `TB_USUARIOS` | Shared | Login |
 | `CAD_FORNECEDOR` / `TB_PRODUTOS` | Shared | Cadastros |
 | `TB_NOTIFICACOES` | Shared | Notificações |
