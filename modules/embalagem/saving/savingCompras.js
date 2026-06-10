@@ -135,7 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderizarTabela() {
-        const meses = estadoAtual.meses;
+        // Meses do mais recente para o mais antigo (apenas para exibição nas colunas)
+        const mesesDisplay = [...estadoAtual.meses].reverse();
 
         // Cabeçalho — colunas fixas ordenáveis
         const sortKey = estadoAtual.sort.key;
@@ -153,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `<th class="${sortClass('target')}" data-sort="target">Custo Target</th>`,
             `<th class="${sortClass('consumo')}" data-sort="consumo" title="Consumo médio mensal (últimos 365 dias)">Consumo /mês</th>`,
             `<th class="${sortClass('proj12')}" data-sort="proj12" title="Saving R$/un × consumo mensal × 12">Saving 12m (R$)</th>`,
-            ...meses.map(m => `<th title="${m.anoMes}">${m.label}</th>`)
+            ...mesesDisplay.map((m, idx) => `<th class="${idx === 0 ? 'col-mes-first' : ''}" title="${m.anoMes}">${m.label}</th>`)
         ];
         theadSaving.innerHTML = `<tr>${ths.join("")}</tr>`;
 
@@ -222,15 +223,16 @@ document.addEventListener("DOMContentLoaded", () => {
         // Corpo
         if (itens.length === 0) {
             const msg = filtro ? `Nenhum item bate com "${escapeHtml(buscaItem.value)}".` : 'Nenhum item curva A encontrado.';
-            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${7 + meses.length}">${msg}</td></tr>`;
+            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${7 + mesesDisplay.length}">${msg}</td></tr>`;
             return;
         }
 
         tbodySaving.innerHTML = itens.map(it => {
-            const custosCells = meses.map(m => {
+            const custosCells = mesesDisplay.map((m, idx) => {
                 const v = it.custos[m.anoMes];
                 const isAncora = m.anoMes === it.anoMesBase;
-                const cls = `mes-cell${isAncora ? " col-base" : ""}`;
+                const firstCls = idx === 0 ? ' col-mes-first' : '';
+                const cls = `mes-cell${isAncora ? " col-base" : ""}${firstCls}`;
                 const star = isAncora ? ' <span title="Mês-base deste item" style="color:#1976d2;">★</span>' : '';
                 return `<td class="${cls}">${v != null ? formatBRL(v) + star : '<span class="muted">—</span>'}</td>`;
             }).join("");

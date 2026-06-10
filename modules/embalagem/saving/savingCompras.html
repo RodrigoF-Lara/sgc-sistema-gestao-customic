@@ -181,6 +181,19 @@
 
         .col-base-valor { color: #555; font-size: 0.85em; display: block; }
 
+        /* Divisor visual entre colunas fixas e colunas de meses */
+        table.saving-table th.col-mes-first,
+        table.saving-table td.col-mes-first {
+            border-left: 3px solid #1976d2 !important;
+        }
+
+        /* Scrollbar horizontal mais visível na tabela de planejamento */
+        .saving-table-wrap { scrollbar-width: thin; scrollbar-color: #1976d2 #e0e0e0; }
+        .saving-table-wrap::-webkit-scrollbar { height: 12px; }
+        .saving-table-wrap::-webkit-scrollbar-track { background: #e0e0e0; border-radius: 6px; }
+        .saving-table-wrap::-webkit-scrollbar-thumb { background: #1976d2; border-radius: 6px; }
+        .saving-table-wrap::-webkit-scrollbar-thumb:hover { background: #1565c0; }
+
         /* Resumo de meses (aba indicador) */
         .meses-resumo-table {
             width: 100%;
@@ -299,16 +312,7 @@
                         </div>
                     </div>
 
-                    <div class="saving-table-wrap">
-                        <table class="saving-table">
-                            <thead id="theadSaving"></thead>
-                            <tbody id="tbodySaving">
-                                <tr><td class="loading" colspan="12">Aguardando filtro...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="resumo-totais" id="resumoTotais" style="display:none;">
+                    <div class="resumo-totais" id="resumoTotais" style="display:none; margin-top:0; margin-bottom:16px;">
                         <div class="card-total">
                             <div class="label">Itens com meta</div>
                             <div class="valor" id="totalItensMeta">0</div>
@@ -327,6 +331,15 @@
                             </div>
                             <div class="valor neg" id="totalProj12m">R$ 0,00</div>
                         </div>
+                    </div>
+
+                    <div class="saving-table-wrap">
+                        <table class="saving-table">
+                            <thead id="theadSaving"></thead>
+                            <tbody id="tbodySaving">
+                                <tr><td class="loading" colspan="12">Aguardando filtro...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
