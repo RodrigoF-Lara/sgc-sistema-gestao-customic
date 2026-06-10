@@ -303,7 +303,7 @@
                         <table class="saving-table">
                             <thead id="theadSaving"></thead>
                             <tbody id="tbodySaving">
-                                <tr><td class="loading" colspan="10">Aguardando filtro...</td></tr>
+                                <tr><td class="loading" colspan="12">Aguardando filtro...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -320,6 +320,12 @@
                         <div class="card-total">
                             <div class="label">Custo Target (R$/un — soma)</div>
                             <div class="valor" id="totalTargetUn">R$ 0,00</div>
+                        </div>
+                        <div class="card-total">
+                            <div class="label" title="Saving R$/un × consumo médio mensal × 12">
+                                Saving Projetado 12 meses
+                            </div>
+                            <div class="valor neg" id="totalProj12m">R$ 0,00</div>
                         </div>
                     </div>
                 </div>
@@ -347,11 +353,14 @@
                                     <th>Itens c/ NF no mês</th>
                                     <th>Saving Planejado /un (Σ)</th>
                                     <th>Saving Realizado /un (Σ)</th>
+                                    <th title="Saving R$/un × consumo médio mensal × 12 meses">
+                                        Projetado 12m (Σ)
+                                    </th>
                                     <th>Atingimento %</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyResumoMeses">
-                                <tr><td class="loading" colspan="6"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>
+                                <tr><td class="loading" colspan="7"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>
                             </tbody>
                         </table>
                     </div>

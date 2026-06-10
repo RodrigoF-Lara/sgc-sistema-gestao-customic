@@ -1089,6 +1089,26 @@ async function savingList(req, res) {
             };
         }
 
+        // Consumo médio mensal por item (saídas dos últimos 365 dias × 30/365)
+        // mesmo critério usado em /api/embalagem/relatorios?acao=consumoMedio
+        const consumoResult = await pool.request().query(`
+            SELECT
+                k.CODIGO,
+                ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
+            FROM [dbo].[KARDEX_2026] k
+            INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = k.CODIGO
+            WHERE k.OPERACAO = 'SAÍDA'
+              AND k.USUARIO <> 'BEATRIZ JULHAO'
+              AND k.DT >= DATEADD(DAY, -365, GETDATE())
+              AND k.DT >= '2026-04-01'
+              AND cp.CURVA_A_B_C = 'A' AND cp.ATIVO = 1
+            GROUP BY k.CODIGO
+        `);
+        const consumoPorItem = {};
+        for (const r of consumoResult.recordset) {
+            consumoPorItem[String(r.CODIGO)] = Number(r.CONSUMO_MENSAL) || 0;
+        }
+
         const meses = savingGerarMeses(dtIni, dtFim);
         const resposta = itens.map(it => {
             const cod = String(it.CODIGO);
@@ -1101,6 +1121,9 @@ async function savingList(req, res) {
                 ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
             const custoTarget = (custoBase != null && metaPct != null)
                 ? +(custoBase - savingValor).toFixed(4) : null;
+            const consumoMensal = consumoPorItem[cod] || 0;
+            const savingProjetado12m = (savingValor != null && consumoMensal > 0)
+                ? +(savingValor * consumoMensal * 12).toFixed(2) : null;
             return {
                 codigo: cod,
                 descricao: it.DESCRICAO,
@@ -1109,6 +1132,8 @@ async function savingList(req, res) {
                 metaPct,
                 savingValor,
                 custoTarget,
+                consumoMensal,
+                savingProjetado12m,
                 custos
             };
         });
@@ -1149,11 +1174,24 @@ async function savingIndicador(req, res) {
                       AND MONTH(c.CAB_DT_EMISSAO) = @mes
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                ),
+                ConsumoMensal AS (
+                    SELECT
+                        k.CODIGO,
+                        ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
+                    FROM [dbo].[KARDEX_2026] k
+                    WHERE k.OPERACAO = 'SAÍDA'
+                      AND k.USUARIO <> 'BEATRIZ JULHAO'
+                      AND k.DT >= DATEADD(DAY, -365, GETDATE())
+                      AND k.DT >= '2026-04-01'
+                    GROUP BY k.CODIGO
                 )
-                SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE, u.CUSTO_REAL
+                SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE,
+                       u.CUSTO_REAL, ISNULL(cm.CONSUMO_MENSAL, 0) AS CONSUMO_MENSAL
                 FROM [dbo].[TB_SAVING_META] m
                 LEFT JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
                 LEFT JOIN UltimaNFMesMeta u ON u.CODIGO = m.CODIGO AND u.rn = 1
+                LEFT JOIN ConsumoMensal cm ON cm.CODIGO = m.CODIGO
                 WHERE m.ANO_MES = @anoMes
                 ORDER BY cp.DESCRICAO
             `);
@@ -1162,16 +1200,22 @@ async function savingIndicador(req, res) {
             const custoBase = r.CUSTO_BASE != null ? Number(r.CUSTO_BASE) : null;
             const metaPct = Number(r.META_PCT);
             const custoReal = r.CUSTO_REAL != null ? Number(r.CUSTO_REAL) : null;
+            const consumoMensal = r.CONSUMO_MENSAL != null ? Number(r.CONSUMO_MENSAL) : 0;
             const savingPlanejado = (custoBase != null)
                 ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
             const savingRealizado = (custoBase != null && custoReal != null)
                 ? +(custoBase - custoReal).toFixed(4) : null;
             const atingimentoPct = (savingPlanejado && savingRealizado != null)
                 ? +(savingRealizado / savingPlanejado * 100).toFixed(2) : null;
+            const savingProjetado12m = (savingPlanejado != null && consumoMensal > 0)
+                ? +(savingPlanejado * consumoMensal * 12).toFixed(2) : null;
+            const savingRealizado12m = (savingRealizado != null && consumoMensal > 0)
+                ? +(savingRealizado * consumoMensal * 12).toFixed(2) : null;
             return {
                 codigo: r.CODIGO,
                 descricao: r.DESCRICAO,
                 metaPct, custoBase, custoReal,
+                consumoMensal, savingProjetado12m, savingRealizado12m,
                 savingPlanejado, savingRealizado, atingimentoPct
             };
         });
@@ -1179,10 +1223,14 @@ async function savingIndicador(req, res) {
         const totais = itens.reduce((acc, it) => {
             if (it.savingPlanejado != null) acc.planejado += it.savingPlanejado;
             if (it.savingRealizado != null) acc.realizado += it.savingRealizado;
+            if (it.savingProjetado12m != null) acc.projetado12m += it.savingProjetado12m;
+            if (it.savingRealizado12m != null) acc.realizado12m += it.savingRealizado12m;
             return acc;
-        }, { planejado: 0, realizado: 0 });
-        totais.planejado = +totais.planejado.toFixed(4);
-        totais.realizado = +totais.realizado.toFixed(4);
+        }, { planejado: 0, realizado: 0, projetado12m: 0, realizado12m: 0 });
+        totais.planejado    = +totais.planejado.toFixed(4);
+        totais.realizado    = +totais.realizado.toFixed(4);
+        totais.projetado12m = +totais.projetado12m.toFixed(2);
+        totais.realizado12m = +totais.realizado12m.toFixed(2);
         totais.atingimentoPct = totais.planejado > 0
             ? +(totais.realizado / totais.planejado * 100).toFixed(2) : null;
 
@@ -1199,17 +1247,29 @@ async function savingIndicador(req, res) {
 
 // GET ?acao=savingResumoMeses
 // Lista todos os meses (ANO_MES) que possuem metas cadastradas,
-// com totais consolidados Planejado/Realizado/Atingimento.
+// com totais consolidados Planejado/Realizado/Atingimento + Projeção 12 meses.
 async function savingResumoMeses(req, res) {
     try {
         const pool = await getConnection();
         const result = await pool.request().query(`
-            ;WITH MetasComReal AS (
+            ;WITH ConsumoMensal AS (
+                SELECT
+                    k.CODIGO,
+                    ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
+                FROM [dbo].[KARDEX_2026] k
+                WHERE k.OPERACAO = 'SAÍDA'
+                  AND k.USUARIO <> 'BEATRIZ JULHAO'
+                  AND k.DT >= DATEADD(DAY, -365, GETDATE())
+                  AND k.DT >= '2026-04-01'
+                GROUP BY k.CODIGO
+            ),
+            MetasComReal AS (
                 SELECT
                     m.ANO_MES,
                     m.CODIGO,
                     m.META_PCT,
                     m.CUSTO_BASE,
+                    ISNULL(cm.CONSUMO_MENSAL, 0) AS CONSUMO_MENSAL,
                     (
                         SELECT TOP 1 p.PROD_CUSTO_FISCAL_MEDIO_NOVO
                         FROM [dbo].[NF_PRODUTOS] p
@@ -1222,6 +1282,7 @@ async function savingResumoMeses(req, res) {
                         ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
                     ) AS CUSTO_REAL
                 FROM [dbo].[TB_SAVING_META] m
+                LEFT JOIN ConsumoMensal cm ON cm.CODIGO = m.CODIGO
             )
             SELECT
                 ANO_MES,
@@ -1230,6 +1291,12 @@ async function savingResumoMeses(req, res) {
                          THEN CUSTO_BASE * META_PCT / 100.0 ELSE 0 END) AS PLANEJADO,
                 SUM(CASE WHEN CUSTO_REAL IS NOT NULL AND CUSTO_BASE IS NOT NULL
                          THEN CUSTO_BASE - CUSTO_REAL ELSE 0 END) AS REALIZADO,
+                SUM(CASE WHEN CUSTO_BASE IS NOT NULL AND CONSUMO_MENSAL > 0
+                         THEN (CUSTO_BASE * META_PCT / 100.0) * CONSUMO_MENSAL * 12
+                         ELSE 0 END) AS PROJETADO_12M,
+                SUM(CASE WHEN CUSTO_REAL IS NOT NULL AND CUSTO_BASE IS NOT NULL AND CONSUMO_MENSAL > 0
+                         THEN (CUSTO_BASE - CUSTO_REAL) * CONSUMO_MENSAL * 12
+                         ELSE 0 END) AS REALIZADO_12M,
                 SUM(CASE WHEN CUSTO_REAL IS NOT NULL THEN 1 ELSE 0 END) AS QTD_COM_NF
             FROM MetasComReal
             GROUP BY ANO_MES
@@ -1237,15 +1304,17 @@ async function savingResumoMeses(req, res) {
         `);
 
         const meses = result.recordset.map(r => {
-            const planejado = r.PLANEJADO != null ? +Number(r.PLANEJADO).toFixed(4) : 0;
-            const realizado = r.REALIZADO != null ? +Number(r.REALIZADO).toFixed(4) : 0;
+            const planejado    = r.PLANEJADO    != null ? +Number(r.PLANEJADO).toFixed(4) : 0;
+            const realizado    = r.REALIZADO    != null ? +Number(r.REALIZADO).toFixed(4) : 0;
+            const projetado12m = r.PROJETADO_12M != null ? +Number(r.PROJETADO_12M).toFixed(2) : 0;
+            const realizado12m = r.REALIZADO_12M != null ? +Number(r.REALIZADO_12M).toFixed(2) : 0;
             const atingimentoPct = planejado > 0
                 ? +(realizado / planejado * 100).toFixed(2) : null;
             return {
                 anoMes: r.ANO_MES,
                 qtdMetas: Number(r.QTD_METAS) || 0,
                 qtdComNf: Number(r.QTD_COM_NF) || 0,
-                planejado, realizado, atingimentoPct
+                planejado, realizado, projetado12m, realizado12m, atingimentoPct
             };
         });
 

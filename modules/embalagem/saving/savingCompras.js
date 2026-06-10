@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        tbodySaving.innerHTML = `<tr><td class="loading" colspan="10"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
+        tbodySaving.innerHTML = `<tr><td class="loading" colspan="12"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
         theadSaving.innerHTML = "";
         resumoTotais.style.display = "none";
         btnSalvarMetas.disabled = true;
@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
             atualizarTotais();
         } catch (err) {
             console.error("Erro ao carregar Saving:", err);
-            tbodySaving.innerHTML = `<tr><td class="empty" colspan="10" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
+            tbodySaving.innerHTML = `<tr><td class="empty" colspan="12" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
         }
     }
 
@@ -151,6 +151,8 @@ document.addEventListener("DOMContentLoaded", () => {
             `<th class="${sortClass('meta')}" data-sort="meta">Meta %</th>`,
             `<th class="${sortClass('saving')}" data-sort="saving">Saving R$/un</th>`,
             `<th class="${sortClass('target')}" data-sort="target">Custo Target</th>`,
+            `<th class="${sortClass('consumo')}" data-sort="consumo" title="Consumo médio mensal (últimos 365 dias)">Consumo /mês</th>`,
+            `<th class="${sortClass('proj12')}" data-sort="proj12" title="Saving R$/un × consumo mensal × 12">Saving 12m (R$)</th>`,
             ...meses.map(m => `<th title="${m.anoMes}">${m.label}</th>`)
         ];
         theadSaving.innerHTML = `<tr>${ths.join("")}</tr>`;
@@ -199,6 +201,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (it.custoBase == null || m == null) return -Infinity;
                         return it.custoBase * (1 - m / 100);
                     }
+                    case 'consumo': return Number(it.consumoMensal) || 0;
+                    case 'proj12': {
+                        const m = getMetaEfetiva(it);
+                        const c = Number(it.consumoMensal) || 0;
+                        if (it.custoBase == null || m == null || c <= 0) return -Infinity;
+                        return it.custoBase * (m / 100) * c * 12;
+                    }
                 }
                 return 0;
             };
@@ -213,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Corpo
         if (itens.length === 0) {
             const msg = filtro ? `Nenhum item bate com "${escapeHtml(buscaItem.value)}".` : 'Nenhum item curva A encontrado.';
-            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${5 + meses.length}">${msg}</td></tr>`;
+            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${7 + meses.length}">${msg}</td></tr>`;
             return;
         }
 
@@ -232,12 +241,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
             let savingTxt = '<span class="muted">—</span>';
             let targetTxt = '<span class="muted">—</span>';
+            let proj12Txt = '<span class="muted">—</span>';
             if (it.custoBase != null && metaEfetiva != null && metaEfetiva > 0) {
                 const saving = +(it.custoBase * (metaEfetiva / 100)).toFixed(4);
                 const target = +(it.custoBase - saving).toFixed(4);
                 savingTxt = `<span class="neg">-${formatBRL(saving)}</span>`;
                 targetTxt = `<span class="col-target">${formatBRL(target)}</span>`;
+                const c = Number(it.consumoMensal) || 0;
+                if (c > 0) {
+                    const proj = +(saving * c * 12).toFixed(2);
+                    proj12Txt = `<span class="neg" title="${formatBRL(saving)}/un × ${formatNum(c)}/mês × 12">-${formatBRL(proj)}</span>`;
+                }
             }
+
+            const consumoTxt = (it.consumoMensal != null && Number(it.consumoMensal) > 0)
+                ? formatNum(it.consumoMensal)
+                : '<span class="muted">—</span>';
 
             const baseTxt = it.anoMesBase
                 ? `<strong style="color:#1976d2;">${labelMes(it.anoMesBase)}</strong>` +
@@ -262,6 +281,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     </td>
                     <td class="cell-saving">${savingTxt}</td>
                     <td class="cell-target">${targetTxt}</td>
+                    <td>${consumoTxt}</td>
+                    <td class="cell-proj12">${proj12Txt}</td>
                     ${custosCells}
                 </tr>
             `;
@@ -291,14 +312,22 @@ document.addEventListener("DOMContentLoaded", () => {
         const custoBase = item.custoBase;
         let savingHtml = '<span class="muted">—</span>';
         let targetHtml = '<span class="muted">—</span>';
+        let proj12Html = '<span class="muted">—</span>';
         if (custoBase != null && novaMeta != null && novaMeta > 0) {
             const saving = +(custoBase * (novaMeta / 100)).toFixed(4);
             const target = +(custoBase - saving).toFixed(4);
             savingHtml = `<span class="neg">-${formatBRL(saving)}</span>`;
             targetHtml = `<span class="col-target">${formatBRL(target)}</span>`;
+            const c = Number(item.consumoMensal) || 0;
+            if (c > 0) {
+                const proj = +(saving * c * 12).toFixed(2);
+                proj12Html = `<span class="neg" title="${formatBRL(saving)}/un × ${formatNum(c)}/mês × 12">-${formatBRL(proj)}</span>`;
+            }
         }
         tr.querySelector(".cell-saving").innerHTML = savingHtml;
         tr.querySelector(".cell-target").innerHTML = targetHtml;
+        const proj12Cell = tr.querySelector(".cell-proj12");
+        if (proj12Cell) proj12Cell.innerHTML = proj12Html;
 
         // Marca alteração
         const original = item.metaPct;
@@ -325,6 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let qtd = 0;
         let somaSaving = 0;
         let somaTarget = 0;
+        let somaProj12 = 0;
         for (const it of estadoAtual.itens) {
             const metaVal = (it.codigo in estadoAtual.alteracoes) ? estadoAtual.alteracoes[it.codigo] : it.metaPct;
             if (it.custoBase != null && metaVal != null && metaVal > 0) {
@@ -332,11 +362,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 const saving = it.custoBase * (metaVal / 100);
                 somaSaving += saving;
                 somaTarget += (it.custoBase - saving);
+                const c = Number(it.consumoMensal) || 0;
+                if (c > 0) somaProj12 += saving * c * 12;
             }
         }
         totalItensMeta.textContent = qtd;
         totalSavingUn.textContent  = "-" + formatBRL(somaSaving);
         totalTargetUn.textContent  = formatBRL(somaTarget);
+        const elProj = document.getElementById("totalProj12m");
+        if (elProj) elProj.textContent = "-" + formatBRL(somaProj12);
         resumoTotais.style.display = "";
     }
 
@@ -398,7 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
             renderizarResumoMeses();
             return;
         }
-        tbodyResumoMeses.innerHTML = `<tr><td class="loading" colspan="6"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
+        tbodyResumoMeses.innerHTML = `<tr><td class="loading" colspan="7"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
         try {
             const resp = await fetch(`/api/embalagem/relatorios?acao=savingResumoMeses`);
             if (!resp.ok) {
@@ -411,13 +445,13 @@ document.addEventListener("DOMContentLoaded", () => {
             renderizarResumoMeses();
         } catch (err) {
             console.error("Erro ao carregar resumo:", err);
-            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="6" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
+            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="7" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
         }
     }
 
     function renderizarResumoMeses() {
         if (!resumoMesesCache || resumoMesesCache.length === 0) {
-            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="6">Nenhuma meta cadastrada ainda.</td></tr>`;
+            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="7">Nenhuma meta cadastrada ainda.</td></tr>`;
             return;
         }
         tbodyResumoMeses.innerHTML = resumoMesesCache.map(m => {
@@ -427,6 +461,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 realTxt = `<span class="neg">-${formatBRL(Math.abs(m.realizado))}</span>`;
             } else {
                 realTxt = `<span class="pos">+${formatBRL(Math.abs(m.realizado))}</span>`;
+            }
+            let proj12Txt;
+            if (m.projetado12m > 0) {
+                proj12Txt = `<span class="neg">-${formatBRL(m.projetado12m)}</span>`;
+            } else {
+                proj12Txt = '<span class="muted">—</span>';
             }
             const atingTxt = m.atingimentoPct != null
                 ? `<span class="${m.atingimentoPct >= 100 ? "pos" : m.atingimentoPct >= 50 ? "" : "neg"}">${m.atingimentoPct.toFixed(1)}%</span>`
@@ -441,6 +481,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${m.qtdComNf} / ${m.qtdMetas}</td>
                     <td>${planTxt}</td>
                     <td>${realTxt}</td>
+                    <td>${proj12Txt}</td>
                     <td>${atingTxt}</td>
                 </tr>
             `;
@@ -468,7 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const detRow = document.createElement("tr");
         detRow.className = "detalhes-row";
         detRow.dataset.anomes = ym;
-        detRow.innerHTML = `<td colspan="6"><div class="detalhes-inner"><i class="fa fa-spinner fa-spin"></i> Carregando itens de ${labelMes(ym)}...</div></td>`;
+        detRow.innerHTML = `<td colspan="7"><div class="detalhes-inner"><i class="fa fa-spinner fa-spin"></i> Carregando itens de ${labelMes(ym)}...</div></td>`;
         tr.after(detRow);
 
         try {
@@ -504,6 +545,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 const sinal = it.savingRealizado >= 0 ? "-" : "+";
                 realTxt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado))}</span>`;
             }
+            const consumoTxt = (it.consumoMensal != null && Number(it.consumoMensal) > 0)
+                ? formatNum(it.consumoMensal) : '<span class="muted">—</span>';
+            let proj12Txt = '<span class="muted">—</span>';
+            if (it.savingProjetado12m != null) {
+                proj12Txt = `<span class="neg">-${formatBRL(it.savingProjetado12m)}</span>`;
+            }
+            let real12Txt = '<span class="muted">—</span>';
+            if (it.savingRealizado12m != null) {
+                const cls = it.savingRealizado12m >= 0 ? "neg" : "pos";
+                const sinal = it.savingRealizado12m >= 0 ? "-" : "+";
+                real12Txt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado12m))}</span>`;
+            }
             const atingTxt = it.atingimentoPct != null
                 ? `<span class="${it.atingimentoPct >= 100 ? "pos" : it.atingimentoPct >= 50 ? "" : "neg"}">${it.atingimentoPct.toFixed(1)}%</span>`
                 : '<span class="muted">—</span>';
@@ -515,6 +568,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${it.custoReal != null ? formatBRL(it.custoReal) : '<span class="muted">sem NF</span>'}</td>
                     <td>${planTxt}</td>
                     <td>${realTxt}</td>
+                    <td>${consumoTxt}</td>
+                    <td>${proj12Txt}</td>
+                    <td>${real12Txt}</td>
                     <td>${atingTxt}</td>
                 </tr>
             `;
@@ -529,6 +585,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         <th>Custo Real (${labelMes(ym)})</th>
                         <th>Saving Planejado /un</th>
                         <th>Saving Realizado /un</th>
+                        <th title="Consumo médio mensal (últimos 365 dias)">Consumo /mês</th>
+                        <th title="Saving R$/un × consumo × 12">Projetado 12m</th>
+                        <th title="Realizado R$/un × consumo × 12">Realizado 12m</th>
                         <th>Atingimento %</th>
                     </tr>
                 </thead>
@@ -555,6 +614,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function formatBRL(v) {
         if (v == null || !Number.isFinite(Number(v))) return "—";
         return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function formatNum(v, casas = 2) {
+        if (v == null || !Number.isFinite(Number(v))) return "—";
+        return Number(v).toLocaleString("pt-BR", {
+            minimumFractionDigits: casas, maximumFractionDigits: casas
+        });
     }
 
     function escapeHtml(s) {
