@@ -613,9 +613,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "");
     }
 
-    function formatBRL(v) {
+    function formatBRL(v, casas = 4) {
         if (v == null || !Number.isFinite(Number(v))) return "—";
-        return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        return Number(v).toLocaleString("pt-BR", {
+            style: "currency", currency: "BRL",
+            minimumFractionDigits: casas, maximumFractionDigits: casas
+        });
     }
 
     function formatNum(v, casas = 2) {
