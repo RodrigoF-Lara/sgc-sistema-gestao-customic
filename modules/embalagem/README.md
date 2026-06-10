@@ -74,7 +74,7 @@ modules/embalagem/
 | `TB_CONFIG_INVENTARIO` | Quantidades por bloco (1–5) |
 | `TB_LOG_NF` | Notas fiscais lançadas |
 | `TB_STATUS_NF` | Status e bipagem |
-| `TB_SAVING_META` | Metas de redução de custo (%) por item e mês-âncora |
+| `TB_SAVING_META` | Metas de redução de custo (%) por item e mês-meta |
 
 ### Compartilhadas
 
@@ -141,22 +141,23 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[Usuário escolhe período<br/>dtIni - dtFim] --> B[Backend lista itens<br/>curva A ativos]
-    B --> C[Para cada item:<br/>última NF por mês]
-    C --> D[Mês-âncora =<br/>último mês do período]
-    D --> E[Custo Base =<br/>custo NF do mês-âncora]
+    A[Usuário escolhe período<br/>+ Mês da Meta YYYY-MM] --> B[Backend lista itens<br/>curva A ativos]
+    B --> C[Para cada item:<br/>última NF por mês no período]
+    C --> D[Mês-base do item =<br/>último mês com NF<br/>ANTES do mês-meta]
+    D --> E[Custo Base =<br/>custo NF do mês-base]
     E --> F[Usuário define Meta %]
     F --> G[Saving R$/un = Base × Meta%<br/>Custo Target = Base − Saving]
-    G --> H[Salvar em TB_SAVING_META<br/>CODIGO + ANO_MES]
-    H --> I[Indicador:<br/>compara com custo<br/>do mês seguinte]
+    G --> H[Salvar em TB_SAVING_META<br/>CODIGO + ANO_MES = mês-meta]
+    H --> I[Indicador:<br/>compara com custo<br/>DENTRO do mês-meta]
 ```
 
 **Regras:**
-- **Itens elegíveis:** `CAD_PROD.CURVA_A_B_C = 'A' AND ATIVO = 1`
+- **Mês da Meta (`anoMesMeta`):** mês-alvo do plano (ex: `2026-06`). É o mês em que a redução de custo deve ser observada.
+- **Itens elegíveis:** `CAD_PROD.CURVA_A_B_C = 'A' AND ATIVO = 1`.
 - **Custo por mês:** última NF do mês em `NF_PRODUTOS.PROD_CUSTO_FISCAL_MEDIO_NOVO`, ordenada por `NF_CABECALHO.CAB_DT_EMISSAO DESC`.
-- **Mês-base (âncora) por item:** mês mais recente do item com NF dentro do período (cada item pode ter um mês diferente — itens sem compras nos meses finais usam o último mês em que houve NF).
-- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES)` — granularidade mensal, salva no mês-base de cada item.
-- **Saving Realizado:** `CustoBase − CustoUltimaNF(mêsSeguinte ao mês-base)`.
+- **Mês-base por item:** mês mais recente em que o item teve NF **estritamente anterior** ao mês-meta, dentro do período consultado. Itens sem NF anterior ao mês-meta não recebem Custo Base e não permitem cadastro de meta.
+- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES)` — `ANO_MES` é sempre o **mês-meta** (mesmo para todos os itens da safra).
+- **Saving Realizado:** `CustoBase − CustoUltimaNF(dentro do mês-meta)`. Toda NF lançada dentro do mês-meta atualiza o realizado em tempo real.
 - **Atingimento %:** `SavingRealizado / SavingPlanejado × 100`.
 
 ---

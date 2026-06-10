@@ -2,7 +2,7 @@
 // Saving de Compras (Embalagem)
 // - Lista itens curva A ativos
 // - Mostra custo da última NF de cada mês no período
-// - Permite definir meta % por item (mês-âncora = último mês do período)
+// - Permite definir meta % por item para um Mês da Meta específico (custo base = última NF antes desse mês)
 // - Calcula Saving R$/un e Custo Target
 // - Aba indicador: planejado × realizado
 // =====================================================================
@@ -10,6 +10,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     const dtIni            = document.getElementById("dtIni");
     const dtFim            = document.getElementById("dtFim");
+    const anoMesMetaInput  = document.getElementById("anoMesMeta");
     const btnAplicar       = document.getElementById("btnAplicar");
     const btnSalvarMetas   = document.getElementById("btnSalvarMetas");
     const theadSaving      = document.getElementById("theadSaving");
@@ -32,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Estado em memória
     let estadoAtual = {
-        anoMesUltimoPeriodo: null,
+        anoMesMeta: null,
         meses: [],
         itens: [],       // itens originais
         alteracoes: {}   // { codigo: novaMeta }
@@ -52,13 +53,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const fim = new Date(ano, mes + 1, 0);
         dtIni.value = toIsoDate(ini);
         dtFim.value = toIsoDate(fim);
+        // Default mês-meta = mês atual
+        anoMesMetaInput.value = `${ano}-${String(mes + 1).padStart(2, "0")}`;
     }
 
     function inicializarMesIndicadorDefault() {
         const hoje = new Date();
         const ano  = hoje.getFullYear();
-        const mes  = hoje.getMonth() + 1;
-        anoMesIndicador.value = `${ano}-${String(mes).padStart(2, "0")}`;
+        // Default: mês anterior (já fechado). Se janeiro, vai para dez do ano anterior.
+        const m = hoje.getMonth(); // 0-11
+        const anoIdx = m === 0 ? ano - 1 : ano;
+        const mesIdx = m === 0 ? 12 : m;
+        anoMesIndicador.value = `${anoIdx}-${String(mesIdx).padStart(2, "0")}`;
     }
 
     function bindEventos() {
@@ -80,8 +86,13 @@ document.addEventListener("DOMContentLoaded", () => {
     async function carregarSaving() {
         const ini = dtIni.value;
         const fim = dtFim.value;
+        const ym  = anoMesMetaInput.value;
         if (!ini || !fim) {
             alert("Informe data início e data fim.");
+            return;
+        }
+        if (!ym) {
+            alert("Informe o Mês da Meta.");
             return;
         }
         if (ini > fim) {
@@ -96,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
         estadoAtual.alteracoes = {};
 
         try {
-            const url = `/api/embalagem/relatorios?acao=savingList&dtIni=${encodeURIComponent(ini)}&dtFim=${encodeURIComponent(fim)}`;
+            const url = `/api/embalagem/relatorios?acao=savingList&dtIni=${encodeURIComponent(ini)}&dtFim=${encodeURIComponent(fim)}&anoMesMeta=${encodeURIComponent(ym)}`;
             const resp = await fetch(url);
             if (!resp.ok) {
                 const e = await resp.json().catch(() => ({}));
@@ -104,9 +115,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             const data = await resp.json();
 
-            estadoAtual.anoMesUltimoPeriodo = data.anoMesUltimoPeriodo;
-            estadoAtual.meses               = data.meses;
-            estadoAtual.itens               = data.itens;
+            estadoAtual.anoMesMeta = data.anoMesMeta;
+            estadoAtual.meses      = data.meses;
+            estadoAtual.itens      = data.itens;
 
             atualizarAncoraInfo();
             renderizarTabela();
@@ -119,11 +130,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function atualizarAncoraInfo() {
         const itensComBase = estadoAtual.itens.filter(i => i.anoMesBase).length;
+        const labelMeta = labelMes(estadoAtual.anoMesMeta);
         ancoraInfo.innerHTML = `
-            <strong>Custo Base por item</strong> = última NF do item dentro do período (marcada com ★).
+            Metas para o mês <strong style="color:#1976d2;">${labelMeta}</strong>.
+            <strong>Custo Base</strong> = última NF do item ANTES de ${labelMeta} (marcada com ★).
             Meta% aplicada sobre o Custo Base define o <strong>Saving R$/un</strong> e o <strong>Custo Target</strong>.
-            Cada meta é salva no mês-base do seu item.
-            <em>${itensComBase}/${estadoAtual.itens.length} itens com NF no período.</em>
+            <em>${itensComBase}/${estadoAtual.itens.length} itens com NF anterior ao mês-meta.</em>
         `;
     }
 
@@ -269,10 +281,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const itens = codigosAlterados
             .map(cod => {
                 const it = estadoAtual.itens.find(i => i.codigo === cod);
-                if (!it || !it.anoMesBase) return null; // sem mês-base não há onde salvar
+                if (!it || !it.anoMesBase) return null; // sem custo base não há como calcular saving
                 return {
                     codigo: cod,
-                    anoMes: it.anoMesBase,
+                    anoMes: estadoAtual.anoMesMeta,  // sempre o mês-meta selecionado
                     metaPct: estadoAtual.alteracoes[cod],
                     custoBase: it.custoBase
                 };
@@ -280,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .filter(Boolean);
 
         if (itens.length === 0) {
-            alert("Nenhum item alterado possui mês-base (NF no período). Nada a salvar.");
+            alert("Nenhum item alterado possui Custo Base (NF anterior ao mês-meta). Nada a salvar.");
             return;
         }
 
@@ -328,8 +340,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await resp.json();
 
             indicadorInfo.innerHTML = `
-                Comparando mês-âncora <strong>${labelMes(data.anoMes)}</strong>
-                vs custo do mês seguinte <strong>${labelMes(data.anoMesComparacao)}</strong>.
+                Comparando o custo praticado em <strong>${labelMes(data.anoMes)}</strong>
+                vs o Custo Base cadastrado para a meta desse mês.
             `;
 
             if (!data.itens || data.itens.length === 0) {

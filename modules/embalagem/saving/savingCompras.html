@@ -183,12 +183,16 @@
                 <div class="card">
                     <div class="filtros-bar">
                         <div class="form-group">
-                            <label for="dtIni">Data Início</label>
+                            <label for="dtIni">Histórico desde</label>
                             <input type="date" id="dtIni" />
                         </div>
                         <div class="form-group">
-                            <label for="dtFim">Data Fim</label>
+                            <label for="dtFim">até</label>
                             <input type="date" id="dtFim" />
+                        </div>
+                        <div class="form-group">
+                            <label for="anoMesMeta">Mês da Meta <span style="color:#c62828;">*</span></label>
+                            <input type="month" id="anoMesMeta" />
                         </div>
                         <button id="btnAplicar" class="btn-primary">
                             <i class="fa fa-filter"></i> Aplicar
@@ -237,7 +241,7 @@
                 <div class="card">
                     <div class="filtros-bar">
                         <div class="form-group">
-                            <label for="anoMesIndicador">Mês-âncora da meta</label>
+                            <label for="anoMesIndicador">Mês da Meta</label>
                             <input type="month" id="anoMesIndicador" />
                         </div>
                         <button id="btnCarregarIndicador" class="btn-primary">
@@ -254,7 +258,7 @@
                                     <th class="col-item">Item</th>
                                     <th>Meta %</th>
                                     <th>Custo Base</th>
-                                    <th>Custo Real (mês seguinte)</th>
+                                    <th>Custo Real (no mês da meta)</th>
                                     <th>Saving Planejado /un</th>
                                     <th>Saving Realizado /un</th>
                                     <th>Atingimento %</th>

@@ -980,27 +980,33 @@ async function relatorioMovimentoDiario(req, res) {
 // SAVING DE COMPRAS
 // =====================================================================
 // Endpoints (todos via /api/embalagem/relatorios):
-//   GET  ?acao=savingList&dtIni=YYYY-MM-DD&dtFim=YYYY-MM-DD
-//   GET  ?acao=savingIndicador&anoMes=YYYY-MM
+//   GET  ?acao=savingList&dtIni=YYYY-MM-DD&dtFim=YYYY-MM-DD&anoMesMeta=YYYY-MM
+//   GET  ?acao=savingIndicador&anoMes=YYYY-MM   (anoMes = mês da meta)
 //   POST ?acao=savingSaveMeta             body: { codigo, anoMes, metaPct, custoBase, usuario }
 //   POST ?acao=savingSaveMetasBatch       body: { itens: [...], usuario }
 //   DELETE ?acao=savingDeleteMeta&codigo=...&anoMes=YYYY-MM
 //
-// Regra: custoBase (por item) = custo da última NF dentro do período (mês mais
-//        recente com NF do item). Cada item pode ter um anoMesBase diferente.
-//        savingValor = custoBase * metaPct/100; custoTarget = custoBase - savingValor.
-//        A meta é salva em TB_SAVING_META com ANO_MES = anoMesBase do item.
+// Conceito:
+//   - "Mês da Meta" (anoMesMeta) é o mês-alvo onde se quer reduzir o custo.
+//   - Custo Base = custo da ÚLTIMA NF lançada ANTES do mês-meta para o item
+//     (busca dentro do período visualizado, mas ignora NFs no próprio mês-meta).
+//   - Saving Planejado = Custo Base × Meta%
+//   - Custo Target = Custo Base − Saving Planejado
+//   - Saving Realizado = Custo Base − última NF DENTRO do mês-meta
+//   - Atingimento % = Saving Realizado / Saving Planejado × 100
+//   - A meta é salva em TB_SAVING_META com ANO_MES = anoMesMeta (igual p/ todos).
 // =====================================================================
 
 async function savingList(req, res) {
     try {
-        const { dtIni, dtFim } = req.query;
+        const { dtIni, dtFim, anoMesMeta } = req.query;
         if (!dtIni || !dtFim) {
             return res.status(400).json({ message: "Parâmetros 'dtIni' e 'dtFim' são obrigatórios (YYYY-MM-DD)." });
         }
+        if (!anoMesMeta || !/^\d{4}-\d{2}$/.test(anoMesMeta)) {
+            return res.status(400).json({ message: "Parâmetro 'anoMesMeta' obrigatório no formato YYYY-MM." });
+        }
         const pool = await getConnection();
-        const dFim = new Date(dtFim + "T00:00:00");
-        const anoMesUltimoPeriodo = `${dFim.getFullYear()}-${String(dFim.getMonth() + 1).padStart(2, "0")}`;
 
         const itensResult = await pool.request().query(`
             SELECT CODIGO, DESCRICAO
@@ -1011,7 +1017,7 @@ async function savingList(req, res) {
         const itens = itensResult.recordset;
         if (itens.length === 0) {
             return res.status(200).json({
-                anoMesUltimoPeriodo,
+                anoMesMeta,
                 itens: [],
                 meses: savingGerarMeses(dtIni, dtFim)
             });
@@ -1047,6 +1053,7 @@ async function savingList(req, res) {
             `);
 
         // Indexa custos por (codigo, anoMes) e determina anoMesBase por item
+        // anoMesBase = último mês com NF ESTRITAMENTE ANTES de anoMesMeta
         const custosPorItem = {};
         const anoMesBasePorItem = {};
         for (const row of custosResult.recordset) {
@@ -1054,38 +1061,29 @@ async function savingList(req, res) {
             const ym = `${row.ANO}-${String(row.MES).padStart(2, "0")}`;
             if (!custosPorItem[key]) custosPorItem[key] = {};
             custosPorItem[key][ym] = Number(row.CUSTO);
-            // ORDER BY garante que o último processado é o mais recente
-            anoMesBasePorItem[key] = ym;
+            // ORDER BY garante ordem cronológica crescente; só conta se < mês-meta
+            if (ym < anoMesMeta) {
+                anoMesBasePorItem[key] = ym;
+            }
         }
 
-        // Carrega TODAS as metas dos itens curva A no período (qualquer anoMes
-        // entre dtIni e dtFim) — não restringe por mês para permitir granularidade
-        // por item (cada item pode ter um anoMesBase diferente).
-        const mesesPeriodo = savingGerarMeses(dtIni, dtFim).map(m => m.anoMes);
-        let metasResult = { recordset: [] };
-        if (mesesPeriodo.length > 0) {
-            const mesesIn = mesesPeriodo.map(m => `'${m}'`).join(",");
-            metasResult = await pool.request().query(`
+        // Carrega metas cadastradas para o mês-meta selecionado
+        const metasResult = await pool.request()
+            .input("anoMes", sql.Char(7), anoMesMeta)
+            .query(`
                 SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.USUARIO,
                        m.DT_CADASTRO, m.DT_ATUALIZACAO
                 FROM [dbo].[TB_SAVING_META] m
                 INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
                 WHERE cp.CURVA_A_B_C = 'A' AND cp.ATIVO = 1
-                  AND m.ANO_MES IN (${mesesIn})
+                  AND m.ANO_MES = @anoMes
             `);
-        }
 
-        // Indexa metas: { codigo: { anoMes: meta } }
         const metasPorItem = {};
         for (const m of metasResult.recordset) {
-            const cod = String(m.CODIGO);
-            if (!metasPorItem[cod]) metasPorItem[cod] = {};
-            metasPorItem[cod][m.ANO_MES] = {
+            metasPorItem[String(m.CODIGO)] = {
                 metaPct: Number(m.META_PCT),
-                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null,
-                usuario: m.USUARIO,
-                dtCadastro: m.DT_CADASTRO,
-                dtAtualizacao: m.DT_ATUALIZACAO
+                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null
             };
         }
 
@@ -1095,9 +1093,7 @@ async function savingList(req, res) {
             const custos = custosPorItem[cod] || {};
             const anoMesBase = anoMesBasePorItem[cod] || null;
             const custoBase = anoMesBase != null ? custos[anoMesBase] : null;
-            // Meta correspondente ao mês-base do item
-            const metasDoItem = metasPorItem[cod] || {};
-            const meta = anoMesBase ? (metasDoItem[anoMesBase] || null) : null;
+            const meta = metasPorItem[cod] || null;
             const metaPct = meta ? meta.metaPct : null;
             const savingValor = (custoBase != null && metaPct != null)
                 ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
@@ -1115,7 +1111,7 @@ async function savingList(req, res) {
             };
         });
 
-        return res.status(200).json({ anoMesUltimoPeriodo, meses, itens: resposta });
+        return res.status(200).json({ anoMesMeta, meses, itens: resposta });
     } catch (err) {
         console.error("Erro savingList:", err);
         return res.status(500).json({ message: "Erro ao listar saving.", error: err.message });
@@ -1130,15 +1126,14 @@ async function savingIndicador(req, res) {
         }
         const pool = await getConnection();
         const [ano, mes] = anoMes.split("-").map(Number);
-        const mesPosterior = mes === 12 ? 1 : mes + 1;
-        const anoPosterior = mes === 12 ? ano + 1 : ano;
 
+        // Custo Real = última NF lançada DENTRO do mês-meta
         const result = await pool.request()
             .input("anoMes", sql.Char(7), anoMes)
-            .input("anoPost", sql.Int, anoPosterior)
-            .input("mesPost", sql.Int, mesPosterior)
+            .input("ano", sql.Int, ano)
+            .input("mes", sql.Int, mes)
             .query(`
-                ;WITH UltimaNFPost AS (
+                ;WITH UltimaNFMesMeta AS (
                     SELECT
                         p.PROD_COD_PROD AS CODIGO,
                         p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO_REAL,
@@ -1148,15 +1143,15 @@ async function savingIndicador(req, res) {
                         ) AS rn
                     FROM [dbo].[NF_PRODUTOS] p
                     INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
-                    WHERE YEAR(c.CAB_DT_EMISSAO) = @anoPost
-                      AND MONTH(c.CAB_DT_EMISSAO) = @mesPost
+                    WHERE YEAR(c.CAB_DT_EMISSAO) = @ano
+                      AND MONTH(c.CAB_DT_EMISSAO) = @mes
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
                 )
                 SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE, u.CUSTO_REAL
                 FROM [dbo].[TB_SAVING_META] m
                 LEFT JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
-                LEFT JOIN UltimaNFPost u ON u.CODIGO = m.CODIGO AND u.rn = 1
+                LEFT JOIN UltimaNFMesMeta u ON u.CODIGO = m.CODIGO AND u.rn = 1
                 WHERE m.ANO_MES = @anoMes
                 ORDER BY cp.DESCRICAO
             `);
@@ -1191,7 +1186,7 @@ async function savingIndicador(req, res) {
 
         return res.status(200).json({
             anoMes,
-            anoMesComparacao: `${anoPosterior}-${String(mesPosterior).padStart(2, "0")}`,
+            anoMesComparacao: anoMes, // mesmo mês — apenas para compatibilidade
             itens, totais
         });
     } catch (err) {
