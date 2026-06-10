@@ -40,6 +40,8 @@ export default async function handler(req, res) {
             return await savingList(req, res);
         } else if (acao === 'savingIndicador') {
             return await savingIndicador(req, res);
+        } else if (acao === 'savingResumoMeses') {
+            return await savingResumoMeses(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -1192,6 +1194,65 @@ async function savingIndicador(req, res) {
     } catch (err) {
         console.error("Erro savingIndicador:", err);
         return res.status(500).json({ message: "Erro ao gerar indicador.", error: err.message });
+    }
+}
+
+// GET ?acao=savingResumoMeses
+// Lista todos os meses (ANO_MES) que possuem metas cadastradas,
+// com totais consolidados Planejado/Realizado/Atingimento.
+async function savingResumoMeses(req, res) {
+    try {
+        const pool = await getConnection();
+        const result = await pool.request().query(`
+            ;WITH MetasComReal AS (
+                SELECT
+                    m.ANO_MES,
+                    m.CODIGO,
+                    m.META_PCT,
+                    m.CUSTO_BASE,
+                    (
+                        SELECT TOP 1 p.PROD_CUSTO_FISCAL_MEDIO_NOVO
+                        FROM [dbo].[NF_PRODUTOS] p
+                        INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
+                        WHERE p.PROD_COD_PROD = m.CODIGO
+                          AND YEAR(c.CAB_DT_EMISSAO)  = CAST(LEFT(m.ANO_MES, 4)     AS INT)
+                          AND MONTH(c.CAB_DT_EMISSAO) = CAST(SUBSTRING(m.ANO_MES, 6, 2) AS INT)
+                          AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
+                          AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                        ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
+                    ) AS CUSTO_REAL
+                FROM [dbo].[TB_SAVING_META] m
+            )
+            SELECT
+                ANO_MES,
+                COUNT(*) AS QTD_METAS,
+                SUM(CASE WHEN CUSTO_BASE IS NOT NULL
+                         THEN CUSTO_BASE * META_PCT / 100.0 ELSE 0 END) AS PLANEJADO,
+                SUM(CASE WHEN CUSTO_REAL IS NOT NULL AND CUSTO_BASE IS NOT NULL
+                         THEN CUSTO_BASE - CUSTO_REAL ELSE 0 END) AS REALIZADO,
+                SUM(CASE WHEN CUSTO_REAL IS NOT NULL THEN 1 ELSE 0 END) AS QTD_COM_NF
+            FROM MetasComReal
+            GROUP BY ANO_MES
+            ORDER BY ANO_MES DESC
+        `);
+
+        const meses = result.recordset.map(r => {
+            const planejado = r.PLANEJADO != null ? +Number(r.PLANEJADO).toFixed(4) : 0;
+            const realizado = r.REALIZADO != null ? +Number(r.REALIZADO).toFixed(4) : 0;
+            const atingimentoPct = planejado > 0
+                ? +(realizado / planejado * 100).toFixed(2) : null;
+            return {
+                anoMes: r.ANO_MES,
+                qtdMetas: Number(r.QTD_METAS) || 0,
+                qtdComNf: Number(r.QTD_COM_NF) || 0,
+                planejado, realizado, atingimentoPct
+            };
+        });
+
+        return res.status(200).json({ meses });
+    } catch (err) {
+        console.error("Erro savingResumoMeses:", err);
+        return res.status(500).json({ message: "Erro ao listar meses.", error: err.message });
     }
 }
 

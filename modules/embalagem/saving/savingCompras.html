@@ -157,6 +157,93 @@
             border-bottom-color: var(--cor-principal, #1976d2);
             font-weight: 600;
         }
+
+        /* Busca + ordenação */
+        .search-box {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95em;
+            min-width: 220px;
+        }
+        table.saving-table thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        table.saving-table thead th.sortable:hover { background: #eef3fa; }
+        table.saving-table thead th.sortable::after {
+            content: " \\21C5";
+            color: #bbb;
+            font-size: 0.85em;
+        }
+        table.saving-table thead th.sortable.asc::after  { content: " \\25B2"; color: #1976d2; }
+        table.saving-table thead th.sortable.desc::after { content: " \\25BC"; color: #1976d2; }
+
+        .col-base-valor { color: #555; font-size: 0.85em; display: block; }
+
+        /* Resumo de meses (aba indicador) */
+        .meses-resumo-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92em;
+            background: #fff;
+        }
+        .meses-resumo-table th,
+        .meses-resumo-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            text-align: right;
+        }
+        .meses-resumo-table th {
+            background: #f7f9fc;
+            color: #333;
+            font-weight: 600;
+            text-align: right;
+        }
+        .meses-resumo-table th.col-mes,
+        .meses-resumo-table td.col-mes {
+            text-align: left;
+        }
+        .meses-resumo-table tr.mes-row {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .meses-resumo-table tr.mes-row:hover { background: #f5f9ff; }
+        .meses-resumo-table tr.mes-row.expanded { background: #e3f2fd; font-weight: 600; }
+        .meses-resumo-table tr.mes-row .toggle-icon {
+            display: inline-block;
+            width: 14px;
+            color: #1976d2;
+            transition: transform 0.15s;
+        }
+        .meses-resumo-table tr.mes-row.expanded .toggle-icon {
+            transform: rotate(90deg);
+        }
+        .meses-resumo-table tr.detalhes-row { background: #fafbfd; }
+        .meses-resumo-table tr.detalhes-row td { padding: 0; }
+        .detalhes-inner {
+            padding: 12px 16px 18px 32px;
+        }
+        .detalhes-inner table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+            background: #fff;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .detalhes-inner th, .detalhes-inner td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .detalhes-inner th { background: #f5f7fa; font-weight: 600; }
+        .detalhes-inner th.col-item,
+        .detalhes-inner td.col-item {
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -203,7 +290,9 @@
                         <div class="ancora-info" id="ancoraInfo">
                             Selecione um período e clique em <strong>Aplicar</strong>.
                         </div>
-                        <div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="search" id="buscaItem" class="search-box"
+                                   placeholder="🔎 Buscar por código ou descrição..." />
                             <button id="btnSalvarMetas" class="btn-primary" disabled>
                                 <i class="fa fa-save"></i> Salvar Metas Alteradas
                             </button>
@@ -239,50 +328,32 @@
             <!-- ================= ABA INDICADOR ===================== -->
             <div id="tab-indicador" class="tab-content" style="display:none;">
                 <div class="card">
-                    <div class="filtros-bar">
-                        <div class="form-group">
-                            <label for="anoMesIndicador">Mês da Meta</label>
-                            <input type="month" id="anoMesIndicador" />
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div class="ancora-info" id="indicadorInfo">
+                            Lista de metas por mês com resultados consolidados.
+                            Clique em uma linha para ver os itens.
                         </div>
-                        <button id="btnCarregarIndicador" class="btn-primary">
-                            <i class="fa fa-search"></i> Carregar Indicador
+                        <button id="btnRecarregarResumo" class="btn-secondary">
+                            <i class="fa fa-rotate"></i> Recarregar
                         </button>
                     </div>
 
-                    <div class="ancora-info" id="indicadorInfo" style="margin-bottom:12px;"></div>
-
                     <div class="saving-table-wrap">
-                        <table class="saving-table">
+                        <table class="meses-resumo-table">
                             <thead>
                                 <tr>
-                                    <th class="col-item">Item</th>
-                                    <th>Meta %</th>
-                                    <th>Custo Base</th>
-                                    <th>Custo Real (no mês da meta)</th>
-                                    <th>Saving Planejado /un</th>
-                                    <th>Saving Realizado /un</th>
+                                    <th class="col-mes">Mês da Meta</th>
+                                    <th>Itens c/ Meta</th>
+                                    <th>Itens c/ NF no mês</th>
+                                    <th>Saving Planejado /un (Σ)</th>
+                                    <th>Saving Realizado /un (Σ)</th>
                                     <th>Atingimento %</th>
                                 </tr>
                             </thead>
-                            <tbody id="tbodyIndicador">
-                                <tr><td class="loading" colspan="7">Selecione um mês-âncora.</td></tr>
+                            <tbody id="tbodyResumoMeses">
+                                <tr><td class="loading" colspan="6"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>
                             </tbody>
                         </table>
-                    </div>
-
-                    <div class="resumo-totais" id="resumoIndicador" style="display:none;">
-                        <div class="card-total">
-                            <div class="label">Planejado total /un</div>
-                            <div class="valor neg" id="indTotPlan">R$ 0,00</div>
-                        </div>
-                        <div class="card-total">
-                            <div class="label">Realizado total /un</div>
-                            <div class="valor" id="indTotReal">R$ 0,00</div>
-                        </div>
-                        <div class="card-total">
-                            <div class="label">Atingimento</div>
-                            <div class="valor" id="indTotAting">—</div>
-                        </div>
                     </div>
                 </div>
             </div>

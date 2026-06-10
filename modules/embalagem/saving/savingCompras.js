@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const anoMesMetaInput  = document.getElementById("anoMesMeta");
     const btnAplicar       = document.getElementById("btnAplicar");
     const btnSalvarMetas   = document.getElementById("btnSalvarMetas");
+    const buscaItem        = document.getElementById("buscaItem");
     const theadSaving      = document.getElementById("theadSaving");
     const tbodySaving      = document.getElementById("tbodySaving");
     const ancoraInfo       = document.getElementById("ancoraInfo");
@@ -21,28 +22,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const totalSavingUn    = document.getElementById("totalSavingUn");
     const totalTargetUn    = document.getElementById("totalTargetUn");
 
-    const tabs             = document.querySelectorAll(".tab");
-    const anoMesIndicador  = document.getElementById("anoMesIndicador");
-    const btnCarregarIndicador = document.getElementById("btnCarregarIndicador");
-    const tbodyIndicador   = document.getElementById("tbodyIndicador");
-    const indicadorInfo    = document.getElementById("indicadorInfo");
-    const resumoIndicador  = document.getElementById("resumoIndicador");
-    const indTotPlan       = document.getElementById("indTotPlan");
-    const indTotReal       = document.getElementById("indTotReal");
-    const indTotAting      = document.getElementById("indTotAting");
+    const tabs                 = document.querySelectorAll(".tab");
+    const tbodyResumoMeses     = document.getElementById("tbodyResumoMeses");
+    const btnRecarregarResumo  = document.getElementById("btnRecarregarResumo");
 
     // Estado em memória
     let estadoAtual = {
         anoMesMeta: null,
         meses: [],
-        itens: [],       // itens originais
-        alteracoes: {}   // { codigo: novaMeta }
+        itens: [],        // itens originais (do backend)
+        alteracoes: {},   // { codigo: novaMeta }
+        sort: { key: null, dir: 1 },  // 1=asc, -1=desc
+        filtro: ""
     };
+
+    let resumoMesesCache = null;       // [{anoMes, ...}]
+    let detalhesCache = {};            // { anoMes: { itens, totais } }
 
     // ----------------------- Inicialização -----------------------
     inicializarPeriodoDefault();
     bindEventos();
-    inicializarMesIndicadorDefault();
 
     function inicializarPeriodoDefault() {
         const hoje = new Date();
@@ -57,29 +56,25 @@ document.addEventListener("DOMContentLoaded", () => {
         anoMesMetaInput.value = `${ano}-${String(mes + 1).padStart(2, "0")}`;
     }
 
-    function inicializarMesIndicadorDefault() {
-        const hoje = new Date();
-        const ano  = hoje.getFullYear();
-        // Default: mês anterior (já fechado). Se janeiro, vai para dez do ano anterior.
-        const m = hoje.getMonth(); // 0-11
-        const anoIdx = m === 0 ? ano - 1 : ano;
-        const mesIdx = m === 0 ? 12 : m;
-        anoMesIndicador.value = `${anoIdx}-${String(mesIdx).padStart(2, "0")}`;
-    }
-
     function bindEventos() {
         btnAplicar.addEventListener("click", carregarSaving);
         btnSalvarMetas.addEventListener("click", salvarMetasAlteradas);
+        buscaItem.addEventListener("input", () => {
+            estadoAtual.filtro = (buscaItem.value || "").trim().toLowerCase();
+            renderizarTabela();
+        });
 
         tabs.forEach(t => t.addEventListener("click", () => trocarTab(t.dataset.tab)));
-
-        btnCarregarIndicador.addEventListener("click", carregarIndicador);
+        btnRecarregarResumo.addEventListener("click", () => carregarResumoMeses(true));
     }
 
     function trocarTab(tabName) {
         tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tabName));
         document.getElementById("tab-planejamento").style.display = (tabName === "planejamento") ? "" : "none";
         document.getElementById("tab-indicador").style.display    = (tabName === "indicador")    ? "" : "none";
+        if (tabName === "indicador" && resumoMesesCache === null) {
+            carregarResumoMeses();
+        }
     }
 
     // ----------------------- Carregar Saving -----------------------
@@ -142,24 +137,87 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderizarTabela() {
         const meses = estadoAtual.meses;
 
-        // Cabeçalho (sem ★ fixo — o destaque é por linha)
+        // Cabeçalho — colunas fixas ordenáveis
+        const sortKey = estadoAtual.sort.key;
+        const sortDir = estadoAtual.sort.dir;
+        const sortClass = (key) => {
+            if (sortKey !== key) return "sortable";
+            return "sortable " + (sortDir > 0 ? "asc" : "desc");
+        };
+
         const ths = [
-            `<th class="col-item">Item</th>`,
-            `<th>Mês Base</th>`,
-            `<th>Meta %</th>`,
-            `<th>Saving R$/un</th>`,
-            `<th>Custo Target</th>`,
+            `<th class="col-item ${sortClass('item')}" data-sort="item">Item</th>`,
+            `<th class="${sortClass('base')}" data-sort="base">Mês Base (custo)</th>`,
+            `<th class="${sortClass('meta')}" data-sort="meta">Meta %</th>`,
+            `<th class="${sortClass('saving')}" data-sort="saving">Saving R$/un</th>`,
+            `<th class="${sortClass('target')}" data-sort="target">Custo Target</th>`,
             ...meses.map(m => `<th title="${m.anoMes}">${m.label}</th>`)
         ];
         theadSaving.innerHTML = `<tr>${ths.join("")}</tr>`;
 
+        // Bind sort
+        theadSaving.querySelectorAll("th.sortable").forEach(th => {
+            th.addEventListener("click", () => {
+                const k = th.dataset.sort;
+                if (estadoAtual.sort.key === k) {
+                    estadoAtual.sort.dir = -estadoAtual.sort.dir;
+                } else {
+                    estadoAtual.sort.key = k;
+                    estadoAtual.sort.dir = 1;
+                }
+                renderizarTabela();
+            });
+        });
+
+        // Filtra e ordena
+        const filtro = estadoAtual.filtro;
+        let itens = estadoAtual.itens;
+        if (filtro) {
+            itens = itens.filter(it =>
+                (it.codigo || "").toLowerCase().includes(filtro) ||
+                (it.descricao || "").toLowerCase().includes(filtro)
+            );
+        }
+        if (sortKey) {
+            const getMetaEfetiva = it => (it.codigo in estadoAtual.alteracoes)
+                ? estadoAtual.alteracoes[it.codigo] : it.metaPct;
+            const getVal = it => {
+                switch (sortKey) {
+                    case 'item':   return (it.descricao || it.codigo || "").toLowerCase();
+                    case 'base':   return it.custoBase != null ? Number(it.custoBase) : -Infinity;
+                    case 'meta':   {
+                        const m = getMetaEfetiva(it);
+                        return m != null ? Number(m) : -Infinity;
+                    }
+                    case 'saving': {
+                        const m = getMetaEfetiva(it);
+                        if (it.custoBase == null || m == null) return -Infinity;
+                        return it.custoBase * (m / 100);
+                    }
+                    case 'target': {
+                        const m = getMetaEfetiva(it);
+                        if (it.custoBase == null || m == null) return -Infinity;
+                        return it.custoBase * (1 - m / 100);
+                    }
+                }
+                return 0;
+            };
+            itens = [...itens].sort((a, b) => {
+                const va = getVal(a), vb = getVal(b);
+                if (va < vb) return -1 * sortDir;
+                if (va > vb) return  1 * sortDir;
+                return 0;
+            });
+        }
+
         // Corpo
-        if (estadoAtual.itens.length === 0) {
-            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${5 + meses.length}">Nenhum item curva A encontrado.</td></tr>`;
+        if (itens.length === 0) {
+            const msg = filtro ? `Nenhum item bate com "${escapeHtml(buscaItem.value)}".` : 'Nenhum item curva A encontrado.';
+            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${5 + meses.length}">${msg}</td></tr>`;
             return;
         }
 
-        tbodySaving.innerHTML = estadoAtual.itens.map(it => {
+        tbodySaving.innerHTML = itens.map(it => {
             const custosCells = meses.map(m => {
                 const v = it.custos[m.anoMes];
                 const isAncora = m.anoMes === it.anoMesBase;
@@ -168,17 +226,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 return `<td class="${cls}">${v != null ? formatBRL(v) + star : '<span class="muted">—</span>'}</td>`;
             }).join("");
 
-            const metaVal = it.metaPct != null ? Number(it.metaPct).toFixed(2) : "";
-            const savingTxt = it.savingValor != null
-                ? `<span class="neg">-${formatBRL(it.savingValor)}</span>` : '<span class="muted">—</span>';
-            const targetTxt = it.custoTarget != null
-                ? `<span class="col-target">${formatBRL(it.custoTarget)}</span>` : '<span class="muted">—</span>';
+            const metaEfetiva = (it.codigo in estadoAtual.alteracoes)
+                ? estadoAtual.alteracoes[it.codigo] : it.metaPct;
+            const metaVal = metaEfetiva != null ? Number(metaEfetiva).toFixed(2) : "";
+
+            let savingTxt = '<span class="muted">—</span>';
+            let targetTxt = '<span class="muted">—</span>';
+            if (it.custoBase != null && metaEfetiva != null && metaEfetiva > 0) {
+                const saving = +(it.custoBase * (metaEfetiva / 100)).toFixed(4);
+                const target = +(it.custoBase - saving).toFixed(4);
+                savingTxt = `<span class="neg">-${formatBRL(saving)}</span>`;
+                targetTxt = `<span class="col-target">${formatBRL(target)}</span>`;
+            }
+
             const baseTxt = it.anoMesBase
-                ? `<strong style="color:#1976d2;">${labelMes(it.anoMesBase)}</strong>`
+                ? `<strong style="color:#1976d2;">${labelMes(it.anoMesBase)}</strong>` +
+                  `<span class="col-base-valor">${formatBRL(it.custoBase)}</span>`
                 : '<span class="muted">sem NF</span>';
 
             const semBase = it.anoMesBase == null;
-            const inputAttrs = semBase ? 'disabled title="Sem NF no período — não é possível cadastrar meta"' : '';
+            const inputAttrs = semBase ? 'disabled title="Sem NF anterior ao mês-meta — não é possível cadastrar meta"' : '';
 
             return `
                 <tr data-codigo="${it.codigo}" data-anomesbase="${it.anoMesBase || ''}">
@@ -189,7 +256,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${baseTxt}</td>
                     <td class="col-meta">
                         <input type="number" step="0.01" min="0" max="100"
-                               class="input-meta" value="${metaVal}"
+                               class="input-meta${(it.codigo in estadoAtual.alteracoes) ? ' dirty' : ''}"
+                               value="${metaVal}"
                                placeholder="0,00" ${inputAttrs} />
                     </td>
                     <td class="cell-saving">${savingTxt}</td>
@@ -310,7 +378,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             const data = await resp.json();
             alert(`Metas salvas: ${data.salvos || 0} | removidas: ${data.removidos || 0}`);
-            // Recarrega para refletir
+            // Invalida cache do indicador para refletir mudanças
+            resumoMesesCache = null;
+            detalhesCache = {};
+            // Recarrega planejamento
             await carregarSaving();
         } catch (err) {
             console.error("Erro ao salvar metas:", err);
@@ -321,70 +392,149 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // ----------------------- Indicador -----------------------
-    async function carregarIndicador() {
-        const ym = anoMesIndicador.value;
-        if (!ym) {
-            alert("Informe o mês-âncora.");
+    // ----------------------- Indicador (lista de meses) -----------------------
+    async function carregarResumoMeses(force = false) {
+        if (resumoMesesCache && !force) {
+            renderizarResumoMeses();
             return;
         }
-        tbodyIndicador.innerHTML = `<tr><td class="loading" colspan="7"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
-        resumoIndicador.style.display = "none";
-
+        tbodyResumoMeses.innerHTML = `<tr><td class="loading" colspan="6"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
         try {
-            const resp = await fetch(`/api/embalagem/relatorios?acao=savingIndicador&anoMes=${encodeURIComponent(ym)}`);
+            const resp = await fetch(`/api/embalagem/relatorios?acao=savingResumoMeses`);
             if (!resp.ok) {
                 const e = await resp.json().catch(() => ({}));
                 throw new Error(e.message || `HTTP ${resp.status}`);
             }
             const data = await resp.json();
-
-            indicadorInfo.innerHTML = `
-                Comparando o custo praticado em <strong>${labelMes(data.anoMes)}</strong>
-                vs o Custo Base cadastrado para a meta desse mês.
-            `;
-
-            if (!data.itens || data.itens.length === 0) {
-                tbodyIndicador.innerHTML = `<tr><td class="empty" colspan="7">Nenhuma meta cadastrada para esse mês.</td></tr>`;
-                return;
-            }
-
-            tbodyIndicador.innerHTML = data.itens.map(it => {
-                const planTxt = it.savingPlanejado != null ? `<span class="neg">-${formatBRL(it.savingPlanejado)}</span>` : '—';
-                let realTxt = '<span class="muted">sem NF</span>';
-                if (it.savingRealizado != null) {
-                    const cls = it.savingRealizado >= 0 ? "neg" : "pos";
-                    const sinal = it.savingRealizado >= 0 ? "-" : "+";
-                    realTxt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado))}</span>`;
-                }
-                const atingTxt = it.atingimentoPct != null
-                    ? `<span class="${it.atingimentoPct >= 100 ? "pos" : it.atingimentoPct >= 50 ? "" : "neg"}">${it.atingimentoPct.toFixed(1)}%</span>`
-                    : '<span class="muted">—</span>';
-                return `
-                    <tr>
-                        <td class="col-item"><strong>${escapeHtml(it.codigo)}</strong> <span style="color:#666;font-weight:400;">${escapeHtml(it.descricao || "")}</span></td>
-                        <td>${it.metaPct.toFixed(2)}%</td>
-                        <td>${it.custoBase != null ? formatBRL(it.custoBase) : '—'}</td>
-                        <td>${it.custoReal != null ? formatBRL(it.custoReal) : '<span class="muted">sem NF</span>'}</td>
-                        <td>${planTxt}</td>
-                        <td>${realTxt}</td>
-                        <td>${atingTxt}</td>
-                    </tr>
-                `;
-            }).join("");
-
-            const t = data.totais || {};
-            indTotPlan.textContent = "-" + formatBRL(t.planejado || 0);
-            const realSign = (t.realizado || 0) >= 0 ? "-" : "+";
-            indTotReal.textContent = realSign + formatBRL(Math.abs(t.realizado || 0));
-            indTotReal.className = "valor " + ((t.realizado || 0) >= 0 ? "neg" : "pos");
-            indTotAting.textContent = t.atingimentoPct != null ? `${t.atingimentoPct.toFixed(1)}%` : "—";
-            indTotAting.className = "valor " + (t.atingimentoPct != null && t.atingimentoPct >= 100 ? "pos" : "");
-            resumoIndicador.style.display = "";
+            resumoMesesCache = data.meses || [];
+            detalhesCache = {};
+            renderizarResumoMeses();
         } catch (err) {
-            console.error("Erro ao carregar indicador:", err);
-            tbodyIndicador.innerHTML = `<tr><td class="empty" colspan="7" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
+            console.error("Erro ao carregar resumo:", err);
+            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="6" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
         }
+    }
+
+    function renderizarResumoMeses() {
+        if (!resumoMesesCache || resumoMesesCache.length === 0) {
+            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="6">Nenhuma meta cadastrada ainda.</td></tr>`;
+            return;
+        }
+        tbodyResumoMeses.innerHTML = resumoMesesCache.map(m => {
+            const planTxt = `<span class="neg">-${formatBRL(m.planejado)}</span>`;
+            let realTxt;
+            if (m.realizado >= 0) {
+                realTxt = `<span class="neg">-${formatBRL(Math.abs(m.realizado))}</span>`;
+            } else {
+                realTxt = `<span class="pos">+${formatBRL(Math.abs(m.realizado))}</span>`;
+            }
+            const atingTxt = m.atingimentoPct != null
+                ? `<span class="${m.atingimentoPct >= 100 ? "pos" : m.atingimentoPct >= 50 ? "" : "neg"}">${m.atingimentoPct.toFixed(1)}%</span>`
+                : '<span class="muted">—</span>';
+            return `
+                <tr class="mes-row" data-anomes="${m.anoMes}">
+                    <td class="col-mes">
+                        <span class="toggle-icon">▶</span>
+                        <strong style="color:#1976d2;">${labelMes(m.anoMes)}</strong>
+                    </td>
+                    <td>${m.qtdMetas}</td>
+                    <td>${m.qtdComNf} / ${m.qtdMetas}</td>
+                    <td>${planTxt}</td>
+                    <td>${realTxt}</td>
+                    <td>${atingTxt}</td>
+                </tr>
+            `;
+        }).join("");
+
+        tbodyResumoMeses.querySelectorAll("tr.mes-row").forEach(tr => {
+            tr.addEventListener("click", () => toggleDetalhesMes(tr));
+        });
+    }
+
+    async function toggleDetalhesMes(tr) {
+        const ym = tr.dataset.anomes;
+        const proximo = tr.nextElementSibling;
+        if (proximo && proximo.classList.contains("detalhes-row") && proximo.dataset.anomes === ym) {
+            // Já está expandido — colapsa
+            proximo.remove();
+            tr.classList.remove("expanded");
+            return;
+        }
+        // Colapsa qualquer outro aberto
+        tbodyResumoMeses.querySelectorAll("tr.detalhes-row").forEach(r => r.remove());
+        tbodyResumoMeses.querySelectorAll("tr.mes-row.expanded").forEach(r => r.classList.remove("expanded"));
+
+        tr.classList.add("expanded");
+        const detRow = document.createElement("tr");
+        detRow.className = "detalhes-row";
+        detRow.dataset.anomes = ym;
+        detRow.innerHTML = `<td colspan="6"><div class="detalhes-inner"><i class="fa fa-spinner fa-spin"></i> Carregando itens de ${labelMes(ym)}...</div></td>`;
+        tr.after(detRow);
+
+        try {
+            let data = detalhesCache[ym];
+            if (!data) {
+                const resp = await fetch(`/api/embalagem/relatorios?acao=savingIndicador&anoMes=${encodeURIComponent(ym)}`);
+                if (!resp.ok) {
+                    const e = await resp.json().catch(() => ({}));
+                    throw new Error(e.message || `HTTP ${resp.status}`);
+                }
+                data = await resp.json();
+                detalhesCache[ym] = data;
+            }
+            renderizarDetalhesMes(detRow, ym, data);
+        } catch (err) {
+            console.error("Erro ao carregar detalhes:", err);
+            detRow.querySelector(".detalhes-inner").innerHTML =
+                `<span style="color:#c62828;">Erro: ${err.message}</span>`;
+        }
+    }
+
+    function renderizarDetalhesMes(detRow, ym, data) {
+        if (!data.itens || data.itens.length === 0) {
+            detRow.querySelector(".detalhes-inner").innerHTML =
+                `<em>Sem itens para ${labelMes(ym)}.</em>`;
+            return;
+        }
+        const rows = data.itens.map(it => {
+            const planTxt = it.savingPlanejado != null ? `<span class="neg">-${formatBRL(it.savingPlanejado)}</span>` : '—';
+            let realTxt = '<span class="muted">sem NF</span>';
+            if (it.savingRealizado != null) {
+                const cls = it.savingRealizado >= 0 ? "neg" : "pos";
+                const sinal = it.savingRealizado >= 0 ? "-" : "+";
+                realTxt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado))}</span>`;
+            }
+            const atingTxt = it.atingimentoPct != null
+                ? `<span class="${it.atingimentoPct >= 100 ? "pos" : it.atingimentoPct >= 50 ? "" : "neg"}">${it.atingimentoPct.toFixed(1)}%</span>`
+                : '<span class="muted">—</span>';
+            return `
+                <tr>
+                    <td class="col-item"><strong>${escapeHtml(it.codigo)}</strong> <span style="color:#666;font-weight:400;">${escapeHtml(it.descricao || "")}</span></td>
+                    <td>${it.metaPct.toFixed(2)}%</td>
+                    <td>${it.custoBase != null ? formatBRL(it.custoBase) : '—'}</td>
+                    <td>${it.custoReal != null ? formatBRL(it.custoReal) : '<span class="muted">sem NF</span>'}</td>
+                    <td>${planTxt}</td>
+                    <td>${realTxt}</td>
+                    <td>${atingTxt}</td>
+                </tr>
+            `;
+        }).join("");
+        detRow.querySelector(".detalhes-inner").innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-item">Item</th>
+                        <th>Meta %</th>
+                        <th>Custo Base</th>
+                        <th>Custo Real (${labelMes(ym)})</th>
+                        <th>Saving Planejado /un</th>
+                        <th>Saving Realizado /un</th>
+                        <th>Atingimento %</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
     }
 
     // ----------------------- Utils -----------------------
