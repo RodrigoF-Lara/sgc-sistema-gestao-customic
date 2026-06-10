@@ -247,12 +247,12 @@ document.addEventListener("DOMContentLoaded", () => {
             if (it.custoBase != null && metaEfetiva != null && metaEfetiva > 0) {
                 const saving = +(it.custoBase * (metaEfetiva / 100)).toFixed(4);
                 const target = +(it.custoBase - saving).toFixed(4);
-                savingTxt = `<span class="neg">-${formatBRL(saving)}</span>`;
+                savingTxt = `<span class="pos">-${formatBRL(saving)}</span>`;
                 targetTxt = `<span class="col-target">${formatBRL(target)}</span>`;
                 const c = Number(it.consumoMensal) || 0;
                 if (c > 0) {
                     const proj = +(saving * c * 12).toFixed(2);
-                    proj12Txt = `<span class="neg" title="${formatBRL(saving)}/un × ${formatNum(c)}/mês × 12">-${formatBRL(proj)}</span>`;
+                    proj12Txt = `<span class="pos" title="${formatBRL(saving)}/un × ${formatNum(c)}/mês × 12">-${formatBRL(proj)}</span>`;
                 }
             }
 
@@ -318,12 +318,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (custoBase != null && novaMeta != null && novaMeta > 0) {
             const saving = +(custoBase * (novaMeta / 100)).toFixed(4);
             const target = +(custoBase - saving).toFixed(4);
-            savingHtml = `<span class="neg">-${formatBRL(saving)}</span>`;
+            savingHtml = `<span class="pos">-${formatBRL(saving)}</span>`;
             targetHtml = `<span class="col-target">${formatBRL(target)}</span>`;
             const c = Number(item.consumoMensal) || 0;
             if (c > 0) {
                 const proj = +(saving * c * 12).toFixed(2);
-                proj12Html = `<span class="neg" title="${formatBRL(saving)}/un × ${formatNum(c)}/mês × 12">-${formatBRL(proj)}</span>`;
+                proj12Html = `<span class="pos" title="${formatBRL(saving)}/un × ${formatNum(c)}/mês × 12">-${formatBRL(proj)}</span>`;
             }
         }
         tr.querySelector(".cell-saving").innerHTML = savingHtml;
@@ -457,12 +457,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         tbodyResumoMeses.innerHTML = resumoMesesCache.map(m => {
-            const planTxt = `<span class="neg">-${formatBRL(m.planejado)}</span>`;
+            const planTxt = `<span class="pos">-${formatBRL(m.planejado)}</span>`;
             let realTxt;
             if (m.realizado >= 0) {
-                realTxt = `<span class="neg">-${formatBRL(Math.abs(m.realizado))}</span>`;
+                realTxt = `<span class="pos">-${formatBRL(Math.abs(m.realizado))}</span>`;
             } else {
-                realTxt = `<span class="pos">+${formatBRL(Math.abs(m.realizado))}</span>`;
+                realTxt = `<span class="neg">+${formatBRL(Math.abs(m.realizado))}</span>`;
             }
             let realMesTxt;
             const rMes = Number(m.realizadoMes) || 0;
@@ -470,13 +470,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (qMes <= 0) {
                 realMesTxt = '<span class="muted">sem compra</span>';
             } else if (rMes >= 0) {
-                realMesTxt = `<span class="neg" title="Qtd comprada no mês: ${formatNum(qMes)}">-${formatBRL(rMes)}</span>`;
+                realMesTxt = `<span class="pos" title="Qtd comprada no mês: ${formatNum(qMes)}">-${formatBRL(rMes)}</span>`;
             } else {
-                realMesTxt = `<span class="pos" title="Qtd comprada no mês: ${formatNum(qMes)}">+${formatBRL(Math.abs(rMes))}</span>`;
+                realMesTxt = `<span class="neg" title="Qtd comprada no mês: ${formatNum(qMes)}">+${formatBRL(Math.abs(rMes))}</span>`;
             }
             let proj12Txt;
             if (m.projetado12m > 0) {
-                proj12Txt = `<span class="neg">-${formatBRL(m.projetado12m)}</span>`;
+                proj12Txt = `<span class="pos">-${formatBRL(m.projetado12m)}</span>`;
             } else {
                 proj12Txt = '<span class="muted">—</span>';
             }
@@ -551,10 +551,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         const rows = data.itens.map(it => {
-            const planTxt = it.savingPlanejado != null ? `<span class="neg">-${formatBRL(it.savingPlanejado)}</span>` : '—';
+            const planTxt = it.savingPlanejado != null ? `<span class="pos">-${formatBRL(it.savingPlanejado)}</span>` : '—';
             let realTxt = '<span class="muted">sem NF</span>';
             if (it.savingRealizado != null) {
-                const cls = it.savingRealizado >= 0 ? "neg" : "pos";
+                const cls = it.savingRealizado >= 0 ? "pos" : "neg";
                 const sinal = it.savingRealizado >= 0 ? "-" : "+";
                 realTxt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado))}</span>`;
             }
@@ -562,7 +562,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const qtdMesTxt = qtdMes > 0 ? formatNum(qtdMes) : '<span class="muted">0</span>';
             let realMesTxt = '<span class="muted">—</span>';
             if (it.savingRealizadoMes != null && qtdMes > 0) {
-                const cls = it.savingRealizadoMes >= 0 ? "neg" : "pos";
+                const cls = it.savingRealizadoMes >= 0 ? "pos" : "neg";
                 const sinal = it.savingRealizadoMes >= 0 ? "-" : "+";
                 realMesTxt = `<span class="${cls}" title="${formatBRL(Math.abs(it.savingRealizado))}/un × ${formatNum(qtdMes)} un">${sinal}${formatBRL(Math.abs(it.savingRealizadoMes))}</span>`;
             }
@@ -570,11 +570,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? formatNum(it.consumoMensal) : '<span class="muted">—</span>';
             let proj12Txt = '<span class="muted">—</span>';
             if (it.savingProjetado12m != null) {
-                proj12Txt = `<span class="neg">-${formatBRL(it.savingProjetado12m)}</span>`;
+                proj12Txt = `<span class="pos">-${formatBRL(it.savingProjetado12m)}</span>`;
             }
             let real12Txt = '<span class="muted">—</span>';
             if (it.savingRealizado12m != null) {
-                const cls = it.savingRealizado12m >= 0 ? "neg" : "pos";
+                const cls = it.savingRealizado12m >= 0 ? "pos" : "neg";
                 const sinal = it.savingRealizado12m >= 0 ? "-" : "+";
                 real12Txt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado12m))}</span>`;
             }

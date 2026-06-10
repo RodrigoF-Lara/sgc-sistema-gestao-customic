@@ -45,8 +45,8 @@
 
         .saving-table-wrap {
             overflow: auto;
-            max-height: calc(100vh - 320px);
-            min-height: 240px;
+            height: calc(100vh - 280px);
+            min-height: 320px;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08);
@@ -321,7 +321,7 @@
                         </div>
                         <div class="card-total">
                             <div class="label">Saving Planejado (R$/un — soma)</div>
-                            <div class="valor neg" id="totalSavingUn">R$ 0,00</div>
+                            <div class="valor pos" id="totalSavingUn">R$ 0,00</div>
                         </div>
                         <div class="card-total">
                             <div class="label">Custo Target (R$/un — soma)</div>
@@ -331,7 +331,7 @@
                             <div class="label" title="Saving R$/un × consumo médio mensal × 12">
                                 Saving Projetado 12 meses
                             </div>
-                            <div class="valor neg" id="totalProj12m">R$ 0,00</div>
+                            <div class="valor pos" id="totalProj12m">R$ 0,00</div>
                         </div>
                     </div>
 
