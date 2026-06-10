@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
         estadoAtual.alteracoes = {};
 
         try {
-            const url = `/api/embalagem/saving?action=list&dtIni=${encodeURIComponent(ini)}&dtFim=${encodeURIComponent(fim)}`;
+            const url = `/api/embalagem/relatorios?acao=savingList&dtIni=${encodeURIComponent(ini)}&dtFim=${encodeURIComponent(fim)}`;
             const resp = await fetch(url);
             if (!resp.ok) {
                 const e = await resp.json().catch(() => ({}));
@@ -273,10 +273,10 @@ document.addEventListener("DOMContentLoaded", () => {
         btnSalvarMetas.disabled = true;
         btnSalvarMetas.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Salvando...`;
         try {
-            const resp = await fetch("/api/embalagem/saving", {
+            const resp = await fetch("/api/embalagem/relatorios?acao=savingSaveMetasBatch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "saveMetasBatch", itens, usuario })
+                body: JSON.stringify({ itens, usuario })
             });
             if (!resp.ok) {
                 const e = await resp.json().catch(() => ({}));
@@ -306,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resumoIndicador.style.display = "none";
 
         try {
-            const resp = await fetch(`/api/embalagem/saving?action=indicador&anoMes=${encodeURIComponent(ym)}`);
+            const resp = await fetch(`/api/embalagem/relatorios?acao=savingIndicador&anoMes=${encodeURIComponent(ym)}`);
             if (!resp.ok) {
                 const e = await resp.json().catch(() => ({}));
                 throw new Error(e.message || `HTTP ${resp.status}`);

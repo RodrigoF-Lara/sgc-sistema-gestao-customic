@@ -36,8 +36,23 @@ export default async function handler(req, res) {
             return await detalhesInventario(req, res);
         } else if (acao === 'movimentoDiario') {
             return await relatorioMovimentoDiario(req, res);
+        } else if (acao === 'savingList') {
+            return await savingList(req, res);
+        } else if (acao === 'savingIndicador') {
+            return await savingIndicador(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
+    }
+
+    if (req.method === "POST") {
+        if (acao === 'savingSaveMeta')        return await savingSaveMeta(req, res);
+        if (acao === 'savingSaveMetasBatch')  return await savingSaveMetasBatch(req, res);
+        return res.status(400).json({ message: "Ação POST não reconhecida" });
+    }
+
+    if (req.method === "DELETE") {
+        if (acao === 'savingDeleteMeta') return await savingDeleteMeta(req, res);
+        return res.status(400).json({ message: "Ação DELETE não reconhecida" });
     }
 
     return res.status(405).json({ message: "Método não permitido" });
@@ -959,4 +974,323 @@ async function relatorioMovimentoDiario(req, res) {
             stack: err.stack
         });
     }
+}
+
+// =====================================================================
+// SAVING DE COMPRAS
+// =====================================================================
+// Endpoints (todos via /api/embalagem/relatorios):
+//   GET  ?acao=savingList&dtIni=YYYY-MM-DD&dtFim=YYYY-MM-DD
+//   GET  ?acao=savingIndicador&anoMes=YYYY-MM
+//   POST ?acao=savingSaveMeta             body: { codigo, anoMes, metaPct, custoBase, usuario }
+//   POST ?acao=savingSaveMetasBatch       body: { itens: [...], usuario }
+//   DELETE ?acao=savingDeleteMeta&codigo=...&anoMes=YYYY-MM
+//
+// Regra: custoBase = custo da última NF do mês-âncora (último mês do período);
+//        savingValor = custoBase * metaPct/100; custoTarget = custoBase - savingValor.
+// =====================================================================
+
+async function savingList(req, res) {
+    try {
+        const { dtIni, dtFim } = req.query;
+        if (!dtIni || !dtFim) {
+            return res.status(400).json({ message: "Parâmetros 'dtIni' e 'dtFim' são obrigatórios (YYYY-MM-DD)." });
+        }
+        const pool = await getConnection();
+        const dFim = new Date(dtFim + "T00:00:00");
+        const anoMesAncora = `${dFim.getFullYear()}-${String(dFim.getMonth() + 1).padStart(2, "0")}`;
+
+        const itensResult = await pool.request().query(`
+            SELECT CODIGO, DESCRICAO
+            FROM [dbo].[CAD_PROD]
+            WHERE CURVA_A_B_C = 'A' AND ATIVO = 1
+            ORDER BY DESCRICAO
+        `);
+        const itens = itensResult.recordset;
+        if (itens.length === 0) {
+            return res.status(200).json({ anoMesAncora, itens: [], meses: savingGerarMeses(dtIni, dtFim) });
+        }
+
+        const custosResult = await pool.request()
+            .input("dtIni", sql.Date, dtIni)
+            .input("dtFim", sql.Date, dtFim)
+            .query(`
+                ;WITH BaseNF AS (
+                    SELECT
+                        p.PROD_COD_PROD AS CODIGO,
+                        YEAR(c.CAB_DT_EMISSAO) AS ANO,
+                        MONTH(c.CAB_DT_EMISSAO) AS MES,
+                        p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.PROD_COD_PROD, YEAR(c.CAB_DT_EMISSAO), MONTH(c.CAB_DT_EMISSAO)
+                            ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
+                        ) AS rn
+                    FROM [dbo].[NF_PRODUTOS] p
+                    INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
+                    WHERE c.CAB_DT_EMISSAO >= @dtIni
+                      AND c.CAB_DT_EMISSAO <= @dtFim
+                      AND p.PROD_COD_PROD IN (
+                          SELECT CODIGO FROM [dbo].[CAD_PROD]
+                          WHERE CURVA_A_B_C = 'A' AND ATIVO = 1
+                      )
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                )
+                SELECT CODIGO, ANO, MES, CUSTO FROM BaseNF WHERE rn = 1
+                ORDER BY CODIGO, ANO, MES
+            `);
+
+        const metasResult = await pool.request()
+            .input("anoMes", sql.Char(7), anoMesAncora)
+            .query(`
+                SELECT CODIGO, ANO_MES, META_PCT, CUSTO_BASE, USUARIO, DT_CADASTRO, DT_ATUALIZACAO
+                FROM [dbo].[TB_SAVING_META]
+                WHERE ANO_MES = @anoMes
+            `);
+
+        const custosPorItem = {};
+        for (const row of custosResult.recordset) {
+            const key = String(row.CODIGO);
+            const ym = `${row.ANO}-${String(row.MES).padStart(2, "0")}`;
+            if (!custosPorItem[key]) custosPorItem[key] = {};
+            custosPorItem[key][ym] = Number(row.CUSTO);
+        }
+
+        const metasPorItem = {};
+        for (const m of metasResult.recordset) {
+            metasPorItem[String(m.CODIGO)] = {
+                metaPct: Number(m.META_PCT),
+                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null,
+                usuario: m.USUARIO,
+                dtCadastro: m.DT_CADASTRO,
+                dtAtualizacao: m.DT_ATUALIZACAO
+            };
+        }
+
+        const meses = savingGerarMeses(dtIni, dtFim);
+        const resposta = itens.map(it => {
+            const cod = String(it.CODIGO);
+            const custos = custosPorItem[cod] || {};
+            const custoBase = custos[anoMesAncora] != null ? custos[anoMesAncora] : null;
+            const meta = metasPorItem[cod] || null;
+            const metaPct = meta ? meta.metaPct : null;
+            const savingValor = (custoBase != null && metaPct != null)
+                ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
+            const custoTarget = (custoBase != null && metaPct != null)
+                ? +(custoBase - savingValor).toFixed(4) : null;
+            return {
+                codigo: cod,
+                descricao: it.DESCRICAO,
+                custoBase,
+                metaPct,
+                savingValor,
+                custoTarget,
+                custos
+            };
+        });
+
+        return res.status(200).json({ anoMesAncora, meses, itens: resposta });
+    } catch (err) {
+        console.error("Erro savingList:", err);
+        return res.status(500).json({ message: "Erro ao listar saving.", error: err.message });
+    }
+}
+
+async function savingIndicador(req, res) {
+    try {
+        const { anoMes } = req.query;
+        if (!anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "Parâmetro 'anoMes' obrigatório no formato YYYY-MM." });
+        }
+        const pool = await getConnection();
+        const [ano, mes] = anoMes.split("-").map(Number);
+        const mesPosterior = mes === 12 ? 1 : mes + 1;
+        const anoPosterior = mes === 12 ? ano + 1 : ano;
+
+        const result = await pool.request()
+            .input("anoMes", sql.Char(7), anoMes)
+            .input("anoPost", sql.Int, anoPosterior)
+            .input("mesPost", sql.Int, mesPosterior)
+            .query(`
+                ;WITH UltimaNFPost AS (
+                    SELECT
+                        p.PROD_COD_PROD AS CODIGO,
+                        p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO_REAL,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.PROD_COD_PROD
+                            ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
+                        ) AS rn
+                    FROM [dbo].[NF_PRODUTOS] p
+                    INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
+                    WHERE YEAR(c.CAB_DT_EMISSAO) = @anoPost
+                      AND MONTH(c.CAB_DT_EMISSAO) = @mesPost
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                )
+                SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE, u.CUSTO_REAL
+                FROM [dbo].[TB_SAVING_META] m
+                LEFT JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
+                LEFT JOIN UltimaNFPost u ON u.CODIGO = m.CODIGO AND u.rn = 1
+                WHERE m.ANO_MES = @anoMes
+                ORDER BY cp.DESCRICAO
+            `);
+
+        const itens = result.recordset.map(r => {
+            const custoBase = r.CUSTO_BASE != null ? Number(r.CUSTO_BASE) : null;
+            const metaPct = Number(r.META_PCT);
+            const custoReal = r.CUSTO_REAL != null ? Number(r.CUSTO_REAL) : null;
+            const savingPlanejado = (custoBase != null)
+                ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
+            const savingRealizado = (custoBase != null && custoReal != null)
+                ? +(custoBase - custoReal).toFixed(4) : null;
+            const atingimentoPct = (savingPlanejado && savingRealizado != null)
+                ? +(savingRealizado / savingPlanejado * 100).toFixed(2) : null;
+            return {
+                codigo: r.CODIGO,
+                descricao: r.DESCRICAO,
+                metaPct, custoBase, custoReal,
+                savingPlanejado, savingRealizado, atingimentoPct
+            };
+        });
+
+        const totais = itens.reduce((acc, it) => {
+            if (it.savingPlanejado != null) acc.planejado += it.savingPlanejado;
+            if (it.savingRealizado != null) acc.realizado += it.savingRealizado;
+            return acc;
+        }, { planejado: 0, realizado: 0 });
+        totais.planejado = +totais.planejado.toFixed(4);
+        totais.realizado = +totais.realizado.toFixed(4);
+        totais.atingimentoPct = totais.planejado > 0
+            ? +(totais.realizado / totais.planejado * 100).toFixed(2) : null;
+
+        return res.status(200).json({
+            anoMes,
+            anoMesComparacao: `${anoPosterior}-${String(mesPosterior).padStart(2, "0")}`,
+            itens, totais
+        });
+    } catch (err) {
+        console.error("Erro savingIndicador:", err);
+        return res.status(500).json({ message: "Erro ao gerar indicador.", error: err.message });
+    }
+}
+
+async function savingSaveMeta(req, res) {
+    try {
+        const { codigo, anoMes, metaPct, custoBase, usuario } = req.body || {};
+        if (!codigo || !anoMes || metaPct === undefined || metaPct === null) {
+            return res.status(400).json({ message: "Campos obrigatórios: codigo, anoMes, metaPct." });
+        }
+        if (!/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "anoMes deve estar no formato YYYY-MM." });
+        }
+        const pctNum = Number(metaPct);
+        if (!Number.isFinite(pctNum) || pctNum < 0 || pctNum > 100) {
+            return res.status(400).json({ message: "metaPct deve ser número entre 0 e 100." });
+        }
+        const pool = await getConnection();
+        await savingUpsertMeta(pool.request(), { codigo, anoMes, metaPct: pctNum, custoBase, usuario });
+        return res.status(200).json({ message: "Meta salva.", codigo, anoMes, metaPct: pctNum });
+    } catch (err) {
+        console.error("Erro savingSaveMeta:", err);
+        return res.status(500).json({ message: "Erro ao salvar meta.", error: err.message });
+    }
+}
+
+async function savingSaveMetasBatch(req, res) {
+    const { itens, usuario } = req.body || {};
+    if (!Array.isArray(itens) || itens.length === 0) {
+        return res.status(400).json({ message: "Lista 'itens' vazia ou inválida." });
+    }
+    const pool = await getConnection();
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        let salvos = 0, removidos = 0;
+        for (const it of itens) {
+            const { codigo, anoMes, metaPct, custoBase } = it;
+            if (!codigo || !anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) continue;
+
+            if (metaPct === null || metaPct === undefined || metaPct === "" || Number(metaPct) <= 0) {
+                await new sql.Request(transaction)
+                    .input("codigo", sql.NVarChar(50), String(codigo))
+                    .input("anoMes", sql.Char(7), anoMes)
+                    .query(`DELETE FROM [dbo].[TB_SAVING_META] WHERE CODIGO = @codigo AND ANO_MES = @anoMes`);
+                removidos++;
+                continue;
+            }
+
+            const pctNum = Number(metaPct);
+            if (!Number.isFinite(pctNum) || pctNum < 0 || pctNum > 100) continue;
+
+            await savingUpsertMeta(new sql.Request(transaction), {
+                codigo, anoMes, metaPct: pctNum, custoBase, usuario
+            });
+            salvos++;
+        }
+        await transaction.commit();
+        return res.status(200).json({ message: "Metas processadas.", salvos, removidos });
+    } catch (err) {
+        try { await transaction.rollback(); } catch (_) {}
+        console.error("Erro savingSaveMetasBatch:", err);
+        return res.status(500).json({ message: "Erro ao salvar metas.", error: err.message });
+    }
+}
+
+async function savingDeleteMeta(req, res) {
+    try {
+        const { codigo, anoMes } = req.query;
+        if (!codigo || !anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "Parâmetros 'codigo' e 'anoMes' (YYYY-MM) obrigatórios." });
+        }
+        const pool = await getConnection();
+        await pool.request()
+            .input("codigo", sql.NVarChar(50), String(codigo))
+            .input("anoMes", sql.Char(7), anoMes)
+            .query(`DELETE FROM [dbo].[TB_SAVING_META] WHERE CODIGO = @codigo AND ANO_MES = @anoMes`);
+        return res.status(200).json({ message: "Meta removida.", codigo, anoMes });
+    } catch (err) {
+        console.error("Erro savingDeleteMeta:", err);
+        return res.status(500).json({ message: "Erro ao remover meta.", error: err.message });
+    }
+}
+
+async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, usuario }) {
+    request
+        .input("codigo", sql.NVarChar(50), String(codigo))
+        .input("anoMes", sql.Char(7), anoMes)
+        .input("metaPct", sql.Decimal(5, 2), Number(metaPct))
+        .input("custoBase", sql.Decimal(18, 6), custoBase != null ? Number(custoBase) : null)
+        .input("usuario", sql.NVarChar(100), usuario || null);
+
+    await request.query(`
+        MERGE [dbo].[TB_SAVING_META] AS target
+        USING (SELECT @codigo AS CODIGO, @anoMes AS ANO_MES) AS src
+           ON target.CODIGO = src.CODIGO AND target.ANO_MES = src.ANO_MES
+        WHEN MATCHED THEN
+            UPDATE SET META_PCT = @metaPct,
+                       CUSTO_BASE = @custoBase,
+                       USUARIO = @usuario,
+                       DT_ATUALIZACAO = GETDATE()
+        WHEN NOT MATCHED THEN
+            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, USUARIO)
+            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @usuario);
+    `);
+}
+
+function savingGerarMeses(dtIni, dtFim) {
+    const result = [];
+    const start = new Date(dtIni + "T00:00:00");
+    const end = new Date(dtFim + "T00:00:00");
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const stop = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (cursor <= stop) {
+        const y = cursor.getFullYear();
+        const m = cursor.getMonth() + 1;
+        result.push({
+            anoMes: `${y}-${String(m).padStart(2, "0")}`,
+            label: cursor.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "")
+        });
+        cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return result;
 }

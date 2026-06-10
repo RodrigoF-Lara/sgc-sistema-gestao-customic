@@ -45,7 +45,7 @@ requisicoes/
 │
 ├── api/
 │   ├── shared/                 ← auth, cadastros, config, fundos, notificacoes, listaTabelas
-│   └── embalagem/              ← requisicao, inventory, lancamentoNF, statusNF, inventarioCiclico, relatorios, saving
+│   └── embalagem/              ← requisicao, inventory, lancamentoNF, statusNF, inventarioCiclico, relatorios (inclui saving via `?acao=saving*`)
 │
 └── sql/
     ├── shared/

@@ -45,8 +45,7 @@ modules/embalagem/
 | `/api/embalagem/lancamentoNF` | GET, POST, PUT | [api/embalagem/lancamentoNF.js](../../api/embalagem/lancamentoNF.js) | Lançamento de notas fiscais |
 | `/api/embalagem/statusNF` | GET, POST | [api/embalagem/statusNF.js](../../api/embalagem/statusNF.js) | Status e bipagem de NFs |
 | `/api/embalagem/inventarioCiclico` | GET, POST, PUT | [api/embalagem/inventarioCiclico.js](../../api/embalagem/inventarioCiclico.js) | Logs e blocos de inventário |
-| `/api/embalagem/relatorios` | GET | [api/embalagem/relatorios.js](../../api/embalagem/relatorios.js) | Relatórios consolidados |
-| `/api/embalagem/saving` | GET, POST, DELETE | [api/embalagem/saving.js](../../api/embalagem/saving.js) | Saving de compras: listagem por período, metas (upsert/batch/delete) e indicador planejado×realizado |
+| `/api/embalagem/relatorios` | GET, POST, DELETE | [api/embalagem/relatorios.js](../../api/embalagem/relatorios.js) | Relatórios consolidados + Saving de Compras (`?acao=savingList`, `savingIndicador`, `savingSaveMetasBatch`, `savingSaveMeta`, `savingDeleteMeta`) |
 
 ### Compartilhados (`/api/shared/`)
 

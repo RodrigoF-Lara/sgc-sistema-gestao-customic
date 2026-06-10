@@ -125,8 +125,7 @@ requisicoes/
 │   │   ├── statusNF.js
 │   │   ├── inventarioCiclico.js
 │   │   ├── config.js
-│   │   ├── saving.js
-│   │   └── relatorios.js
+│   │   └── relatorios.js   ← inclui Saving de Compras (acao=saving*)
 │   └── producao/
 │       └── (vazio inicialmente)
 │
