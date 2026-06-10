@@ -986,8 +986,10 @@ async function relatorioMovimentoDiario(req, res) {
 //   POST ?acao=savingSaveMetasBatch       body: { itens: [...], usuario }
 //   DELETE ?acao=savingDeleteMeta&codigo=...&anoMes=YYYY-MM
 //
-// Regra: custoBase = custo da última NF do mês-âncora (último mês do período);
+// Regra: custoBase (por item) = custo da última NF dentro do período (mês mais
+//        recente com NF do item). Cada item pode ter um anoMesBase diferente.
 //        savingValor = custoBase * metaPct/100; custoTarget = custoBase - savingValor.
+//        A meta é salva em TB_SAVING_META com ANO_MES = anoMesBase do item.
 // =====================================================================
 
 async function savingList(req, res) {
@@ -998,7 +1000,7 @@ async function savingList(req, res) {
         }
         const pool = await getConnection();
         const dFim = new Date(dtFim + "T00:00:00");
-        const anoMesAncora = `${dFim.getFullYear()}-${String(dFim.getMonth() + 1).padStart(2, "0")}`;
+        const anoMesUltimoPeriodo = `${dFim.getFullYear()}-${String(dFim.getMonth() + 1).padStart(2, "0")}`;
 
         const itensResult = await pool.request().query(`
             SELECT CODIGO, DESCRICAO
@@ -1008,7 +1010,11 @@ async function savingList(req, res) {
         `);
         const itens = itensResult.recordset;
         if (itens.length === 0) {
-            return res.status(200).json({ anoMesAncora, itens: [], meses: savingGerarMeses(dtIni, dtFim) });
+            return res.status(200).json({
+                anoMesUltimoPeriodo,
+                itens: [],
+                meses: savingGerarMeses(dtIni, dtFim)
+            });
         }
 
         const custosResult = await pool.request()
@@ -1040,25 +1046,41 @@ async function savingList(req, res) {
                 ORDER BY CODIGO, ANO, MES
             `);
 
-        const metasResult = await pool.request()
-            .input("anoMes", sql.Char(7), anoMesAncora)
-            .query(`
-                SELECT CODIGO, ANO_MES, META_PCT, CUSTO_BASE, USUARIO, DT_CADASTRO, DT_ATUALIZACAO
-                FROM [dbo].[TB_SAVING_META]
-                WHERE ANO_MES = @anoMes
-            `);
-
+        // Indexa custos por (codigo, anoMes) e determina anoMesBase por item
         const custosPorItem = {};
+        const anoMesBasePorItem = {};
         for (const row of custosResult.recordset) {
             const key = String(row.CODIGO);
             const ym = `${row.ANO}-${String(row.MES).padStart(2, "0")}`;
             if (!custosPorItem[key]) custosPorItem[key] = {};
             custosPorItem[key][ym] = Number(row.CUSTO);
+            // ORDER BY garante que o último processado é o mais recente
+            anoMesBasePorItem[key] = ym;
         }
 
+        // Carrega TODAS as metas dos itens curva A no período (qualquer anoMes
+        // entre dtIni e dtFim) — não restringe por mês para permitir granularidade
+        // por item (cada item pode ter um anoMesBase diferente).
+        const mesesPeriodo = savingGerarMeses(dtIni, dtFim).map(m => m.anoMes);
+        let metasResult = { recordset: [] };
+        if (mesesPeriodo.length > 0) {
+            const mesesIn = mesesPeriodo.map(m => `'${m}'`).join(",");
+            metasResult = await pool.request().query(`
+                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.USUARIO,
+                       m.DT_CADASTRO, m.DT_ATUALIZACAO
+                FROM [dbo].[TB_SAVING_META] m
+                INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
+                WHERE cp.CURVA_A_B_C = 'A' AND cp.ATIVO = 1
+                  AND m.ANO_MES IN (${mesesIn})
+            `);
+        }
+
+        // Indexa metas: { codigo: { anoMes: meta } }
         const metasPorItem = {};
         for (const m of metasResult.recordset) {
-            metasPorItem[String(m.CODIGO)] = {
+            const cod = String(m.CODIGO);
+            if (!metasPorItem[cod]) metasPorItem[cod] = {};
+            metasPorItem[cod][m.ANO_MES] = {
                 metaPct: Number(m.META_PCT),
                 custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null,
                 usuario: m.USUARIO,
@@ -1071,8 +1093,11 @@ async function savingList(req, res) {
         const resposta = itens.map(it => {
             const cod = String(it.CODIGO);
             const custos = custosPorItem[cod] || {};
-            const custoBase = custos[anoMesAncora] != null ? custos[anoMesAncora] : null;
-            const meta = metasPorItem[cod] || null;
+            const anoMesBase = anoMesBasePorItem[cod] || null;
+            const custoBase = anoMesBase != null ? custos[anoMesBase] : null;
+            // Meta correspondente ao mês-base do item
+            const metasDoItem = metasPorItem[cod] || {};
+            const meta = anoMesBase ? (metasDoItem[anoMesBase] || null) : null;
             const metaPct = meta ? meta.metaPct : null;
             const savingValor = (custoBase != null && metaPct != null)
                 ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
@@ -1081,6 +1106,7 @@ async function savingList(req, res) {
             return {
                 codigo: cod,
                 descricao: it.DESCRICAO,
+                anoMesBase,
                 custoBase,
                 metaPct,
                 savingValor,
@@ -1089,7 +1115,7 @@ async function savingList(req, res) {
             };
         });
 
-        return res.status(200).json({ anoMesAncora, meses, itens: resposta });
+        return res.status(200).json({ anoMesUltimoPeriodo, meses, itens: resposta });
     } catch (err) {
         console.error("Erro savingList:", err);
         return res.status(500).json({ message: "Erro ao listar saving.", error: err.message });

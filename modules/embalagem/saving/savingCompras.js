@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Estado em memória
     let estadoAtual = {
-        anoMesAncora: null,
+        anoMesUltimoPeriodo: null,
         meses: [],
         itens: [],       // itens originais
         alteracoes: {}   // { codigo: novaMeta }
@@ -104,9 +104,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             const data = await resp.json();
 
-            estadoAtual.anoMesAncora = data.anoMesAncora;
-            estadoAtual.meses        = data.meses;
-            estadoAtual.itens        = data.itens;
+            estadoAtual.anoMesUltimoPeriodo = data.anoMesUltimoPeriodo;
+            estadoAtual.meses               = data.meses;
+            estadoAtual.itens               = data.itens;
 
             atualizarAncoraInfo();
             renderizarTabela();
@@ -118,43 +118,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function atualizarAncoraInfo() {
-        const ym = estadoAtual.anoMesAncora;
-        const label = labelMes(ym);
+        const itensComBase = estadoAtual.itens.filter(i => i.anoMesBase).length;
         ancoraInfo.innerHTML = `
-            Mês-âncora da meta: <strong>${label}</strong>.
-            Custo Base = última NF lançada nesse mês.
+            <strong>Custo Base por item</strong> = última NF do item dentro do período (marcada com ★).
             Meta% aplicada sobre o Custo Base define o <strong>Saving R$/un</strong> e o <strong>Custo Target</strong>.
+            Cada meta é salva no mês-base do seu item.
+            <em>${itensComBase}/${estadoAtual.itens.length} itens com NF no período.</em>
         `;
     }
 
     function renderizarTabela() {
         const meses = estadoAtual.meses;
 
-        // Cabeçalho
+        // Cabeçalho (sem ★ fixo — o destaque é por linha)
         const ths = [
             `<th class="col-item">Item</th>`,
+            `<th>Mês Base</th>`,
             `<th>Meta %</th>`,
             `<th>Saving R$/un</th>`,
             `<th>Custo Target</th>`,
-            ...meses.map(m => {
-                const isAncora = m.anoMes === estadoAtual.anoMesAncora;
-                return `<th class="${isAncora ? "col-base" : ""}" title="${m.anoMes}">${m.label}${isAncora ? " ★" : ""}</th>`;
-            })
+            ...meses.map(m => `<th title="${m.anoMes}">${m.label}</th>`)
         ];
         theadSaving.innerHTML = `<tr>${ths.join("")}</tr>`;
 
         // Corpo
         if (estadoAtual.itens.length === 0) {
-            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${4 + meses.length}">Nenhum item curva A encontrado.</td></tr>`;
+            tbodySaving.innerHTML = `<tr><td class="empty" colspan="${5 + meses.length}">Nenhum item curva A encontrado.</td></tr>`;
             return;
         }
 
         tbodySaving.innerHTML = estadoAtual.itens.map(it => {
             const custosCells = meses.map(m => {
                 const v = it.custos[m.anoMes];
-                const isAncora = m.anoMes === estadoAtual.anoMesAncora;
+                const isAncora = m.anoMes === it.anoMesBase;
                 const cls = `mes-cell${isAncora ? " col-base" : ""}`;
-                return `<td class="${cls}">${v != null ? formatBRL(v) : '<span class="muted">—</span>'}</td>`;
+                const star = isAncora ? ' <span title="Mês-base deste item" style="color:#1976d2;">★</span>' : '';
+                return `<td class="${cls}">${v != null ? formatBRL(v) + star : '<span class="muted">—</span>'}</td>`;
             }).join("");
 
             const metaVal = it.metaPct != null ? Number(it.metaPct).toFixed(2) : "";
@@ -162,17 +161,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? `<span class="neg">-${formatBRL(it.savingValor)}</span>` : '<span class="muted">—</span>';
             const targetTxt = it.custoTarget != null
                 ? `<span class="col-target">${formatBRL(it.custoTarget)}</span>` : '<span class="muted">—</span>';
+            const baseTxt = it.anoMesBase
+                ? `<strong style="color:#1976d2;">${labelMes(it.anoMesBase)}</strong>`
+                : '<span class="muted">sem NF</span>';
+
+            const semBase = it.anoMesBase == null;
+            const inputAttrs = semBase ? 'disabled title="Sem NF no período — não é possível cadastrar meta"' : '';
 
             return `
-                <tr data-codigo="${it.codigo}">
+                <tr data-codigo="${it.codigo}" data-anomesbase="${it.anoMesBase || ''}">
                     <td class="col-item">
                         <strong>${escapeHtml(it.codigo)}</strong>
                         <span style="color:#666;font-weight:400;"> ${escapeHtml(it.descricao || "")}</span>
                     </td>
+                    <td>${baseTxt}</td>
                     <td class="col-meta">
                         <input type="number" step="0.01" min="0" max="100"
                                class="input-meta" value="${metaVal}"
-                               placeholder="0,00" />
+                               placeholder="0,00" ${inputAttrs} />
                     </td>
                     <td class="cell-saving">${savingTxt}</td>
                     <td class="cell-target">${targetTxt}</td>
@@ -260,15 +266,23 @@ document.addEventListener("DOMContentLoaded", () => {
         if (codigosAlterados.length === 0) return;
 
         const usuario = localStorage.getItem("userName") || "desconhecido";
-        const itens = codigosAlterados.map(cod => {
-            const it = estadoAtual.itens.find(i => i.codigo === cod);
-            return {
-                codigo: cod,
-                anoMes: estadoAtual.anoMesAncora,
-                metaPct: estadoAtual.alteracoes[cod],
-                custoBase: it ? it.custoBase : null
-            };
-        });
+        const itens = codigosAlterados
+            .map(cod => {
+                const it = estadoAtual.itens.find(i => i.codigo === cod);
+                if (!it || !it.anoMesBase) return null; // sem mês-base não há onde salvar
+                return {
+                    codigo: cod,
+                    anoMes: it.anoMesBase,
+                    metaPct: estadoAtual.alteracoes[cod],
+                    custoBase: it.custoBase
+                };
+            })
+            .filter(Boolean);
+
+        if (itens.length === 0) {
+            alert("Nenhum item alterado possui mês-base (NF no período). Nada a salvar.");
+            return;
+        }
 
         btnSalvarMetas.disabled = true;
         btnSalvarMetas.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Salvando...`;

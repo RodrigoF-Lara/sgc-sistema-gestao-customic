@@ -154,8 +154,9 @@ flowchart LR
 **Regras:**
 - **Itens elegíveis:** `CAD_PROD.CURVA_A_B_C = 'A' AND ATIVO = 1`
 - **Custo por mês:** última NF do mês em `NF_PRODUTOS.PROD_CUSTO_FISCAL_MEDIO_NOVO`, ordenada por `NF_CABECALHO.CAB_DT_EMISSAO DESC`.
-- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES)` — granularidade mensal, permite mudar mês a mês.
-- **Saving Realizado:** `CustoBase − CustoUltimaNF(mêsSeguinte)`.
+- **Mês-base (âncora) por item:** mês mais recente do item com NF dentro do período (cada item pode ter um mês diferente — itens sem compras nos meses finais usam o último mês em que houve NF).
+- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES)` — granularidade mensal, salva no mês-base de cada item.
+- **Saving Realizado:** `CustoBase − CustoUltimaNF(mêsSeguinte ao mês-base)`.
 - **Atingimento %:** `SavingRealizado / SavingPlanejado × 100`.
 
 ---
