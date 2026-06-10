@@ -447,13 +447,13 @@ document.addEventListener("DOMContentLoaded", () => {
             renderizarResumoMeses();
         } catch (err) {
             console.error("Erro ao carregar resumo:", err);
-            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="7" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
+            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="8" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
         }
     }
 
     function renderizarResumoMeses() {
         if (!resumoMesesCache || resumoMesesCache.length === 0) {
-            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="7">Nenhuma meta cadastrada ainda.</td></tr>`;
+            tbodyResumoMeses.innerHTML = `<tr><td class="empty" colspan="8">Nenhuma meta cadastrada ainda.</td></tr>`;
             return;
         }
         tbodyResumoMeses.innerHTML = resumoMesesCache.map(m => {
@@ -463,6 +463,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 realTxt = `<span class="neg">-${formatBRL(Math.abs(m.realizado))}</span>`;
             } else {
                 realTxt = `<span class="pos">+${formatBRL(Math.abs(m.realizado))}</span>`;
+            }
+            let realMesTxt;
+            const rMes = Number(m.realizadoMes) || 0;
+            const qMes = Number(m.qtdCompradaMes) || 0;
+            if (qMes <= 0) {
+                realMesTxt = '<span class="muted">sem compra</span>';
+            } else if (rMes >= 0) {
+                realMesTxt = `<span class="neg" title="Qtd comprada no mês: ${formatNum(qMes)}">-${formatBRL(rMes)}</span>`;
+            } else {
+                realMesTxt = `<span class="pos" title="Qtd comprada no mês: ${formatNum(qMes)}">+${formatBRL(Math.abs(rMes))}</span>`;
             }
             let proj12Txt;
             if (m.projetado12m > 0) {
@@ -483,6 +493,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${m.qtdComNf} / ${m.qtdMetas}</td>
                     <td>${planTxt}</td>
                     <td>${realTxt}</td>
+                    <td>${realMesTxt}</td>
                     <td>${proj12Txt}</td>
                     <td>${atingTxt}</td>
                 </tr>
@@ -511,7 +522,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const detRow = document.createElement("tr");
         detRow.className = "detalhes-row";
         detRow.dataset.anomes = ym;
-        detRow.innerHTML = `<td colspan="7"><div class="detalhes-inner"><i class="fa fa-spinner fa-spin"></i> Carregando itens de ${labelMes(ym)}...</div></td>`;
+        detRow.innerHTML = `<td colspan="8"><div class="detalhes-inner"><i class="fa fa-spinner fa-spin"></i> Carregando itens de ${labelMes(ym)}...</div></td>`;
         tr.after(detRow);
 
         try {
@@ -547,6 +558,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 const sinal = it.savingRealizado >= 0 ? "-" : "+";
                 realTxt = `<span class="${cls}">${sinal}${formatBRL(Math.abs(it.savingRealizado))}</span>`;
             }
+            const qtdMes = Number(it.qtdCompradaMes) || 0;
+            const qtdMesTxt = qtdMes > 0 ? formatNum(qtdMes) : '<span class="muted">0</span>';
+            let realMesTxt = '<span class="muted">—</span>';
+            if (it.savingRealizadoMes != null && qtdMes > 0) {
+                const cls = it.savingRealizadoMes >= 0 ? "neg" : "pos";
+                const sinal = it.savingRealizadoMes >= 0 ? "-" : "+";
+                realMesTxt = `<span class="${cls}" title="${formatBRL(Math.abs(it.savingRealizado))}/un × ${formatNum(qtdMes)} un">${sinal}${formatBRL(Math.abs(it.savingRealizadoMes))}</span>`;
+            }
             const consumoTxt = (it.consumoMensal != null && Number(it.consumoMensal) > 0)
                 ? formatNum(it.consumoMensal) : '<span class="muted">—</span>';
             let proj12Txt = '<span class="muted">—</span>';
@@ -570,6 +589,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     <td>${it.custoReal != null ? formatBRL(it.custoReal) : '<span class="muted">sem NF</span>'}</td>
                     <td>${planTxt}</td>
                     <td>${realTxt}</td>
+                    <td>${qtdMesTxt}</td>
+                    <td>${realMesTxt}</td>
                     <td>${consumoTxt}</td>
                     <td>${proj12Txt}</td>
                     <td>${real12Txt}</td>
@@ -587,6 +608,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         <th>Custo Real (${labelMes(ym)})</th>
                         <th>Saving Planejado /un</th>
                         <th>Saving Realizado /un</th>
+                        <th title="Quantidade comprada DENTRO do mês da meta">Qtd Comprada (${labelMes(ym)})</th>
+                        <th title="Saving realizado /un × qtd comprada no mês — ganho REAL deste mês">Realizado Mês R$</th>
                         <th title="Consumo médio mensal (últimos 365 dias)">Consumo /mês</th>
                         <th title="Saving R$/un × consumo × 12">Projetado 12m</th>
                         <th title="Realizado R$/un × consumo × 12">Realizado 12m</th>
