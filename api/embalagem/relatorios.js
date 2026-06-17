@@ -1293,9 +1293,70 @@ async function savingIndicador(req, res) {
                 metaPct, custoBase, custoReal,
                 consumoMensal, savingProjetado12m, savingRealizado12m,
                 qtdCompradaMes, savingRealizadoMes,
-                savingPlanejado, savingRealizado, atingimentoPct
+                savingPlanejado, savingRealizado, atingimentoPct,
+                qtdComentarios: 0,
+                ultimoComentario: null,
+                ultimoComentUser: null,
+                ultimoComentDt: null
             };
         });
+
+        // Anexa contagem + último comentário (resiliente caso TB_SAVING_COMENTARIO ainda não exista)
+        try {
+            const comentResult = await pool.request()
+                .input("anoMes", sql.Char(7), anoMes)
+                .query(`
+                    IF OBJECT_ID(N'dbo.TB_SAVING_COMENTARIO', N'U') IS NULL
+                    BEGIN
+                        SELECT TOP 0
+                            CAST(NULL AS NVARCHAR(50)) AS CODIGO,
+                            CAST(0 AS INT) AS QTD,
+                            CAST(NULL AS NVARCHAR(MAX)) AS ULTIMO_COMENTARIO,
+                            CAST(NULL AS NVARCHAR(100)) AS ULTIMO_USUARIO,
+                            CAST(NULL AS DATETIME) AS ULTIMO_DT;
+                        RETURN;
+                    END
+
+                    ;WITH UltimoComent AS (
+                        SELECT CODIGO, COMENTARIO, USUARIO, DT_CADASTRO,
+                               ROW_NUMBER() OVER (PARTITION BY CODIGO ORDER BY DT_CADASTRO DESC, ID DESC) AS rn
+                        FROM [dbo].[TB_SAVING_COMENTARIO]
+                        WHERE ANO_MES = @anoMes
+                    ),
+                    Cont AS (
+                        SELECT CODIGO, COUNT(*) AS QTD
+                        FROM [dbo].[TB_SAVING_COMENTARIO]
+                        WHERE ANO_MES = @anoMes
+                        GROUP BY CODIGO
+                    )
+                    SELECT c.CODIGO, c.QTD,
+                           uc.COMENTARIO AS ULTIMO_COMENTARIO,
+                           uc.USUARIO    AS ULTIMO_USUARIO,
+                           uc.DT_CADASTRO AS ULTIMO_DT
+                    FROM Cont c
+                    LEFT JOIN UltimoComent uc ON uc.CODIGO = c.CODIGO AND uc.rn = 1
+                `);
+            const mapComent = {};
+            for (const r of comentResult.recordset) {
+                mapComent[String(r.CODIGO)] = {
+                    qtd: Number(r.QTD) || 0,
+                    ultimo: r.ULTIMO_COMENTARIO != null ? String(r.ULTIMO_COMENTARIO) : null,
+                    user:   r.ULTIMO_USUARIO    != null ? String(r.ULTIMO_USUARIO)    : null,
+                    dt:     r.ULTIMO_DT
+                };
+            }
+            for (const it of itens) {
+                const c = mapComent[String(it.codigo)];
+                if (c) {
+                    it.qtdComentarios   = c.qtd;
+                    it.ultimoComentario = c.ultimo;
+                    it.ultimoComentUser = c.user;
+                    it.ultimoComentDt   = c.dt;
+                }
+            }
+        } catch (errComent) {
+            console.warn("Aviso savingIndicador: TB_SAVING_COMENTARIO indisponível:", errComent.message);
+        }
 
         const totais = itens.reduce((acc, it) => {
             if (it.savingPlanejado != null) acc.planejado += it.savingPlanejado;

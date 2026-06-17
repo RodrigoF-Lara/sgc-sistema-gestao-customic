@@ -416,19 +416,25 @@ document.addEventListener("DOMContentLoaded", () => {
         e.stopPropagation();
         const btn = e.currentTarget;
         const codigo = btn.dataset.comentCodigo;
-        const item = estadoAtual.itens.find(i => i.codigo === codigo);
-        if (!item) return;
-        abrirModalComentarios(item);
+        // Permite chamar de qualquer lugar (planejamento ou indicador)
+        const anoMesBtn = btn.dataset.comentAnomes || estadoAtual.anoMesMeta;
+        const descBtn   = btn.dataset.comentDesc || "";
+        let descricao = descBtn;
+        if (!descricao) {
+            const item = estadoAtual.itens.find(i => i.codigo === codigo);
+            if (item) descricao = item.descricao || "";
+        }
+        abrirModalComentarios({ codigo, descricao, anoMes: anoMesBtn });
     }
 
     function abrirModalComentarios(item) {
         modalComentEstado.codigo    = item.codigo;
-        modalComentEstado.anoMes    = estadoAtual.anoMesMeta;
+        modalComentEstado.anoMes    = item.anoMes || estadoAtual.anoMesMeta;
         modalComentEstado.descricao = item.descricao || "";
         modalComentEstado.itens     = [];
 
         modalTitulo.textContent = `— ${item.codigo}`;
-        modalSub.innerHTML = `${escapeHtml(item.descricao || "")} <span style="color:#1976d2;">• ${labelMes(estadoAtual.anoMesMeta)}</span>`;
+        modalSub.innerHTML = `${escapeHtml(item.descricao || "")} <span style="color:#1976d2;">• ${labelMes(modalComentEstado.anoMes)}</span>`;
         modalTexto.value = "";
         modalBtnAdd.disabled = true;
         modalLista.innerHTML = `<div class="modal-coment-vazio"><i class="fa fa-spinner fa-spin"></i> Carregando...</div>`;
@@ -546,19 +552,76 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function atualizarItemAposComentario(codigo, delta, novoUltimo) {
-        const it = estadoAtual.itens.find(i => i.codigo === codigo);
-        if (!it) return;
-        it.qtdComentarios = Math.max(0, (Number(it.qtdComentarios) || 0) + delta);
-        if (novoUltimo) {
-            it.ultimoComentario = novoUltimo.comentario || null;
-            it.ultimoComentUser = novoUltimo.usuario || null;
-            it.ultimoComentDt   = novoUltimo.dtCadastro || null;
-        } else if (it.qtdComentarios === 0) {
-            it.ultimoComentario = null;
-            it.ultimoComentUser = null;
-            it.ultimoComentDt   = null;
+        const anoMesAlvo = modalComentEstado.anoMes;
+        // 1) Estado da aba Planejamento (só se o anoMes bater)
+        if (anoMesAlvo === estadoAtual.anoMesMeta) {
+            const it = estadoAtual.itens.find(i => i.codigo === codigo);
+            if (it) {
+                it.qtdComentarios = Math.max(0, (Number(it.qtdComentarios) || 0) + delta);
+                if (novoUltimo) {
+                    it.ultimoComentario = novoUltimo.comentario || null;
+                    it.ultimoComentUser = novoUltimo.usuario || null;
+                    it.ultimoComentDt   = novoUltimo.dtCadastro || null;
+                } else if (it.qtdComentarios === 0) {
+                    it.ultimoComentario = null;
+                    it.ultimoComentUser = null;
+                    it.ultimoComentDt   = null;
+                }
+                renderizarTabela();
+            }
         }
-        renderizarTabela();
+        // 2) Cache do indicador para esse anoMes
+        if (detalhesCache[anoMesAlvo] && Array.isArray(detalhesCache[anoMesAlvo].itens)) {
+            const it = detalhesCache[anoMesAlvo].itens.find(i => i.codigo === codigo);
+            if (it) {
+                it.qtdComentarios = Math.max(0, (Number(it.qtdComentarios) || 0) + delta);
+                if (novoUltimo) {
+                    it.ultimoComentario = novoUltimo.comentario || null;
+                    it.ultimoComentUser = novoUltimo.usuario || null;
+                    it.ultimoComentDt   = novoUltimo.dtCadastro || null;
+                } else if (it.qtdComentarios === 0) {
+                    it.ultimoComentario = null;
+                    it.ultimoComentUser = null;
+                    it.ultimoComentDt   = null;
+                }
+            }
+        }
+        // 3) Atualiza todos os botões .btn-coment no DOM que correspondam a (codigo, anoMes)
+        atualizarBotoesComentariosNoDom(codigo, anoMesAlvo, modalComentEstado.itens.length, novoUltimo);
+    }
+
+    function atualizarBotoesComentariosNoDom(codigo, anoMes, qtd, ultimo) {
+        const seletor = `.btn-coment[data-coment-codigo="${cssEscape(codigo)}"]`;
+        document.querySelectorAll(seletor).forEach(btn => {
+            const btnAnoMes = btn.dataset.comentAnomes || estadoAtual.anoMesMeta;
+            if (btnAnoMes !== anoMes) return;
+            const temComent = qtd > 0;
+            btn.classList.toggle("tem-coment", temComent);
+            const ultimoTxt = ultimo ? (ultimo.comentario || "") : "";
+            btn.title = temComent
+                ? `${qtd} comentário(s)\nÚltimo: ${(ultimoTxt || "").slice(0, 200)}`
+                : 'Adicionar comentário';
+            const icon = btn.querySelector("i");
+            if (icon) {
+                icon.className = temComent ? 'fa-solid fa-comment-dots' : 'fa-regular fa-comment';
+            }
+            let badge = btn.querySelector(".badge");
+            if (temComent && qtd > 1) {
+                if (!badge) {
+                    badge = document.createElement("span");
+                    badge.className = "badge";
+                    btn.appendChild(badge);
+                }
+                badge.textContent = String(qtd);
+            } else if (badge) {
+                badge.remove();
+            }
+        });
+    }
+
+    function cssEscape(s) {
+        if (window.CSS && CSS.escape) return CSS.escape(s);
+        return String(s).replace(/[^a-zA-Z0-9_-]/g, c => `\\${c}`);
     }
 
     function formatarDataHora(v) {
@@ -805,9 +868,30 @@ document.addEventListener("DOMContentLoaded", () => {
             const atingTxt = it.atingimentoPct != null
                 ? `<span class="${it.atingimentoPct >= 100 ? "pos" : it.atingimentoPct >= 50 ? "" : "neg"}">${it.atingimentoPct.toFixed(1)}%</span>`
                 : '<span class="muted">—</span>';
+
+            // Botão de comentário (mesmo padrão da aba planejamento)
+            const qtdComent  = Number(it.qtdComentarios) || 0;
+            const temComent  = qtdComent > 0;
+            const ultimoTxt  = it.ultimoComentario ? String(it.ultimoComentario) : "";
+            const btnCls     = ['btn-coment'];
+            if (temComent) btnCls.push('tem-coment');
+            const btnIcon    = temComent ? 'fa-solid fa-comment-dots' : 'fa-regular fa-comment';
+            const btnTitle   = temComent
+                ? `${qtdComent} comentário(s)\nÚltimo: ${escapeHtml(ultimoTxt).slice(0, 200)}`
+                : 'Adicionar comentário';
+            const badgeHtml  = temComent && qtdComent > 1 ? `<span class="badge">${qtdComent}</span>` : '';
+            const btnComentHtml = `
+                <button type="button" class="${btnCls.join(' ')}"
+                        data-coment-codigo="${escapeHtml(it.codigo)}"
+                        data-coment-anomes="${escapeHtml(ym)}"
+                        data-coment-desc="${escapeHtml(it.descricao || "")}"
+                        title="${btnTitle}">
+                    <i class="${btnIcon}"></i>${badgeHtml}
+                </button>`;
+
             return `
                 <tr>
-                    <td class="col-item"><strong>${escapeHtml(it.codigo)}</strong> <span style="color:#666;font-weight:400;">${escapeHtml(it.descricao || "")}</span></td>
+                    <td class="col-item">${btnComentHtml}<strong>${escapeHtml(it.codigo)}</strong> <span style="color:#666;font-weight:400;">${escapeHtml(it.descricao || "")}</span></td>
                     <td>${it.metaPct.toFixed(2)}%</td>
                     <td>${it.custoBase != null ? formatBRL(it.custoBase) : '—'}</td>
                     <td>${it.custoReal != null ? formatBRL(it.custoReal) : '<span class="muted">sem NF</span>'}</td>
@@ -843,6 +927,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <tbody>${rows}</tbody>
             </table>
         `;
+        // Bind dos botões de comentário nas linhas de detalhe
+        detRow.querySelectorAll(".btn-coment").forEach(btn => {
+            btn.addEventListener("click", onComentarioClick);
+        });
     }
 
     // ----------------------- Utils -----------------------
