@@ -1215,12 +1215,16 @@ async function savingIndicador(req, res) {
         const pool = await getConnection();
         const [ano, mes] = anoMes.split("-").map(Number);
 
+        console.log(`[savingIndicador] Processando anoMes=${anoMes}, ano=${ano}, mes=${mes}`);
+
         // Custo Real = última NF lançada DENTRO do mês-meta
-        const result = await pool.request()
-            .input("anoMes", sql.Char(7), anoMes)
-            .input("ano", sql.Int, ano)
-            .input("mes", sql.Int, mes)
-            .query(`
+        let result;
+        try {
+            result = await pool.request()
+                .input("anoMes", sql.Char(7), anoMes)
+                .input("ano", sql.Int, ano)
+                .input("mes", sql.Int, mes)
+                .query(`
                 ;WITH UltimaNFMesMeta AS (
                     SELECT
                         p.PROD_COD_PROD AS CODIGO,
@@ -1268,6 +1272,17 @@ async function savingIndicador(req, res) {
                 WHERE m.ANO_MES = @anoMes
                 ORDER BY cp.DESCRICAO
             `);
+        } catch (queryErr) {
+            console.error("[savingIndicador] Erro na query principal:", queryErr.message);
+            console.error("Stack:", queryErr.stack);
+            return res.status(500).json({
+                message: "Erro na consulta SQL do indicador.",
+                error: queryErr.message,
+                details: queryErr.originalError ? queryErr.originalError.info : null
+            });
+        }
+
+        console.log(`[savingIndicador] Query retornou ${result.recordset.length} itens`);
 
         const itens = result.recordset.map(r => {
             const custoBase = r.CUSTO_BASE != null ? Number(r.CUSTO_BASE) : null;
@@ -1383,8 +1398,13 @@ async function savingIndicador(req, res) {
             itens, totais
         });
     } catch (err) {
-        console.error("Erro savingIndicador:", err);
-        return res.status(500).json({ message: "Erro ao gerar indicador.", error: err.message });
+        console.error("[savingIndicador] Erro geral:", err.message);
+        console.error("Stack completo:", err.stack);
+        return res.status(500).json({
+            message: "Erro ao gerar indicador.",
+            error: err.message,
+            stack: err.stack
+        });
     }
 }
 
