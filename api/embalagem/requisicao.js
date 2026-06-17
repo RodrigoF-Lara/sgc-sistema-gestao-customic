@@ -30,12 +30,13 @@ async function handleGet(req, res) {
                 I.*, 
                 P.DESCRICAO AS DESCRICAO_PRODUTO,
                 STUFF((
-                    SELECT ', ' + ISNULL(K2.ENDERECO, '-') + ' (ARM:' + ISNULL(CAST(K2.ARMAZEM AS VARCHAR), '-') + ')'
+                    SELECT DISTINCT ', ' + ISNULL(K2.ENDERECO, '-') + ' (ARM:' + ISNULL(CAST(K2.ARMAZEM AS VARCHAR), '-') + ')'
                     FROM [dbo].[KARDEX_2026_EMBALAGEM] K2
                     WHERE K2.CODIGO = I.CODIGO 
                       AND K2.SALDO > 0
                       AND K2.D_E_L_E_T_ = ''
                       AND K2.KARDEX = 2026
+                    ORDER BY K2.ENDERECO
                     FOR XML PATH('')
                 ), 1, 2, '') AS ENDERECOS
             FROM [dbo].[TB_REQ_ITEM] I 
