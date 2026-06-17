@@ -454,8 +454,8 @@ tbody tr:hover {
 }
 .status-pendente { background-color: var(--cor-alerta); }
 .status-parcial { background-color: #17a2b8; }
-.status-concluido, .status-concluÃ­do, .status-finalizado { background-color: var(--cor-sucesso); }
-.status-em-separaÃ§Ã£o { background-color: #6f42c1; }
+.status-concluido, .status-concluído, .status-finalizado { background-color: var(--cor-sucesso); }
+.status-em-separação { background-color: #6f42c1; }
 .status-separado { background-color: #fd7e14; }
 .status-aguarda-coleta { background-color: #007bff; }
 .prioridade-normal { background-color: #6c757d; }
@@ -803,27 +803,16 @@ tbody tr:hover {
     color: var(--cor-texto);
 }
 
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.85em;
-    text-transform: uppercase;
-}
+/* Definição de .status-badge movida para linha 450 para evitar duplicação */
 
 .status-novo {
     background-color: #cfe2ff;
     color: #084298;
 }
 
-.status-em_andamento {
+.status-em_andamento, .status-em-andamento {
     background-color: #fff3cd;
     color: #856404;
-}
-
-.status-finalizado {
-    background-color: #d1e7dd;
-    color: #0f5132;
 }
 
 .info-contagem {

@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const prioridade = (req.PRIORIDADE || 'NORMAL').trim();
                     const status = padronizarStatus(req.STATUS);
                     const statusClass = status ? status.replace(/\s/g, '-').toLowerCase() : 'pendente';
-                    console.log(`DEBUG - ID_REQ ${req.ID_REQ}: STATUS original="${req.STATUS}", padronizado="${status}", class="${statusClass}"`);
                     return `
                     <tr>
                         <td>${req.ID_REQ || '-'}</td>
@@ -124,8 +123,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error('Falha ao buscar dados do servidor.');
             
             todasRequisicoes = await response.json();
-            console.log('DEBUG - Primeiras 3 requisições:', todasRequisicoes.slice(0, 3));
-            console.log('DEBUG - Campo STATUS da primeira:', todasRequisicoes[0]?.STATUS);
             
             renderRequisicoes(todasRequisicoes);
             atualizarSumario(todasRequisicoes);
