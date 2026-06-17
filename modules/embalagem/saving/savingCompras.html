@@ -42,6 +42,17 @@
             border-radius: 6px;
             cursor: pointer;
         }
+        .btn-success {
+            background: #2e7d32;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+        .btn-success:hover { background: #1b5e20; }
+        .btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .saving-table-wrap {
             overflow: auto;
@@ -458,6 +469,10 @@
                         <div style="display:flex; gap:10px; align-items:center;">
                             <input type="search" id="buscaItem" class="search-box"
                                    placeholder="🔎 Buscar por código ou descrição..." />
+                            <button id="btnExportarPlanejamento" class="btn-success" type="button" disabled
+                                    title="Exportar planejamento atual para Excel">
+                                <i class="fa-solid fa-file-excel"></i> Excel
+                            </button>
                             <button id="btnSalvarMetas" class="btn-primary" disabled>
                                 <i class="fa fa-save"></i> Salvar Metas Alteradas
                             </button>
@@ -504,9 +519,15 @@
                             Lista de metas por mês com resultados consolidados.
                             Clique em uma linha para ver os itens.
                         </div>
-                        <button id="btnRecarregarResumo" class="btn-secondary">
-                            <i class="fa fa-rotate"></i> Recarregar
-                        </button>
+                        <div style="display:flex; gap:10px;">
+                            <button id="btnExportarIndicador" class="btn-success" type="button"
+                                    title="Exportar resumo + detalhes carregados para Excel">
+                                <i class="fa-solid fa-file-excel"></i> Excel
+                            </button>
+                            <button id="btnRecarregarResumo" class="btn-secondary">
+                                <i class="fa fa-rotate"></i> Recarregar
+                            </button>
+                        </div>
                     </div>
 
                     <div class="saving-table-wrap">
@@ -568,6 +589,7 @@
     </div>
 
     <script src="/shared/frontend/layout.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="/modules/embalagem/saving/savingCompras.js"></script>
 </body>
 </html>

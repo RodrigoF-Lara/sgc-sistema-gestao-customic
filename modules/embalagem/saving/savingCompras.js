@@ -25,6 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const tabs                 = document.querySelectorAll(".tab");
     const tbodyResumoMeses     = document.getElementById("tbodyResumoMeses");
     const btnRecarregarResumo  = document.getElementById("btnRecarregarResumo");
+    const btnExportarPlan      = document.getElementById("btnExportarPlanejamento");
+    const btnExportarInd       = document.getElementById("btnExportarIndicador");
 
     // Estado em memória
     let estadoAtual = {
@@ -74,6 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         tabs.forEach(t => t.addEventListener("click", () => trocarTab(t.dataset.tab)));
         btnRecarregarResumo.addEventListener("click", () => carregarResumoMeses(true));
+        if (btnExportarPlan) btnExportarPlan.addEventListener("click", exportarPlanejamentoExcel);
+        if (btnExportarInd)  btnExportarInd.addEventListener("click", exportarIndicadorExcel);
     }
 
     function trocarTab(tabName) {
@@ -125,9 +129,11 @@ document.addEventListener("DOMContentLoaded", () => {
             atualizarAncoraInfo();
             renderizarTabela();
             atualizarTotais();
+            if (btnExportarPlan) btnExportarPlan.disabled = estadoAtual.itens.length === 0;
         } catch (err) {
             console.error("Erro ao carregar Saving:", err);
             tbodySaving.innerHTML = `<tr><td class="empty" colspan="12" style="color:#c62828;">Erro: ${err.message}</td></tr>`;
+            if (btnExportarPlan) btnExportarPlan.disabled = true;
         }
     }
 
@@ -931,6 +937,118 @@ document.addEventListener("DOMContentLoaded", () => {
         detRow.querySelectorAll(".btn-coment").forEach(btn => {
             btn.addEventListener("click", onComentarioClick);
         });
+    }
+
+    // ----------------------- Exportação Excel -----------------------
+    function exportarPlanejamentoExcel() {
+        if (typeof XLSX === "undefined") {
+            alert("Biblioteca de Excel não carregada. Recarregue a página.");
+            return;
+        }
+        if (!estadoAtual.itens || estadoAtual.itens.length === 0) {
+            alert("Nenhum dado para exportar. Aplique o filtro primeiro.");
+            return;
+        }
+        const meses = estadoAtual.meses || [];
+        const linhas = estadoAtual.itens.map(it => {
+            const efMeta = (it.codigo in estadoAtual.alteracoes) ? estadoAtual.alteracoes[it.codigo] : it.metaPct;
+            const efMetaNum = efMeta != null ? Number(efMeta) : null;
+            const savingUn = (it.custoBase != null && efMetaNum != null && efMetaNum > 0)
+                ? +(it.custoBase * (efMetaNum / 100)).toFixed(4) : null;
+            const targetUn = (it.custoBase != null && savingUn != null)
+                ? +(it.custoBase - savingUn).toFixed(4) : null;
+            const consumo = Number(it.consumoMensal) || 0;
+            const proj12 = (savingUn != null && consumo > 0) ? +(savingUn * consumo * 12).toFixed(2) : null;
+            const row = {
+                "Código":           it.codigo,
+                "Descrição":        it.descricao || "",
+                "Mês Base":         it.anoMesBase ? labelMes(it.anoMesBase) : "",
+                "Custo Base (R$)":  it.custoBase != null ? Number(it.custoBase) : null,
+                "Meta %":           efMetaNum != null ? efMetaNum : null,
+                "Saving R$/un":     savingUn,
+                "Custo Target R$/un": targetUn,
+                "Consumo /mês":     consumo || null,
+                "Projetado 12m R$": proj12,
+                "Qtd Comentários":  Number(it.qtdComentarios) || 0,
+                "Último Comentário": it.ultimoComentario || "",
+                "Por (usuário)":    it.ultimoComentUser || "",
+                "Data Comentário":  it.ultimoComentDt ? formatarDataHora(it.ultimoComentDt) : ""
+            };
+            // Custos por mês (uma coluna por mês do período)
+            for (const m of meses) {
+                row[`Custo ${m.label}`] = (it.custos && it.custos[m.anoMes] != null) ? Number(it.custos[m.anoMes]) : null;
+            }
+            return row;
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(linhas);
+        ws['!cols'] = Object.keys(linhas[0] || {}).map(k => ({ wch: Math.min(Math.max(k.length + 2, 12), 40) }));
+        XLSX.utils.book_append_sheet(wb, ws, "Planejamento");
+
+        const nome = `Saving_Planejamento_${estadoAtual.anoMesMeta || "atual"}.xlsx`;
+        XLSX.writeFile(wb, nome);
+    }
+
+    function exportarIndicadorExcel() {
+        if (typeof XLSX === "undefined") {
+            alert("Biblioteca de Excel não carregada. Recarregue a página.");
+            return;
+        }
+        if (!resumoMesesCache || resumoMesesCache.length === 0) {
+            alert("Nenhum dado carregado. Recarregue o Indicador primeiro.");
+            return;
+        }
+        const wb = XLSX.utils.book_new();
+
+        // Aba 1: Resumo mensal
+        const resumoRows = resumoMesesCache.map(m => ({
+            "Mês":                      labelMes(m.anoMes),
+            "AnoMes":                   m.anoMes,
+            "Itens c/ Meta":            Number(m.qtdMetas) || 0,
+            "Itens c/ NF no mês":       Number(m.qtdComNf) || 0,
+            "Saving Planejado /un (Σ)": Number(m.planejado) || 0,
+            "Saving Realizado /un (Σ)": Number(m.realizado) || 0,
+            "Realizado Mês R$ (Σ)":     Number(m.realizadoMes) || 0,
+            "Projetado 12m R$ (Σ)":     Number(m.projetado12m) || 0,
+            "Realizado 12m R$ (Σ)":     Number(m.realizado12m) || 0,
+            "Atingimento %":            m.atingimentoPct != null ? Number(m.atingimentoPct) : null
+        }));
+        const wsResumo = XLSX.utils.json_to_sheet(resumoRows);
+        wsResumo['!cols'] = Object.keys(resumoRows[0] || {}).map(k => ({ wch: Math.max(k.length + 2, 14) }));
+        XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo Mensal");
+
+        // Abas por mês já carregado em cache
+        for (const ym of Object.keys(detalhesCache)) {
+            const data = detalhesCache[ym];
+            if (!data || !Array.isArray(data.itens) || data.itens.length === 0) continue;
+            const rows = data.itens.map(it => ({
+                "Código":             it.codigo,
+                "Descrição":          it.descricao || "",
+                "Meta %":             Number(it.metaPct) || 0,
+                "Custo Base":         it.custoBase != null ? Number(it.custoBase) : null,
+                "Custo Real":         it.custoReal != null ? Number(it.custoReal) : null,
+                "Saving Planejado /un": it.savingPlanejado != null ? Number(it.savingPlanejado) : null,
+                "Saving Realizado /un": it.savingRealizado != null ? Number(it.savingRealizado) : null,
+                "Qtd Comprada":       Number(it.qtdCompradaMes) || 0,
+                "Realizado Mês R$":   it.savingRealizadoMes != null ? Number(it.savingRealizadoMes) : null,
+                "Consumo /mês":       Number(it.consumoMensal) || 0,
+                "Projetado 12m R$":   it.savingProjetado12m != null ? Number(it.savingProjetado12m) : null,
+                "Realizado 12m R$":   it.savingRealizado12m != null ? Number(it.savingRealizado12m) : null,
+                "Atingimento %":      it.atingimentoPct != null ? Number(it.atingimentoPct) : null,
+                "Qtd Comentários":    Number(it.qtdComentarios) || 0,
+                "Último Comentário":  it.ultimoComentario || "",
+                "Por (usuário)":      it.ultimoComentUser || "",
+                "Data Comentário":    it.ultimoComentDt ? formatarDataHora(it.ultimoComentDt) : ""
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws['!cols'] = Object.keys(rows[0] || {}).map(k => ({ wch: Math.max(k.length + 2, 14) }));
+            const sheetName = `Det ${labelMes(ym)}`.slice(0, 31);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+
+        const nome = `Saving_Indicador_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, nome);
     }
 
     // ----------------------- Utils -----------------------
