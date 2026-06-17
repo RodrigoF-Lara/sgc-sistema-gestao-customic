@@ -156,8 +156,9 @@ flowchart LR
 - **Itens elegíveis:** `CAD_PROD.CURVA_A_B_C = 'A' AND ATIVO = 1`.
 - **Custo por mês:** última NF do mês em `NF_PRODUTOS.PROD_CUSTO_FISCAL_MEDIO_NOVO`, ordenada por `NF_CABECALHO.CAB_DT_EMISSAO DESC`.
 - **Mês-base por item:** mês mais recente em que o item teve NF **estritamente anterior** ao mês-meta, dentro do período consultado. Itens sem NF anterior ao mês-meta não recebem Custo Base e não permitem cadastro de meta.
-- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES)` — `ANO_MES` é sempre o **mês-meta** (mesmo para todos os itens da safra).
-- **Saving Realizado:** `CustoBase − CustoUltimaNF(dentro do mês-meta)`. Toda NF lançada dentro do mês-meta atualiza o realizado em tempo real.
+- **Custo Base FIXO:** ao salvar a meta, o `CUSTO_BASE` é gravado em `TB_SAVING_META` e **nunca é recalculado**. Consultas futuras usam sempre esse valor histórico (referência da meta), independente de novas NFs lançadas. Isso garante que todos os cálculos (Saving, Target, Atingimento) sejam baseados no custo da época em que a meta foi definida.
+- **Meta persistida** em `TB_SAVING_META(CODIGO, ANO_MES, META_PCT, CUSTO_BASE)` — `ANO_MES` é sempre o **mês-meta** (mesmo para todos os itens da safra).
+- **Saving Realizado:** `CustoBase (salvo) − CustoUltimaNF(dentro do mês-meta)`. Toda NF lançada dentro do mês-meta atualiza o realizado em tempo real.
 - **Atingimento %:** `SavingRealizado / SavingPlanejado × 100`.
 
 ---
