@@ -1171,8 +1171,11 @@ async function savingList(req, res) {
             const cod = String(it.CODIGO);
             const custos = custosPorItem[cod] || {};
             const anoMesBase = anoMesBasePorItem[cod] || null;
-            const custoBase = anoMesBase != null ? custos[anoMesBase] : null;
             const meta = metasPorItem[cod] || null;
+            // IMPORTANTE: prioriza custoBase SALVO na meta (fixo), senão calcula da NF
+            const custoBase = (meta && meta.custoBase != null)
+                ? meta.custoBase
+                : (anoMesBase != null ? custos[anoMesBase] : null);
             const metaPct = meta ? meta.metaPct : null;
             const savingValor = (custoBase != null && metaPct != null)
                 ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
