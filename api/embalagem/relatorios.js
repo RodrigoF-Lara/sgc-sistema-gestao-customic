@@ -1217,14 +1217,21 @@ async function savingIndicador(req, res) {
 
         console.log(`[savingIndicador] Processando anoMes=${anoMes}, ano=${ano}, mes=${mes}`);
 
+        // Calcula range de datas do mês (para usar índices em vez de YEAR/MONTH functions)
+        const dtInicio = new Date(ano, mes - 1, 1);
+        const dtFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+
         // Custo Real = última NF lançada DENTRO do mês-meta
         let result;
         try {
-            result = await pool.request()
+            const request = pool.request()
                 .input("anoMes", sql.Char(7), anoMes)
-                .input("ano", sql.Int, ano)
-                .input("mes", sql.Int, mes)
-                .query(`
+                .input("dtInicio", sql.DateTime, dtInicio)
+                .input("dtFim", sql.DateTime, dtFim);
+            
+            request.timeout = 60000; // 60 segundos (padrão é 15s)
+            
+            result = await request.query(`
                 ;WITH UltimaNFMesMeta AS (
                     SELECT
                         p.PROD_COD_PROD AS CODIGO,
@@ -1235,8 +1242,8 @@ async function savingIndicador(req, res) {
                         ) AS rn
                     FROM [dbo].[NF_PRODUTOS] p
                     INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
-                    WHERE YEAR(c.CAB_DT_EMISSAO) = @ano
-                      AND MONTH(c.CAB_DT_EMISSAO) = @mes
+                    WHERE c.CAB_DT_EMISSAO >= @dtInicio
+                      AND c.CAB_DT_EMISSAO <= @dtFim
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
                 ),
@@ -1257,8 +1264,8 @@ async function savingIndicador(req, res) {
                         SUM(ISNULL(p.PROD_QNT, 0)) AS QTD_COMPRADA
                     FROM [dbo].[NF_PRODUTOS] p
                     INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
-                    WHERE YEAR(c.CAB_DT_EMISSAO) = @ano
-                      AND MONTH(c.CAB_DT_EMISSAO) = @mes
+                    WHERE c.CAB_DT_EMISSAO >= @dtInicio
+                      AND c.CAB_DT_EMISSAO <= @dtFim
                     GROUP BY p.PROD_COD_PROD
                 )
                 SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE,
