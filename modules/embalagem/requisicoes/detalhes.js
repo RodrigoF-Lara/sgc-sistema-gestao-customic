@@ -221,5 +221,61 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
+    // --- EXPORTAR PARA EXCEL ---
+    document.getElementById('exportarExcelBtn').addEventListener('click', async function() {
+        try {
+            const response = await fetch(`/api/embalagem/requisicao?id=${idReq}`);
+            if (!response.ok) throw new Error('Erro ao carregar dados');
+            const data = await response.json();
+            
+            const ws_data = [
+                ['Requisição Nº', data.header.ID_REQ],
+                ['Solicitante', data.header.SOLICITANTE || 'N/A'],
+                ['Data Requisição', formatarData(data.header.DT_REQUISICAO)],
+                ['Data Necessidade', formatarData(data.header.DT_NECESSIDADE)],
+                ['Prioridade', (data.header.PRIORIDADE || 'NORMAL').trim()],
+                ['Status', (data.header.STATUS || 'PENDENTE').trim()],
+                [],
+                ['Item', 'Código', 'Descrição', 'Endereço', 'Armazém', 'QNT REQ', 'QNT PAGA', 'Saldo', 'Status']
+            ];
+
+            data.items.forEach(item => {
+                ws_data.push([
+                    item.ID_REQ_ITEM,
+                    item.CODIGO,
+                    item.DESCRICAO_PRODUTO || '',
+                    item.ENDERECO || '-',
+                    item.ARMAZEM || '-',
+                    item.QNT_REQ,
+                    item.QNT_PAGA,
+                    item.SALDO,
+                    (item.STATUS_ITEM || 'Pendente').trim()
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            
+            // Ajustar largura das colunas
+            ws['!cols'] = [
+                { wch: 8 },  // Item
+                { wch: 12 }, // Código
+                { wch: 40 }, // Descrição
+                { wch: 15 }, // Endereço
+                { wch: 10 }, // Armazém
+                { wch: 10 }, // QNT REQ
+                { wch: 10 }, // QNT PAGA
+                { wch: 10 }, // Saldo
+                { wch: 15 }  // Status
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Requisição');
+            XLSX.writeFile(wb, `Requisicao_${idReq}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        } catch (error) {
+            console.error('Erro ao exportar:', error);
+            alert('Erro ao exportar para Excel');
+        }
+    });
+
     carregarDetalhes();
 });

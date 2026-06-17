@@ -25,7 +25,14 @@ async function handleGet(req, res) {
     if (id) {
         const headerResult = await pool.request().input('idReq', sql.Int, id).query("SELECT * FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @idReq");
         if (headerResult.recordset.length === 0) return res.status(404).json({ message: "Requisição não encontrada" });
-        const itemsResult = await pool.request().input('idReqItems', sql.Int, id).query(`SELECT I.*, P.DESCRICAO AS DESCRICAO_PRODUTO FROM [dbo].[TB_REQ_ITEM] I LEFT JOIN [dbo].[CAD_PROD] P ON I.CODIGO = P.CODIGO WHERE I.ID_REQ = @idReqItems ORDER BY I.ID_REQ_ITEM`);
+        const itemsResult = await pool.request().input('idReqItems', sql.Int, id).query(`
+            SELECT I.*, P.DESCRICAO AS DESCRICAO_PRODUTO, K.ENDERECO, K.ARMAZEM
+            FROM [dbo].[TB_REQ_ITEM] I 
+            LEFT JOIN [dbo].[CAD_PROD] P ON I.CODIGO = P.CODIGO
+            LEFT JOIN [dbo].[KARDEX_2026_EMBALAGEM] K ON I.CODIGO = K.CODIGO
+            WHERE I.ID_REQ = @idReqItems 
+            ORDER BY I.ID_REQ_ITEM
+        `);
         return res.status(200).json({ header: headerResult.recordset[0], items: itemsResult.recordset });
     } else if (idReqItemLog) {
         // CORREÇÃO: Filtra também por ID_REQ pois ID_REQ_ITEM é sequencial por requisição (não é único globalmente)

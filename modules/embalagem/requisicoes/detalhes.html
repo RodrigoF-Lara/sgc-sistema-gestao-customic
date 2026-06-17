@@ -6,6 +6,17 @@
     <title>Detalhes da Requisição - Kardex</title>
     <link rel="stylesheet" href="/shared/frontend/style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        .itens-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .itens-header h2 {
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
     <!-- O novo menu lateral será carregado aqui pelo layout.js -->
@@ -20,7 +31,12 @@
                 <!-- O cabeçalho da requisição será inserido aqui -->
             </div>
             
-            <h2>Itens da Requisição</h2> 
+            <div class="itens-header">
+                <h2>Itens da Requisição</h2>
+                <button id="exportarExcelBtn" class="btn-success">
+                    <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                </button>
+            </div>
             
             <div id="bulk-actions-container" class="bulk-actions-bar" style="display: none;">
                 <span id="bulk-counter">0 itens selecionados</span>
@@ -54,6 +70,8 @@
         </div>
     </div>
 
+    <!-- Biblioteca para exportar Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="detalhes.js"></script>
     <!-- O novo script de layout que carrega o menu e o usuário -->
     <script src="/shared/frontend/layout.js"></script>
