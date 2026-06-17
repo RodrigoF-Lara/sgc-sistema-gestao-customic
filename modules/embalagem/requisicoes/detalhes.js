@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ['Prioridade', (data.header.PRIORIDADE || 'NORMAL').trim()],
                 ['Status', (data.header.STATUS || 'PENDENTE').trim()],
                 [],
-                ['Item', 'Código', 'Descrição', 'Endereço', 'Armazém', 'QNT REQ', 'QNT PAGA', 'Saldo', 'Status']
+                ['Item', 'Código', 'Descrição', 'Endereços (com saldo)', 'QNT REQ', 'QNT PAGA', 'Saldo', 'Status']
             ];
 
             data.items.forEach(item => {
@@ -244,8 +244,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     item.ID_REQ_ITEM,
                     item.CODIGO,
                     item.DESCRICAO_PRODUTO || '',
-                    item.ENDERECO || '-',
-                    item.ARMAZEM || '-',
+                    item.ENDERECOS || '-',
                     item.QNT_REQ,
                     item.QNT_PAGA,
                     item.SALDO,
@@ -260,8 +259,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 { wch: 8 },  // Item
                 { wch: 12 }, // Código
                 { wch: 40 }, // Descrição
-                { wch: 15 }, // Endereço
-                { wch: 10 }, // Armazém
+                { wch: 50 }, // Endereços (com saldo)
                 { wch: 10 }, // QNT REQ
                 { wch: 10 }, // QNT PAGA
                 { wch: 10 }, // Saldo

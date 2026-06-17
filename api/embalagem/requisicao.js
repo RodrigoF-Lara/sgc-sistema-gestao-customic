@@ -26,10 +26,20 @@ async function handleGet(req, res) {
         const headerResult = await pool.request().input('idReq', sql.Int, id).query("SELECT * FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @idReq");
         if (headerResult.recordset.length === 0) return res.status(404).json({ message: "Requisição não encontrada" });
         const itemsResult = await pool.request().input('idReqItems', sql.Int, id).query(`
-            SELECT I.*, P.DESCRICAO AS DESCRICAO_PRODUTO, K.ENDERECO, K.ARMAZEM
+            SELECT 
+                I.*, 
+                P.DESCRICAO AS DESCRICAO_PRODUTO,
+                STUFF((
+                    SELECT ', ' + ISNULL(K2.ENDERECO, '-') + ' (ARM:' + ISNULL(CAST(K2.ARMAZEM AS VARCHAR), '-') + ')'
+                    FROM [dbo].[KARDEX_2026_EMBALAGEM] K2
+                    WHERE K2.CODIGO = I.CODIGO 
+                      AND K2.SALDO > 0
+                      AND K2.D_E_L_E_T_ = ''
+                      AND K2.KARDEX = 2026
+                    FOR XML PATH('')
+                ), 1, 2, '') AS ENDERECOS
             FROM [dbo].[TB_REQ_ITEM] I 
             LEFT JOIN [dbo].[CAD_PROD] P ON I.CODIGO = P.CODIGO
-            LEFT JOIN [dbo].[KARDEX_2026_EMBALAGEM] K ON I.CODIGO = K.CODIGO
             WHERE I.ID_REQ = @idReqItems 
             ORDER BY I.ID_REQ_ITEM
         `);
