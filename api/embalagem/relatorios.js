@@ -1073,7 +1073,7 @@ async function savingList(req, res) {
         const metasResult = await pool.request()
             .input("anoMes", sql.Char(7), anoMesMeta)
             .query(`
-                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.USUARIO,
+                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.COMENTARIO, m.USUARIO,
                        m.DT_CADASTRO, m.DT_ATUALIZACAO
                 FROM [dbo].[TB_SAVING_META] m
                 INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
@@ -1085,7 +1085,8 @@ async function savingList(req, res) {
         for (const m of metasResult.recordset) {
             metasPorItem[String(m.CODIGO)] = {
                 metaPct: Number(m.META_PCT),
-                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null
+                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null,
+                comentario: m.COMENTARIO != null ? String(m.COMENTARIO) : null
             };
         }
 
@@ -1134,6 +1135,7 @@ async function savingList(req, res) {
                 custoTarget,
                 consumoMensal,
                 savingProjetado12m,
+                comentario: meta ? meta.comentario : null,
                 custos
             };
         });
@@ -1363,7 +1365,7 @@ async function savingResumoMeses(req, res) {
 
 async function savingSaveMeta(req, res) {
     try {
-        const { codigo, anoMes, metaPct, custoBase, usuario } = req.body || {};
+        const { codigo, anoMes, metaPct, custoBase, comentario, usuario } = req.body || {};
         if (!codigo || !anoMes || metaPct === undefined || metaPct === null) {
             return res.status(400).json({ message: "Campos obrigatórios: codigo, anoMes, metaPct." });
         }
@@ -1375,7 +1377,7 @@ async function savingSaveMeta(req, res) {
             return res.status(400).json({ message: "metaPct deve ser número entre 0 e 100." });
         }
         const pool = await getConnection();
-        await savingUpsertMeta(pool.request(), { codigo, anoMes, metaPct: pctNum, custoBase, usuario });
+        await savingUpsertMeta(pool.request(), { codigo, anoMes, metaPct: pctNum, custoBase, comentario, usuario });
         return res.status(200).json({ message: "Meta salva.", codigo, anoMes, metaPct: pctNum });
     } catch (err) {
         console.error("Erro savingSaveMeta:", err);
@@ -1394,10 +1396,14 @@ async function savingSaveMetasBatch(req, res) {
         await transaction.begin();
         let salvos = 0, removidos = 0;
         for (const it of itens) {
-            const { codigo, anoMes, metaPct, custoBase } = it;
+            const { codigo, anoMes, metaPct, custoBase, comentario } = it;
             if (!codigo || !anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) continue;
 
-            if (metaPct === null || metaPct === undefined || metaPct === "" || Number(metaPct) <= 0) {
+            const metaVazia = (metaPct === null || metaPct === undefined || metaPct === "" || Number(metaPct) <= 0);
+            const comentarioStr = comentario != null ? String(comentario).trim() : "";
+            const semComentario = comentarioStr.length === 0;
+
+            if (metaVazia && semComentario) {
                 await new sql.Request(transaction)
                     .input("codigo", sql.NVarChar(50), String(codigo))
                     .input("anoMes", sql.Char(7), anoMes)
@@ -1406,11 +1412,16 @@ async function savingSaveMetasBatch(req, res) {
                 continue;
             }
 
-            const pctNum = Number(metaPct);
+            // Meta vazia mas com comentário: mantém linha com META_PCT = 0
+            const pctNum = metaVazia ? 0 : Number(metaPct);
             if (!Number.isFinite(pctNum) || pctNum < 0 || pctNum > 100) continue;
 
             await savingUpsertMeta(new sql.Request(transaction), {
-                codigo, anoMes, metaPct: pctNum, custoBase, usuario
+                codigo, anoMes,
+                metaPct: pctNum,
+                custoBase,
+                comentario: semComentario ? null : comentarioStr,
+                usuario
             });
             salvos++;
         }
@@ -1441,12 +1452,13 @@ async function savingDeleteMeta(req, res) {
     }
 }
 
-async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, usuario }) {
+async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, comentario, usuario }) {
     request
         .input("codigo", sql.NVarChar(50), String(codigo))
         .input("anoMes", sql.Char(7), anoMes)
         .input("metaPct", sql.Decimal(5, 2), Number(metaPct))
         .input("custoBase", sql.Decimal(18, 6), custoBase != null ? Number(custoBase) : null)
+        .input("comentario", sql.NVarChar(sql.MAX), comentario != null ? String(comentario) : null)
         .input("usuario", sql.NVarChar(100), usuario || null);
 
     await request.query(`
@@ -1456,11 +1468,12 @@ async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, u
         WHEN MATCHED THEN
             UPDATE SET META_PCT = @metaPct,
                        CUSTO_BASE = @custoBase,
+                       COMENTARIO = @comentario,
                        USUARIO = @usuario,
                        DT_ATUALIZACAO = GETDATE()
         WHEN NOT MATCHED THEN
-            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, USUARIO)
-            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @usuario);
+            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, COMENTARIO, USUARIO)
+            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @comentario, @usuario);
     `);
 }
 

@@ -183,6 +183,25 @@
 
         .col-base-valor { color: #555; font-size: 0.85em; display: block; }
 
+        /* Botão de comentário inline na coluna Item */
+        .btn-coment {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.05em;
+            padding: 2px 6px;
+            margin-right: 4px;
+            color: #bbb;
+            vertical-align: middle;
+            border-radius: 4px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .btn-coment:hover { background: #eef3fa; color: #1976d2; }
+        .btn-coment.tem-coment { color: #f57c00; }
+        .btn-coment.tem-coment:hover { color: #e65100; }
+        .btn-coment.dirty { color: #ff9800; background: #fff8e1; }
+        .btn-coment.dirty.tem-coment { color: #e65100; background: #fff3e0; }
+
         /* Divisor visual entre colunas fixas e colunas de meses */
         table.saving-table th.col-mes-first,
         table.saving-table td.col-mes-first {

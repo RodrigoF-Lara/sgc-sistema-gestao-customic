@@ -19,6 +19,7 @@ BEGIN
         [ANO_MES]       CHAR(7)        NOT NULL,  -- formato 'YYYY-MM' (ex: '2026-06')
         [META_PCT]      DECIMAL(5,2)   NOT NULL,  -- ex: 5.00 = -5% de redução
         [CUSTO_BASE]    DECIMAL(18,6)  NULL,      -- snapshot do custo no momento do cadastro
+        [COMENTARIO]    NVARCHAR(MAX)  NULL,      -- observação livre por item/mês
         [USUARIO]       NVARCHAR(100)  NULL,
         [DT_CADASTRO]   DATETIME       NOT NULL DEFAULT (GETDATE()),
         [DT_ATUALIZACAO] DATETIME      NULL,

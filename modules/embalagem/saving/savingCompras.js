@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         meses: [],
         itens: [],        // itens originais (do backend)
         alteracoes: {},   // { codigo: novaMeta }
+        comentariosAlterados: {}, // { codigo: novoComentario | "" }
         sort: { key: null, dir: 1 },  // 1=asc, -1=desc
         filtro: ""
     };
@@ -100,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resumoTotais.style.display = "none";
         btnSalvarMetas.disabled = true;
         estadoAtual.alteracoes = {};
+        estadoAtual.comentariosAlterados = {};
 
         try {
             const url = `/api/embalagem/relatorios?acao=savingList&dtIni=${encodeURIComponent(ini)}&dtFim=${encodeURIComponent(fim)}&anoMesMeta=${encodeURIComponent(ym)}`;
@@ -268,9 +270,27 @@ document.addEventListener("DOMContentLoaded", () => {
             const semBase = it.anoMesBase == null;
             const inputAttrs = semBase ? 'disabled title="Sem NF anterior ao mês-meta — não é possível cadastrar meta"' : '';
 
+            const comentEfetivo = (it.codigo in estadoAtual.comentariosAlterados)
+                ? estadoAtual.comentariosAlterados[it.codigo]
+                : (it.comentario || "");
+            const comentDirty = (it.codigo in estadoAtual.comentariosAlterados);
+            const temComent = comentEfetivo && comentEfetivo.trim().length > 0;
+            const btnClasses = ['btn-coment'];
+            if (temComent) btnClasses.push('tem-coment');
+            if (comentDirty) btnClasses.push('dirty');
+            const btnIcon = temComent ? 'fa-solid fa-comment-dots' : 'fa-regular fa-comment';
+            const btnTitle = temComent
+                ? `Comentário: ${escapeHtml(comentEfetivo).slice(0, 200)}`
+                : 'Adicionar comentário';
+
             return `
                 <tr data-codigo="${it.codigo}" data-anomesbase="${it.anoMesBase || ''}">
                     <td class="col-item">
+                        <button type="button" class="${btnClasses.join(' ')}"
+                                data-coment-codigo="${it.codigo}"
+                                title="${btnTitle}">
+                            <i class="${btnIcon}"></i>
+                        </button>
                         <strong>${escapeHtml(it.codigo)}</strong>
                         <span style="color:#666;font-weight:400;"> ${escapeHtml(it.descricao || "")}</span>
                     </td>
@@ -293,6 +313,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Bind inputs
         tbodySaving.querySelectorAll(".input-meta").forEach(inp => {
             inp.addEventListener("input", onMetaInput);
+        });
+        // Bind botões de comentário
+        tbodySaving.querySelectorAll(".btn-coment").forEach(btn => {
+            btn.addEventListener("click", onComentarioClick);
         });
     }
 
@@ -341,7 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
             inp.classList.remove("dirty");
             delete estadoAtual.alteracoes[codigo];
         }
-        btnSalvarMetas.disabled = Object.keys(estadoAtual.alteracoes).length === 0;
+        atualizarBotaoSalvar();
         atualizarTotais();
     }
 
@@ -350,6 +374,39 @@ document.addEventListener("DOMContentLoaded", () => {
         if (b == null && (a == null || a === 0)) return true;
         if (a == null || b == null) return false;
         return Math.abs(Number(a) - Number(b)) < 0.0001;
+    }
+
+    function onComentarioClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const btn = e.currentTarget;
+        const codigo = btn.dataset.comentCodigo;
+        const item = estadoAtual.itens.find(i => i.codigo === codigo);
+        if (!item) return;
+
+        const atual = (codigo in estadoAtual.comentariosAlterados)
+            ? estadoAtual.comentariosAlterados[codigo]
+            : (item.comentario || "");
+        const label = `Comentário para ${item.codigo} — ${labelMes(estadoAtual.anoMesMeta)}\n(deixe em branco para remover)`;
+        const novo = window.prompt(label, atual || "");
+        if (novo === null) return; // cancelado
+        const novoNorm = String(novo).trim();
+        const origNorm = String(item.comentario || "").trim();
+
+        if (novoNorm === origNorm) {
+            delete estadoAtual.comentariosAlterados[codigo];
+        } else {
+            estadoAtual.comentariosAlterados[codigo] = novoNorm;
+        }
+        atualizarBotaoSalvar();
+        renderizarTabela();
+    }
+
+    function atualizarBotaoSalvar() {
+        const totalAlteracoes =
+            Object.keys(estadoAtual.alteracoes).length +
+            Object.keys(estadoAtual.comentariosAlterados).length;
+        btnSalvarMetas.disabled = totalAlteracoes === 0;
     }
 
     function atualizarTotais() {
@@ -378,25 +435,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ----------------------- Salvar Metas -----------------------
     async function salvarMetasAlteradas() {
-        const codigosAlterados = Object.keys(estadoAtual.alteracoes);
-        if (codigosAlterados.length === 0) return;
+        const codigosMeta    = Object.keys(estadoAtual.alteracoes);
+        const codigosComent  = Object.keys(estadoAtual.comentariosAlterados);
+        const todosCodigos   = Array.from(new Set([...codigosMeta, ...codigosComent]));
+        if (todosCodigos.length === 0) return;
 
         const usuario = localStorage.getItem("userName") || "desconhecido";
-        const itens = codigosAlterados
+        const itens = todosCodigos
             .map(cod => {
                 const it = estadoAtual.itens.find(i => i.codigo === cod);
-                if (!it || !it.anoMesBase) return null; // sem custo base não há como calcular saving
+                if (!it) return null;
+                const metaPct = (cod in estadoAtual.alteracoes)
+                    ? estadoAtual.alteracoes[cod]
+                    : (it.metaPct != null ? it.metaPct : null);
+                const comentario = (cod in estadoAtual.comentariosAlterados)
+                    ? estadoAtual.comentariosAlterados[cod]
+                    : (it.comentario || null);
+                // Se não tem custoBase e não tem comentário, não há o que salvar
+                const semBase = !it.anoMesBase;
+                const comentVazio = !comentario || String(comentario).trim().length === 0;
+                if (semBase && comentVazio) return null;
                 return {
                     codigo: cod,
-                    anoMes: estadoAtual.anoMesMeta,  // sempre o mês-meta selecionado
-                    metaPct: estadoAtual.alteracoes[cod],
-                    custoBase: it.custoBase
+                    anoMes: estadoAtual.anoMesMeta,
+                    metaPct,
+                    custoBase: it.custoBase,
+                    comentario
                 };
             })
             .filter(Boolean);
 
         if (itens.length === 0) {
-            alert("Nenhum item alterado possui Custo Base (NF anterior ao mês-meta). Nada a salvar.");
+            alert("Nenhum item alterado possui Custo Base (NF anterior ao mês-meta) nem comentário. Nada a salvar.");
             return;
         }
 
@@ -424,7 +494,7 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Erro ao salvar metas: " + err.message);
         } finally {
             btnSalvarMetas.innerHTML = `<i class="fa fa-save"></i> Salvar Metas Alteradas`;
-            btnSalvarMetas.disabled = Object.keys(estadoAtual.alteracoes).length === 0;
+            atualizarBotaoSalvar();
         }
     }
 
