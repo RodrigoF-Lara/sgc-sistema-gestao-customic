@@ -199,8 +199,139 @@
         .btn-coment:hover { background: #eef3fa; color: #1976d2; }
         .btn-coment.tem-coment { color: #f57c00; }
         .btn-coment.tem-coment:hover { color: #e65100; }
-        .btn-coment.dirty { color: #ff9800; background: #fff8e1; }
-        .btn-coment.dirty.tem-coment { color: #e65100; background: #fff3e0; }
+        .btn-coment .badge {
+            display: inline-block;
+            background: #f57c00;
+            color: #fff;
+            font-size: 0.65em;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 8px;
+            margin-left: 3px;
+            vertical-align: top;
+            line-height: 1.3;
+        }
+
+        /* ============ Modal de Comentários ============ */
+        .modal-coment-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 9999;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 60px;
+        }
+        .modal-coment-overlay.aberto { display: flex; }
+        .modal-coment-box {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            width: 95%;
+            max-width: 640px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-coment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid #eee;
+            background: #f7f9fc;
+        }
+        .modal-coment-header h3 {
+            margin: 0;
+            font-size: 1.05em;
+            color: #1976d2;
+        }
+        .modal-coment-header .sub {
+            font-size: 0.82em;
+            color: #666;
+            margin-top: 2px;
+        }
+        .modal-coment-close {
+            background: none;
+            border: none;
+            font-size: 1.4em;
+            cursor: pointer;
+            color: #888;
+            padding: 0 6px;
+        }
+        .modal-coment-close:hover { color: #c62828; }
+        .modal-coment-body {
+            padding: 14px 18px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-coment-add {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px dashed #ddd;
+        }
+        .modal-coment-add textarea {
+            width: 100%;
+            min-height: 70px;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.95em;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .modal-coment-add .btn-add-coment {
+            align-self: flex-end;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .modal-coment-add .btn-add-coment:disabled { opacity: 0.6; cursor: not-allowed; }
+        .modal-coment-lista { display: flex; flex-direction: column; gap: 10px; }
+        .modal-coment-vazio { color: #888; font-style: italic; text-align: center; padding: 16px; }
+        .modal-coment-item {
+            background: #fafbfd;
+            border: 1px solid #eee;
+            border-left: 3px solid #1976d2;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: relative;
+        }
+        .modal-coment-item .meta-linha {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.78em;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .modal-coment-item .meta-linha .autor { font-weight: 600; color: #333; }
+        .modal-coment-item .texto { white-space: pre-wrap; font-size: 0.92em; color: #222; }
+        .modal-coment-item .btn-del {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: none;
+            border: none;
+            color: #c62828;
+            cursor: pointer;
+            font-size: 0.85em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            opacity: 0.6;
+        }
+        .modal-coment-item:hover .btn-del { opacity: 1; }
+        .modal-coment-item .btn-del:hover { background: #ffebee; }
 
         /* Divisor visual entre colunas fixas e colunas de meses */
         table.saving-table th.col-mes-first,
@@ -404,6 +535,35 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- ================= MODAL DE COMENTÁRIOS ================= -->
+    <div id="modalComentOverlay" class="modal-coment-overlay" role="dialog" aria-modal="true">
+        <div class="modal-coment-box">
+            <div class="modal-coment-header">
+                <div>
+                    <h3>
+                        <i class="fa-regular fa-comments"></i>
+                        Comentários <span id="modalComentTitulo"></span>
+                    </h3>
+                    <div class="sub" id="modalComentSub"></div>
+                </div>
+                <button type="button" class="modal-coment-close" id="modalComentClose" title="Fechar">
+                    <i class="fa fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-coment-body">
+                <div class="modal-coment-add">
+                    <textarea id="modalComentTexto" placeholder="Digite um novo comentário... (Ctrl+Enter para salvar)" maxlength="4000"></textarea>
+                    <button type="button" id="modalComentBtnAdd" class="btn-add-coment" disabled>
+                        <i class="fa fa-plus"></i> Adicionar comentário
+                    </button>
+                </div>
+                <div class="modal-coment-lista" id="modalComentLista">
+                    <div class="modal-coment-vazio">Carregando...</div>
+                </div>
+            </div>
         </div>
     </div>
 

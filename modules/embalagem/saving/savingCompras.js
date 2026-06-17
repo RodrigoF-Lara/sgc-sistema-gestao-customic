@@ -32,9 +32,16 @@ document.addEventListener("DOMContentLoaded", () => {
         meses: [],
         itens: [],        // itens originais (do backend)
         alteracoes: {},   // { codigo: novaMeta }
-        comentariosAlterados: {}, // { codigo: novoComentario | "" }
         sort: { key: null, dir: 1 },  // 1=asc, -1=desc
         filtro: ""
+    };
+
+    // Estado do modal de comentários
+    let modalComentEstado = {
+        codigo: null,
+        anoMes: null,
+        descricao: null,
+        itens: []
     };
 
     let resumoMesesCache = null;       // [{anoMes, ...}]
@@ -101,7 +108,6 @@ document.addEventListener("DOMContentLoaded", () => {
         resumoTotais.style.display = "none";
         btnSalvarMetas.disabled = true;
         estadoAtual.alteracoes = {};
-        estadoAtual.comentariosAlterados = {};
 
         try {
             const url = `/api/embalagem/relatorios?acao=savingList&dtIni=${encodeURIComponent(ini)}&dtFim=${encodeURIComponent(fim)}&anoMesMeta=${encodeURIComponent(ym)}`;
@@ -270,18 +276,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const semBase = it.anoMesBase == null;
             const inputAttrs = semBase ? 'disabled title="Sem NF anterior ao mês-meta — não é possível cadastrar meta"' : '';
 
-            const comentEfetivo = (it.codigo in estadoAtual.comentariosAlterados)
-                ? estadoAtual.comentariosAlterados[it.codigo]
-                : (it.comentario || "");
-            const comentDirty = (it.codigo in estadoAtual.comentariosAlterados);
-            const temComent = comentEfetivo && comentEfetivo.trim().length > 0;
+            const comentEfetivo = it.ultimoComentario || "";
+            const qtdComent = Number(it.qtdComentarios) || 0;
+            const temComent = qtdComent > 0;
             const btnClasses = ['btn-coment'];
             if (temComent) btnClasses.push('tem-coment');
-            if (comentDirty) btnClasses.push('dirty');
             const btnIcon = temComent ? 'fa-solid fa-comment-dots' : 'fa-regular fa-comment';
             const btnTitle = temComent
-                ? `Comentário: ${escapeHtml(comentEfetivo).slice(0, 200)}`
+                ? `${qtdComent} comentário(s)\nÚltimo: ${escapeHtml(comentEfetivo).slice(0, 200)}`
                 : 'Adicionar comentário';
+            const badgeHtml = temComent && qtdComent > 1 ? `<span class="badge">${qtdComent}</span>` : '';
 
             return `
                 <tr data-codigo="${it.codigo}" data-anomesbase="${it.anoMesBase || ''}">
@@ -289,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <button type="button" class="${btnClasses.join(' ')}"
                                 data-coment-codigo="${it.codigo}"
                                 title="${btnTitle}">
-                            <i class="${btnIcon}"></i>
+                            <i class="${btnIcon}"></i>${badgeHtml}
                         </button>
                         <strong>${escapeHtml(it.codigo)}</strong>
                         <span style="color:#666;font-weight:400;"> ${escapeHtml(it.descricao || "")}</span>
@@ -365,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
             inp.classList.remove("dirty");
             delete estadoAtual.alteracoes[codigo];
         }
-        atualizarBotaoSalvar();
+        btnSalvarMetas.disabled = Object.keys(estadoAtual.alteracoes).length === 0;
         atualizarTotais();
     }
 
@@ -376,6 +380,37 @@ document.addEventListener("DOMContentLoaded", () => {
         return Math.abs(Number(a) - Number(b)) < 0.0001;
     }
 
+    // ----------------------- Modal de Comentários -----------------------
+    const modalOverlay   = document.getElementById("modalComentOverlay");
+    const modalClose     = document.getElementById("modalComentClose");
+    const modalTitulo    = document.getElementById("modalComentTitulo");
+    const modalSub       = document.getElementById("modalComentSub");
+    const modalLista     = document.getElementById("modalComentLista");
+    const modalTexto     = document.getElementById("modalComentTexto");
+    const modalBtnAdd    = document.getElementById("modalComentBtnAdd");
+
+    if (modalClose) modalClose.addEventListener("click", fecharModalComentarios);
+    if (modalOverlay) modalOverlay.addEventListener("click", (ev) => {
+        if (ev.target === modalOverlay) fecharModalComentarios();
+    });
+    if (modalTexto) {
+        modalTexto.addEventListener("input", () => {
+            modalBtnAdd.disabled = modalTexto.value.trim().length === 0;
+        });
+        modalTexto.addEventListener("keydown", (ev) => {
+            if (ev.ctrlKey && ev.key === "Enter") {
+                ev.preventDefault();
+                if (!modalBtnAdd.disabled) adicionarComentario();
+            }
+        });
+    }
+    if (modalBtnAdd) modalBtnAdd.addEventListener("click", adicionarComentario);
+    document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && modalOverlay && modalOverlay.classList.contains("aberto")) {
+            fecharModalComentarios();
+        }
+    });
+
     function onComentarioClick(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -383,30 +418,162 @@ document.addEventListener("DOMContentLoaded", () => {
         const codigo = btn.dataset.comentCodigo;
         const item = estadoAtual.itens.find(i => i.codigo === codigo);
         if (!item) return;
+        abrirModalComentarios(item);
+    }
 
-        const atual = (codigo in estadoAtual.comentariosAlterados)
-            ? estadoAtual.comentariosAlterados[codigo]
-            : (item.comentario || "");
-        const label = `Comentário para ${item.codigo} — ${labelMes(estadoAtual.anoMesMeta)}\n(deixe em branco para remover)`;
-        const novo = window.prompt(label, atual || "");
-        if (novo === null) return; // cancelado
-        const novoNorm = String(novo).trim();
-        const origNorm = String(item.comentario || "").trim();
+    function abrirModalComentarios(item) {
+        modalComentEstado.codigo    = item.codigo;
+        modalComentEstado.anoMes    = estadoAtual.anoMesMeta;
+        modalComentEstado.descricao = item.descricao || "";
+        modalComentEstado.itens     = [];
 
-        if (novoNorm === origNorm) {
-            delete estadoAtual.comentariosAlterados[codigo];
-        } else {
-            estadoAtual.comentariosAlterados[codigo] = novoNorm;
+        modalTitulo.textContent = `— ${item.codigo}`;
+        modalSub.innerHTML = `${escapeHtml(item.descricao || "")} <span style="color:#1976d2;">• ${labelMes(estadoAtual.anoMesMeta)}</span>`;
+        modalTexto.value = "";
+        modalBtnAdd.disabled = true;
+        modalLista.innerHTML = `<div class="modal-coment-vazio"><i class="fa fa-spinner fa-spin"></i> Carregando...</div>`;
+        modalOverlay.classList.add("aberto");
+        setTimeout(() => { try { modalTexto.focus(); } catch (_) {} }, 50);
+        carregarComentarios();
+    }
+
+    function fecharModalComentarios() {
+        if (!modalOverlay) return;
+        modalOverlay.classList.remove("aberto");
+        modalComentEstado.codigo = null;
+        modalComentEstado.anoMes = null;
+        modalComentEstado.itens  = [];
+    }
+
+    async function carregarComentarios() {
+        const { codigo, anoMes } = modalComentEstado;
+        if (!codigo || !anoMes) return;
+        try {
+            const url = `/api/embalagem/relatorios?acao=savingListComentarios&codigo=${encodeURIComponent(codigo)}&anoMes=${encodeURIComponent(anoMes)}`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            modalComentEstado.itens = Array.isArray(data.itens) ? data.itens : [];
+            renderizarComentariosModal();
+        } catch (err) {
+            console.error("Erro carregar comentários:", err);
+            modalLista.innerHTML = `<div class="modal-coment-vazio" style="color:#c62828;">Erro: ${escapeHtml(err.message)}</div>`;
         }
-        atualizarBotaoSalvar();
+    }
+
+    function renderizarComentariosModal() {
+        const lista = modalComentEstado.itens;
+        if (lista.length === 0) {
+            modalLista.innerHTML = `<div class="modal-coment-vazio">Nenhum comentário ainda. Adicione o primeiro acima.</div>`;
+            return;
+        }
+        modalLista.innerHTML = lista.map(c => {
+            const dt = c.dtCadastro ? formatarDataHora(c.dtCadastro) : "";
+            return `
+                <div class="modal-coment-item" data-id="${c.id}">
+                    <button type="button" class="btn-del" data-del-id="${c.id}" title="Remover">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                    <div class="meta-linha">
+                        <span class="autor"><i class="fa fa-user"></i> ${escapeHtml(c.usuario || "—")}</span>
+                        <span>${escapeHtml(dt)}</span>
+                    </div>
+                    <div class="texto">${escapeHtml(c.comentario || "")}</div>
+                </div>
+            `;
+        }).join("");
+        modalLista.querySelectorAll(".btn-del").forEach(btn => {
+            btn.addEventListener("click", removerComentario);
+        });
+    }
+
+    async function adicionarComentario() {
+        const texto = modalTexto.value.trim();
+        if (!texto) return;
+        const { codigo, anoMes } = modalComentEstado;
+        const usuario = localStorage.getItem("userName") || "desconhecido";
+        modalBtnAdd.disabled = true;
+        const labelOrig = modalBtnAdd.innerHTML;
+        modalBtnAdd.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Salvando...`;
+        try {
+            const resp = await fetch(`/api/embalagem/relatorios?acao=savingAddComentario`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ codigo, anoMes, comentario: texto, usuario })
+            });
+            if (!resp.ok) {
+                const e = await resp.json().catch(() => ({}));
+                throw new Error(e.message || `HTTP ${resp.status}`);
+            }
+            const data = await resp.json();
+            if (data.item) {
+                modalComentEstado.itens.unshift(data.item);
+                renderizarComentariosModal();
+                atualizarItemAposComentario(codigo, +1, data.item);
+            }
+            modalTexto.value = "";
+        } catch (err) {
+            console.error("Erro adicionar comentário:", err);
+            alert("Erro ao adicionar comentário: " + err.message);
+        } finally {
+            modalBtnAdd.innerHTML = labelOrig;
+            modalBtnAdd.disabled = modalTexto.value.trim().length === 0;
+        }
+    }
+
+    async function removerComentario(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = Number(e.currentTarget.dataset.delId);
+        if (!id) return;
+        if (!confirm("Remover este comentário?")) return;
+        try {
+            const resp = await fetch(`/api/embalagem/relatorios?acao=savingDeleteComentario&id=${id}`, {
+                method: "DELETE"
+            });
+            if (!resp.ok) {
+                const e2 = await resp.json().catch(() => ({}));
+                throw new Error(e2.message || `HTTP ${resp.status}`);
+            }
+            modalComentEstado.itens = modalComentEstado.itens.filter(c => c.id !== id);
+            renderizarComentariosModal();
+            const novoUltimo = modalComentEstado.itens[0] || null;
+            atualizarItemAposComentario(modalComentEstado.codigo, -1, novoUltimo);
+        } catch (err) {
+            console.error("Erro remover comentário:", err);
+            alert("Erro ao remover comentário: " + err.message);
+        }
+    }
+
+    function atualizarItemAposComentario(codigo, delta, novoUltimo) {
+        const it = estadoAtual.itens.find(i => i.codigo === codigo);
+        if (!it) return;
+        it.qtdComentarios = Math.max(0, (Number(it.qtdComentarios) || 0) + delta);
+        if (novoUltimo) {
+            it.ultimoComentario = novoUltimo.comentario || null;
+            it.ultimoComentUser = novoUltimo.usuario || null;
+            it.ultimoComentDt   = novoUltimo.dtCadastro || null;
+        } else if (it.qtdComentarios === 0) {
+            it.ultimoComentario = null;
+            it.ultimoComentUser = null;
+            it.ultimoComentDt   = null;
+        }
         renderizarTabela();
     }
 
-    function atualizarBotaoSalvar() {
-        const totalAlteracoes =
-            Object.keys(estadoAtual.alteracoes).length +
-            Object.keys(estadoAtual.comentariosAlterados).length;
-        btnSalvarMetas.disabled = totalAlteracoes === 0;
+    function formatarDataHora(v) {
+        try {
+            const d = (v instanceof Date) ? v : new Date(v);
+            if (isNaN(d.getTime())) return String(v);
+            const dd = String(d.getDate()).padStart(2, "0");
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mi = String(d.getMinutes()).padStart(2, "0");
+            return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+        } catch (_) {
+            return String(v);
+        }
     }
 
     function atualizarTotais() {
@@ -435,38 +602,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ----------------------- Salvar Metas -----------------------
     async function salvarMetasAlteradas() {
-        const codigosMeta    = Object.keys(estadoAtual.alteracoes);
-        const codigosComent  = Object.keys(estadoAtual.comentariosAlterados);
-        const todosCodigos   = Array.from(new Set([...codigosMeta, ...codigosComent]));
-        if (todosCodigos.length === 0) return;
+        const codigosAlterados = Object.keys(estadoAtual.alteracoes);
+        if (codigosAlterados.length === 0) return;
 
         const usuario = localStorage.getItem("userName") || "desconhecido";
-        const itens = todosCodigos
+        const itens = codigosAlterados
             .map(cod => {
                 const it = estadoAtual.itens.find(i => i.codigo === cod);
-                if (!it) return null;
-                const metaPct = (cod in estadoAtual.alteracoes)
-                    ? estadoAtual.alteracoes[cod]
-                    : (it.metaPct != null ? it.metaPct : null);
-                const comentario = (cod in estadoAtual.comentariosAlterados)
-                    ? estadoAtual.comentariosAlterados[cod]
-                    : (it.comentario || null);
-                // Se não tem custoBase e não tem comentário, não há o que salvar
-                const semBase = !it.anoMesBase;
-                const comentVazio = !comentario || String(comentario).trim().length === 0;
-                if (semBase && comentVazio) return null;
+                if (!it || !it.anoMesBase) return null; // sem custo base não há como calcular saving
                 return {
                     codigo: cod,
                     anoMes: estadoAtual.anoMesMeta,
-                    metaPct,
-                    custoBase: it.custoBase,
-                    comentario
+                    metaPct: estadoAtual.alteracoes[cod],
+                    custoBase: it.custoBase
                 };
             })
             .filter(Boolean);
 
         if (itens.length === 0) {
-            alert("Nenhum item alterado possui Custo Base (NF anterior ao mês-meta) nem comentário. Nada a salvar.");
+            alert("Nenhum item alterado possui Custo Base (NF anterior ao mês-meta). Nada a salvar.");
             return;
         }
 
@@ -494,7 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Erro ao salvar metas: " + err.message);
         } finally {
             btnSalvarMetas.innerHTML = `<i class="fa fa-save"></i> Salvar Metas Alteradas`;
-            atualizarBotaoSalvar();
+            btnSalvarMetas.disabled = Object.keys(estadoAtual.alteracoes).length === 0;
         }
     }
 

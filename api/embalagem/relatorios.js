@@ -42,6 +42,8 @@ export default async function handler(req, res) {
             return await savingIndicador(req, res);
         } else if (acao === 'savingResumoMeses') {
             return await savingResumoMeses(req, res);
+        } else if (acao === 'savingListComentarios') {
+            return await savingListComentarios(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -49,11 +51,13 @@ export default async function handler(req, res) {
     if (req.method === "POST") {
         if (acao === 'savingSaveMeta')        return await savingSaveMeta(req, res);
         if (acao === 'savingSaveMetasBatch')  return await savingSaveMetasBatch(req, res);
+        if (acao === 'savingAddComentario')   return await savingAddComentario(req, res);
         return res.status(400).json({ message: "Ação POST não reconhecida" });
     }
 
     if (req.method === "DELETE") {
-        if (acao === 'savingDeleteMeta') return await savingDeleteMeta(req, res);
+        if (acao === 'savingDeleteMeta')        return await savingDeleteMeta(req, res);
+        if (acao === 'savingDeleteComentario')  return await savingDeleteComentario(req, res);
         return res.status(400).json({ message: "Ação DELETE não reconhecida" });
     }
 
@@ -987,6 +991,10 @@ async function relatorioMovimentoDiario(req, res) {
 //   POST ?acao=savingSaveMeta             body: { codigo, anoMes, metaPct, custoBase, usuario }
 //   POST ?acao=savingSaveMetasBatch       body: { itens: [...], usuario }
 //   DELETE ?acao=savingDeleteMeta&codigo=...&anoMes=YYYY-MM
+//   GET  ?acao=savingListComentarios&codigo=...&anoMes=YYYY-MM
+//   POST ?acao=savingAddComentario        body: { codigo, anoMes, comentario, usuario }
+//   DELETE ?acao=savingDeleteComentario&id=N
+//
 //
 // Conceito:
 //   - "Mês da Meta" (anoMesMeta) é o mês-alvo onde se quer reduzir o custo.
@@ -1073,7 +1081,7 @@ async function savingList(req, res) {
         const metasResult = await pool.request()
             .input("anoMes", sql.Char(7), anoMesMeta)
             .query(`
-                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.COMENTARIO, m.USUARIO,
+                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.USUARIO,
                        m.DT_CADASTRO, m.DT_ATUALIZACAO
                 FROM [dbo].[TB_SAVING_META] m
                 INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
@@ -1085,8 +1093,40 @@ async function savingList(req, res) {
         for (const m of metasResult.recordset) {
             metasPorItem[String(m.CODIGO)] = {
                 metaPct: Number(m.META_PCT),
-                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null,
-                comentario: m.COMENTARIO != null ? String(m.COMENTARIO) : null
+                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null
+            };
+        }
+
+        // Contagem de comentários por item (para o mês-meta) + último comentário (preview)
+        const comentResult = await pool.request()
+            .input("anoMes", sql.Char(7), anoMesMeta)
+            .query(`
+                ;WITH UltimoComent AS (
+                    SELECT CODIGO, ANO_MES, COMENTARIO, USUARIO, DT_CADASTRO,
+                           ROW_NUMBER() OVER (PARTITION BY CODIGO, ANO_MES ORDER BY DT_CADASTRO DESC, ID DESC) AS rn
+                    FROM [dbo].[TB_SAVING_COMENTARIO]
+                    WHERE ANO_MES = @anoMes
+                ),
+                Cont AS (
+                    SELECT CODIGO, COUNT(*) AS QTD
+                    FROM [dbo].[TB_SAVING_COMENTARIO]
+                    WHERE ANO_MES = @anoMes
+                    GROUP BY CODIGO
+                )
+                SELECT c.CODIGO, c.QTD,
+                       uc.COMENTARIO AS ULTIMO_COMENTARIO,
+                       uc.USUARIO    AS ULTIMO_USUARIO,
+                       uc.DT_CADASTRO AS ULTIMO_DT
+                FROM Cont c
+                LEFT JOIN UltimoComent uc ON uc.CODIGO = c.CODIGO AND uc.rn = 1
+            `);
+        const comentPorItem = {};
+        for (const r of comentResult.recordset) {
+            comentPorItem[String(r.CODIGO)] = {
+                qtd: Number(r.QTD) || 0,
+                ultimo: r.ULTIMO_COMENTARIO != null ? String(r.ULTIMO_COMENTARIO) : null,
+                ultimoUsuario: r.ULTIMO_USUARIO != null ? String(r.ULTIMO_USUARIO) : null,
+                ultimoDt: r.ULTIMO_DT != null ? r.ULTIMO_DT : null
             };
         }
 
@@ -1135,7 +1175,10 @@ async function savingList(req, res) {
                 custoTarget,
                 consumoMensal,
                 savingProjetado12m,
-                comentario: meta ? meta.comentario : null,
+                qtdComentarios:   comentPorItem[cod] ? comentPorItem[cod].qtd : 0,
+                ultimoComentario: comentPorItem[cod] ? comentPorItem[cod].ultimo : null,
+                ultimoComentUser: comentPorItem[cod] ? comentPorItem[cod].ultimoUsuario : null,
+                ultimoComentDt:   comentPorItem[cod] ? comentPorItem[cod].ultimoDt : null,
                 custos
             };
         });
@@ -1365,7 +1408,7 @@ async function savingResumoMeses(req, res) {
 
 async function savingSaveMeta(req, res) {
     try {
-        const { codigo, anoMes, metaPct, custoBase, comentario, usuario } = req.body || {};
+        const { codigo, anoMes, metaPct, custoBase, usuario } = req.body || {};
         if (!codigo || !anoMes || metaPct === undefined || metaPct === null) {
             return res.status(400).json({ message: "Campos obrigatórios: codigo, anoMes, metaPct." });
         }
@@ -1377,7 +1420,7 @@ async function savingSaveMeta(req, res) {
             return res.status(400).json({ message: "metaPct deve ser número entre 0 e 100." });
         }
         const pool = await getConnection();
-        await savingUpsertMeta(pool.request(), { codigo, anoMes, metaPct: pctNum, custoBase, comentario, usuario });
+        await savingUpsertMeta(pool.request(), { codigo, anoMes, metaPct: pctNum, custoBase, usuario });
         return res.status(200).json({ message: "Meta salva.", codigo, anoMes, metaPct: pctNum });
     } catch (err) {
         console.error("Erro savingSaveMeta:", err);
@@ -1396,14 +1439,12 @@ async function savingSaveMetasBatch(req, res) {
         await transaction.begin();
         let salvos = 0, removidos = 0;
         for (const it of itens) {
-            const { codigo, anoMes, metaPct, custoBase, comentario } = it;
+            const { codigo, anoMes, metaPct, custoBase } = it;
             if (!codigo || !anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) continue;
 
             const metaVazia = (metaPct === null || metaPct === undefined || metaPct === "" || Number(metaPct) <= 0);
-            const comentarioStr = comentario != null ? String(comentario).trim() : "";
-            const semComentario = comentarioStr.length === 0;
 
-            if (metaVazia && semComentario) {
+            if (metaVazia) {
                 await new sql.Request(transaction)
                     .input("codigo", sql.NVarChar(50), String(codigo))
                     .input("anoMes", sql.Char(7), anoMes)
@@ -1412,15 +1453,13 @@ async function savingSaveMetasBatch(req, res) {
                 continue;
             }
 
-            // Meta vazia mas com comentário: mantém linha com META_PCT = 0
-            const pctNum = metaVazia ? 0 : Number(metaPct);
+            const pctNum = Number(metaPct);
             if (!Number.isFinite(pctNum) || pctNum < 0 || pctNum > 100) continue;
 
             await savingUpsertMeta(new sql.Request(transaction), {
                 codigo, anoMes,
                 metaPct: pctNum,
                 custoBase,
-                comentario: semComentario ? null : comentarioStr,
                 usuario
             });
             salvos++;
@@ -1452,13 +1491,12 @@ async function savingDeleteMeta(req, res) {
     }
 }
 
-async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, comentario, usuario }) {
+async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, usuario }) {
     request
         .input("codigo", sql.NVarChar(50), String(codigo))
         .input("anoMes", sql.Char(7), anoMes)
         .input("metaPct", sql.Decimal(5, 2), Number(metaPct))
         .input("custoBase", sql.Decimal(18, 6), custoBase != null ? Number(custoBase) : null)
-        .input("comentario", sql.NVarChar(sql.MAX), comentario != null ? String(comentario) : null)
         .input("usuario", sql.NVarChar(100), usuario || null);
 
     await request.query(`
@@ -1468,13 +1506,110 @@ async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, c
         WHEN MATCHED THEN
             UPDATE SET META_PCT = @metaPct,
                        CUSTO_BASE = @custoBase,
-                       COMENTARIO = @comentario,
                        USUARIO = @usuario,
                        DT_ATUALIZACAO = GETDATE()
         WHEN NOT MATCHED THEN
-            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, COMENTARIO, USUARIO)
-            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @comentario, @usuario);
+            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, USUARIO)
+            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @usuario);
     `);
+}
+
+// ----------------------- Comentários (histórico) -----------------------
+
+async function savingListComentarios(req, res) {
+    try {
+        const { codigo, anoMes } = req.query;
+        if (!codigo || !anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "Parâmetros 'codigo' e 'anoMes' (YYYY-MM) obrigatórios." });
+        }
+        const pool = await getConnection();
+        const result = await pool.request()
+            .input("codigo", sql.NVarChar(50), String(codigo))
+            .input("anoMes", sql.Char(7), anoMes)
+            .query(`
+                SELECT ID, CODIGO, ANO_MES, COMENTARIO, USUARIO, DT_CADASTRO
+                FROM [dbo].[TB_SAVING_COMENTARIO]
+                WHERE CODIGO = @codigo AND ANO_MES = @anoMes
+                ORDER BY DT_CADASTRO DESC, ID DESC
+            `);
+        const itens = result.recordset.map(r => ({
+            id: Number(r.ID),
+            codigo: r.CODIGO,
+            anoMes: r.ANO_MES,
+            comentario: r.COMENTARIO,
+            usuario: r.USUARIO,
+            dtCadastro: r.DT_CADASTRO
+        }));
+        return res.status(200).json({ codigo, anoMes, itens });
+    } catch (err) {
+        console.error("Erro savingListComentarios:", err);
+        return res.status(500).json({ message: "Erro ao listar comentários.", error: err.message });
+    }
+}
+
+async function savingAddComentario(req, res) {
+    try {
+        const { codigo, anoMes, comentario, usuario } = req.body || {};
+        if (!codigo || !anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "Campos obrigatórios: codigo, anoMes (YYYY-MM)." });
+        }
+        const texto = (comentario != null ? String(comentario) : "").trim();
+        if (texto.length === 0) {
+            return res.status(400).json({ message: "Comentário não pode estar vazio." });
+        }
+        if (texto.length > 4000) {
+            return res.status(400).json({ message: "Comentário excede 4000 caracteres." });
+        }
+        const pool = await getConnection();
+        const result = await pool.request()
+            .input("codigo", sql.NVarChar(50), String(codigo))
+            .input("anoMes", sql.Char(7), anoMes)
+            .input("comentario", sql.NVarChar(sql.MAX), texto)
+            .input("usuario", sql.NVarChar(100), usuario || null)
+            .query(`
+                INSERT INTO [dbo].[TB_SAVING_COMENTARIO] (CODIGO, ANO_MES, COMENTARIO, USUARIO)
+                OUTPUT INSERTED.ID, INSERTED.CODIGO, INSERTED.ANO_MES,
+                       INSERTED.COMENTARIO, INSERTED.USUARIO, INSERTED.DT_CADASTRO
+                VALUES (@codigo, @anoMes, @comentario, @usuario);
+            `);
+        const r = result.recordset[0];
+        return res.status(201).json({
+            message: "Comentário adicionado.",
+            item: {
+                id: Number(r.ID),
+                codigo: r.CODIGO,
+                anoMes: r.ANO_MES,
+                comentario: r.COMENTARIO,
+                usuario: r.USUARIO,
+                dtCadastro: r.DT_CADASTRO
+            }
+        });
+    } catch (err) {
+        console.error("Erro savingAddComentario:", err);
+        return res.status(500).json({ message: "Erro ao adicionar comentário.", error: err.message });
+    }
+}
+
+async function savingDeleteComentario(req, res) {
+    try {
+        const { id } = req.query;
+        const idNum = Number(id);
+        if (!Number.isFinite(idNum) || idNum <= 0) {
+            return res.status(400).json({ message: "Parâmetro 'id' inválido." });
+        }
+        const pool = await getConnection();
+        const result = await pool.request()
+            .input("id", sql.Int, idNum)
+            .query(`DELETE FROM [dbo].[TB_SAVING_COMENTARIO] WHERE ID = @id`);
+        return res.status(200).json({
+            message: "Comentário removido.",
+            id: idNum,
+            rowsAffected: result.rowsAffected[0] || 0
+        });
+    } catch (err) {
+        console.error("Erro savingDeleteComentario:", err);
+        return res.status(500).json({ message: "Erro ao remover comentário.", error: err.message });
+    }
 }
 
 function savingGerarMeses(dtIni, dtFim) {
