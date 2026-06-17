@@ -1098,36 +1098,52 @@ async function savingList(req, res) {
         }
 
         // Contagem de comentários por item (para o mês-meta) + último comentário (preview)
-        const comentResult = await pool.request()
-            .input("anoMes", sql.Char(7), anoMesMeta)
-            .query(`
-                ;WITH UltimoComent AS (
-                    SELECT CODIGO, ANO_MES, COMENTARIO, USUARIO, DT_CADASTRO,
-                           ROW_NUMBER() OVER (PARTITION BY CODIGO, ANO_MES ORDER BY DT_CADASTRO DESC, ID DESC) AS rn
-                    FROM [dbo].[TB_SAVING_COMENTARIO]
-                    WHERE ANO_MES = @anoMes
-                ),
-                Cont AS (
-                    SELECT CODIGO, COUNT(*) AS QTD
-                    FROM [dbo].[TB_SAVING_COMENTARIO]
-                    WHERE ANO_MES = @anoMes
-                    GROUP BY CODIGO
-                )
-                SELECT c.CODIGO, c.QTD,
-                       uc.COMENTARIO AS ULTIMO_COMENTARIO,
-                       uc.USUARIO    AS ULTIMO_USUARIO,
-                       uc.DT_CADASTRO AS ULTIMO_DT
-                FROM Cont c
-                LEFT JOIN UltimoComent uc ON uc.CODIGO = c.CODIGO AND uc.rn = 1
-            `);
+        // Resiliente: se TB_SAVING_COMENTARIO ainda não existir, ignora.
         const comentPorItem = {};
-        for (const r of comentResult.recordset) {
-            comentPorItem[String(r.CODIGO)] = {
-                qtd: Number(r.QTD) || 0,
-                ultimo: r.ULTIMO_COMENTARIO != null ? String(r.ULTIMO_COMENTARIO) : null,
-                ultimoUsuario: r.ULTIMO_USUARIO != null ? String(r.ULTIMO_USUARIO) : null,
-                ultimoDt: r.ULTIMO_DT != null ? r.ULTIMO_DT : null
-            };
+        try {
+            const comentResult = await pool.request()
+                .input("anoMes", sql.Char(7), anoMesMeta)
+                .query(`
+                    IF OBJECT_ID(N'dbo.TB_SAVING_COMENTARIO', N'U') IS NULL
+                    BEGIN
+                        SELECT TOP 0
+                            CAST(NULL AS NVARCHAR(50)) AS CODIGO,
+                            CAST(0 AS INT) AS QTD,
+                            CAST(NULL AS NVARCHAR(MAX)) AS ULTIMO_COMENTARIO,
+                            CAST(NULL AS NVARCHAR(100)) AS ULTIMO_USUARIO,
+                            CAST(NULL AS DATETIME) AS ULTIMO_DT;
+                        RETURN;
+                    END
+
+                    ;WITH UltimoComent AS (
+                        SELECT CODIGO, ANO_MES, COMENTARIO, USUARIO, DT_CADASTRO,
+                               ROW_NUMBER() OVER (PARTITION BY CODIGO, ANO_MES ORDER BY DT_CADASTRO DESC, ID DESC) AS rn
+                        FROM [dbo].[TB_SAVING_COMENTARIO]
+                        WHERE ANO_MES = @anoMes
+                    ),
+                    Cont AS (
+                        SELECT CODIGO, COUNT(*) AS QTD
+                        FROM [dbo].[TB_SAVING_COMENTARIO]
+                        WHERE ANO_MES = @anoMes
+                        GROUP BY CODIGO
+                    )
+                    SELECT c.CODIGO, c.QTD,
+                           uc.COMENTARIO AS ULTIMO_COMENTARIO,
+                           uc.USUARIO    AS ULTIMO_USUARIO,
+                           uc.DT_CADASTRO AS ULTIMO_DT
+                    FROM Cont c
+                    LEFT JOIN UltimoComent uc ON uc.CODIGO = c.CODIGO AND uc.rn = 1
+                `);
+            for (const r of comentResult.recordset) {
+                comentPorItem[String(r.CODIGO)] = {
+                    qtd: Number(r.QTD) || 0,
+                    ultimo: r.ULTIMO_COMENTARIO != null ? String(r.ULTIMO_COMENTARIO) : null,
+                    ultimoUsuario: r.ULTIMO_USUARIO != null ? String(r.ULTIMO_USUARIO) : null,
+                    ultimoDt: r.ULTIMO_DT != null ? r.ULTIMO_DT : null
+                };
+            }
+        } catch (errComent) {
+            console.warn("Aviso savingList: não foi possível ler TB_SAVING_COMENTARIO:", errComent.message);
         }
 
         // Consumo médio mensal por item (saídas dos últimos 365 dias × 30/365)
