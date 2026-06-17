@@ -138,13 +138,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function atualizarAncoraInfo() {
-        const itensComBase = estadoAtual.itens.filter(i => i.anoMesBase).length;
+        const itensComBase = estadoAtual.itens.filter(i => i.custoBase != null).length;
         const labelMeta = labelMes(estadoAtual.anoMesMeta);
         ancoraInfo.innerHTML = `
             Metas para o mês <strong style="color:#1976d2;">${labelMeta}</strong>.
-            <strong>Custo Base</strong> = última NF do item ANTES de ${labelMeta} (marcada com ★).
+            <strong>Custo Base</strong> = última NF do item ANTES de ${labelMeta} (marcada com ★) ou custo salvo na meta (★ Meta Salva).
             Meta% aplicada sobre o Custo Base define o <strong>Saving R$/un</strong> e o <strong>Custo Target</strong>.
-            <em>${itensComBase}/${estadoAtual.itens.length} itens com NF anterior ao mês-meta.</em>
+            <em>${itensComBase}/${estadoAtual.itens.length} itens com Custo Base disponível.</em>
         `;
     }
 
@@ -274,12 +274,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? formatNum(it.consumoMensal)
                 : '<span class="muted">—</span>';
 
-            const baseTxt = it.anoMesBase
-                ? `<strong style="color:#1976d2;">${labelMes(it.anoMesBase)}</strong>` +
-                  `<span class="col-base-valor">${formatBRL(it.custoBase)}</span>`
-                : '<span class="muted">sem NF</span>';
+            let baseTxt;
+            if (it.custoBaseOrigem === 'meta') {
+                // Custo base veio da meta salva (histórico fixo)
+                baseTxt = `<strong style="color:#ff6f00;" title="Custo Base salvo na meta (fixo)">★ Meta Salva</strong>` +
+                          `<span class="col-base-valor">${formatBRL(it.custoBase)}</span>`;
+            } else if (it.anoMesBase && it.custoBase != null) {
+                // Custo base das NFs do período
+                baseTxt = `<strong style="color:#1976d2;">${labelMes(it.anoMesBase)}</strong>` +
+                          `<span class="col-base-valor">${formatBRL(it.custoBase)}</span>`;
+            } else {
+                baseTxt = '<span class="muted">sem NF</span>';
+            }
 
-            const semBase = it.anoMesBase == null;
+            // Item pode ter meta se tiver custoBase (seja de NF do período ou meta salva)
+            const semBase = it.custoBase == null;
             const inputAttrs = semBase ? 'disabled title="Sem NF anterior ao mês-meta — não é possível cadastrar meta"' : '';
 
             const comentEfetivo = it.ultimoComentario || "";
@@ -678,7 +687,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const itens = codigosAlterados
             .map(cod => {
                 const it = estadoAtual.itens.find(i => i.codigo === cod);
-                if (!it || !it.anoMesBase) return null; // sem custo base não há como calcular saving
+                if (!it || it.custoBase == null) return null; // sem custo base não há como calcular saving
                 return {
                     codigo: cod,
                     anoMes: estadoAtual.anoMesMeta,

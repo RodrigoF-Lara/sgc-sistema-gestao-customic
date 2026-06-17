@@ -1170,12 +1170,28 @@ async function savingList(req, res) {
         const resposta = itens.map(it => {
             const cod = String(it.CODIGO);
             const custos = custosPorItem[cod] || {};
-            const anoMesBase = anoMesBasePorItem[cod] || null;
+            const anoMesBaseNF = anoMesBasePorItem[cod] || null; // mês base das NFs do período
             const meta = metasPorItem[cod] || null;
+            
             // IMPORTANTE: prioriza custoBase SALVO na meta (fixo), senão calcula da NF
-            const custoBase = (meta && meta.custoBase != null)
-                ? meta.custoBase
-                : (anoMesBase != null ? custos[anoMesBase] : null);
+            let custoBase, anoMesBase, custoBaseOrigem;
+            if (meta && meta.custoBase != null) {
+                // Meta salva tem prioridade — custo fixo histórico
+                custoBase = meta.custoBase;
+                anoMesBase = anoMesMeta; // usa mês-meta como referência visual (meta salva)
+                custoBaseOrigem = 'meta'; // indica que veio da meta salva
+            } else if (anoMesBaseNF != null) {
+                // Calcula das NFs do período
+                custoBase = custos[anoMesBaseNF];
+                anoMesBase = anoMesBaseNF;
+                custoBaseOrigem = 'nf';
+            } else {
+                // Sem meta e sem NFs
+                custoBase = null;
+                anoMesBase = null;
+                custoBaseOrigem = null;
+            }
+            
             const metaPct = meta ? meta.metaPct : null;
             const savingValor = (custoBase != null && metaPct != null)
                 ? +(custoBase * (metaPct / 100)).toFixed(4) : null;
@@ -1189,6 +1205,7 @@ async function savingList(req, res) {
                 descricao: it.DESCRICAO,
                 anoMesBase,
                 custoBase,
+                custoBaseOrigem, // 'meta', 'nf' ou null
                 metaPct,
                 savingValor,
                 custoTarget,
