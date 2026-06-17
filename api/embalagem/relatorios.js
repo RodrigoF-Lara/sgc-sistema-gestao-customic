@@ -1604,13 +1604,17 @@ async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, u
         .input("custoBase", sql.Decimal(18, 6), custoBase != null ? Number(custoBase) : null)
         .input("usuario", sql.NVarChar(100), usuario || null);
 
+    // IMPORTANTE: se custoBase vier NULL do frontend, NÃO sobrescreve o valor já salvo
     await request.query(`
         MERGE [dbo].[TB_SAVING_META] AS target
         USING (SELECT @codigo AS CODIGO, @anoMes AS ANO_MES) AS src
            ON target.CODIGO = src.CODIGO AND target.ANO_MES = src.ANO_MES
         WHEN MATCHED THEN
             UPDATE SET META_PCT = @metaPct,
-                       CUSTO_BASE = @custoBase,
+                       CUSTO_BASE = CASE
+                           WHEN @custoBase IS NOT NULL THEN @custoBase
+                           ELSE target.CUSTO_BASE
+                       END,
                        USUARIO = @usuario,
                        DT_ATUALIZACAO = GETDATE()
         WHEN NOT MATCHED THEN
