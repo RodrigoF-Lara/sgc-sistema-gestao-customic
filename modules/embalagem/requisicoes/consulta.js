@@ -45,14 +45,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${listaDeRequisicoes.map(req => {
                     const prioridade = (req.PRIORIDADE || 'NORMAL').trim();
                     const status = padronizarStatus(req.STATUS);
+                    const statusClass = status ? status.replace(/\s/g, '-').toLowerCase() : 'pendente';
                     return `
                     <tr>
-                        <td>${req.ID_REQ}</td>
+                        <td>${req.ID_REQ || '-'}</td>
                         <td>${formatarData(req.DT_REQUISICAO)}</td>
-                        <td>${req.SOLICITANTE}</td>
+                        <td>${req.SOLICITANTE || '-'}</td>
                         <td><span class="prioridade-badge prioridade-${prioridade.toLowerCase()}">${prioridade}</span></td>
-                        <td><span class="status-badge status-${status.replace(/\s/g, '-').toLowerCase()}">${status}</span></td>
-                        <td>${req.TOTAL_ITENS}</td>
+                        <td><span class="status-badge status-${statusClass}">${status || 'Pendente'}</span></td>
+                        <td>${req.TOTAL_ITENS || 0}</td>
                         <td>
                             <button class="btn-detalhes" data-id="${req.ID_REQ}">
                                 <i class="fa-solid fa-circle-info"></i> Detalhes
