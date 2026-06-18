@@ -1081,7 +1081,7 @@ async function savingList(req, res) {
         const metasResult = await pool.request()
             .input("anoMes", sql.Char(7), anoMesMeta)
             .query(`
-                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.USUARIO,
+                SELECT m.CODIGO, m.ANO_MES, m.META_PCT, m.CUSTO_BASE, m.ANO_MES_BASE, m.USUARIO,
                        m.DT_CADASTRO, m.DT_ATUALIZACAO
                 FROM [dbo].[TB_SAVING_META] m
                 INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
@@ -1093,7 +1093,8 @@ async function savingList(req, res) {
         for (const m of metasResult.recordset) {
             metasPorItem[String(m.CODIGO)] = {
                 metaPct: Number(m.META_PCT),
-                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null
+                custoBase: m.CUSTO_BASE != null ? Number(m.CUSTO_BASE) : null,
+                anoMesBase: m.ANO_MES_BASE != null ? String(m.ANO_MES_BASE) : null
             };
         }
 
@@ -1178,7 +1179,8 @@ async function savingList(req, res) {
             if (meta && meta.custoBase != null) {
                 // Meta salva tem prioridade — custo fixo histórico
                 custoBase = meta.custoBase;
-                anoMesBase = anoMesMeta; // usa mês-meta como referência visual (meta salva)
+                // Usa o mês-base salvo na meta (se existir), senão usa o mês-meta
+                anoMesBase = meta.anoMesBase || anoMesMeta;
                 custoBaseOrigem = 'meta'; // indica que veio da meta salva
             } else if (anoMesBaseNF != null) {
                 // Calcula das NFs do período
@@ -1585,6 +1587,7 @@ async function savingSaveMetasBatch(req, res) {
                 codigo, anoMes,
                 metaPct: pctNum,
                 custoBase,
+                anoMesBase: it.anoMesBase || null,
                 usuario
             });
             salvos++;
@@ -1616,15 +1619,17 @@ async function savingDeleteMeta(req, res) {
     }
 }
 
-async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, usuario }) {
+async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, anoMesBase, usuario }) {
     request
         .input("codigo", sql.NVarChar(50), String(codigo))
         .input("anoMes", sql.Char(7), anoMes)
         .input("metaPct", sql.Decimal(5, 2), Number(metaPct))
         .input("custoBase", sql.Decimal(18, 6), custoBase != null ? Number(custoBase) : null)
+        .input("anoMesBase", sql.Char(7), anoMesBase || null)
         .input("usuario", sql.NVarChar(100), usuario || null);
 
     // IMPORTANTE: se custoBase vier NULL do frontend, NÃO sobrescreve o valor já salvo
+    // Mesma regra para anoMesBase — preserva valor existente se não vier novo
     await request.query(`
         MERGE [dbo].[TB_SAVING_META] AS target
         USING (SELECT @codigo AS CODIGO, @anoMes AS ANO_MES) AS src
@@ -1635,11 +1640,15 @@ async function savingUpsertMeta(request, { codigo, anoMes, metaPct, custoBase, u
                            WHEN @custoBase IS NOT NULL THEN @custoBase
                            ELSE target.CUSTO_BASE
                        END,
+                       ANO_MES_BASE = CASE
+                           WHEN @anoMesBase IS NOT NULL THEN @anoMesBase
+                           ELSE target.ANO_MES_BASE
+                       END,
                        USUARIO = @usuario,
                        DT_ATUALIZACAO = GETDATE()
         WHEN NOT MATCHED THEN
-            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, USUARIO)
-            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @usuario);
+            INSERT (CODIGO, ANO_MES, META_PCT, CUSTO_BASE, ANO_MES_BASE, USUARIO)
+            VALUES (@codigo, @anoMes, @metaPct, @custoBase, @anoMesBase, @usuario);
     `);
 }
 

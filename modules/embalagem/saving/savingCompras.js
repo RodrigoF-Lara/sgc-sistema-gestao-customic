@@ -142,7 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const labelMeta = labelMes(estadoAtual.anoMesMeta);
         ancoraInfo.innerHTML = `
             Metas para o mês <strong style="color:#1976d2;">${labelMeta}</strong>.
-            <strong>Custo Base</strong> = última NF do item ANTES de ${labelMeta} (marcada com ★) ou custo salvo na meta (★ Meta Salva).
+            <strong>Custo Base</strong> = última NF do item ANTES de ${labelMeta}.
+            Itens com meta já salva exibem <strong style="color:#ff6f00;">★ mês-base original</strong> (fixo) em laranja.
             Meta% aplicada sobre o Custo Base define o <strong>Saving R$/un</strong> e o <strong>Custo Target</strong>.
             <em>${itensComBase}/${estadoAtual.itens.length} itens com Custo Base disponível.</em>
         `;
@@ -277,7 +278,8 @@ document.addEventListener("DOMContentLoaded", () => {
             let baseTxt;
             if (it.custoBaseOrigem === 'meta') {
                 // Custo base veio da meta salva (histórico fixo)
-                baseTxt = `<strong style="color:#ff6f00;" title="Custo Base salvo na meta (fixo)">★ Meta Salva</strong>` +
+                const mesBase = it.anoMesBase ? labelMes(it.anoMesBase) : '(mês desconhecido)';
+                baseTxt = `<strong style="color:#ff6f00;" title="Custo Base fixo salvo na meta">★ ${mesBase}</strong>` +
                           `<span class="col-base-valor">${formatBRL(it.custoBase)}</span>`;
             } else if (it.anoMesBase && it.custoBase != null) {
                 // Custo base das NFs do período
@@ -692,7 +694,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     codigo: cod,
                     anoMes: estadoAtual.anoMesMeta,
                     metaPct: estadoAtual.alteracoes[cod],
-                    custoBase: it.custoBase
+                    custoBase: it.custoBase,
+                    anoMesBase: it.anoMesBase || null // mês da NF que originou o custo base
                 };
             })
             .filter(Boolean);
