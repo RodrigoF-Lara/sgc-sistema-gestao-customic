@@ -278,8 +278,13 @@ document.addEventListener("DOMContentLoaded", () => {
             let baseTxt;
             if (it.custoBaseOrigem === 'meta') {
                 // Custo base veio da meta salva (histórico fixo)
-                const mesBase = it.anoMesBase ? labelMes(it.anoMesBase) : '(mês desconhecido)';
-                baseTxt = `<strong style="color:#ff6f00;" title="Custo Base fixo salvo na meta">★ ${mesBase}</strong>` +
+                const mesBase = it.anoMesBase
+                    ? `★ ${labelMes(it.anoMesBase)}`
+                    : `★ <span style="font-style:italic;">meta legada</span>`;
+                const mesBaseTitle = it.anoMesBase
+                    ? `Custo Base fixo da NF de ${labelMes(it.anoMesBase)}`
+                    : `Custo Base fixo (mês de origem não registrado — meta antiga)`;
+                baseTxt = `<strong style="color:#ff6f00;" title="${mesBaseTitle}">${mesBase}</strong>` +
                           `<span class="col-base-valor">${formatBRL(it.custoBase)}</span>`;
             } else if (it.anoMesBase && it.custoBase != null) {
                 // Custo base das NFs do período
@@ -690,12 +695,15 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(cod => {
                 const it = estadoAtual.itens.find(i => i.codigo === cod);
                 if (!it || it.custoBase == null) return null; // sem custo base não há como calcular saving
+                // Só envia anoMesCustoBase quando origem é NF (mês real da nota).
+                // Para metas já salvas (origem='meta'), envia null para preservar valor existente no banco.
+                const anoMesCustoBase = (it.custoBaseOrigem === 'nf' && it.anoMesBase) ? it.anoMesBase : null;
                 return {
                     codigo: cod,
                     anoMes: estadoAtual.anoMesMeta,
                     metaPct: estadoAtual.alteracoes[cod],
                     custoBase: it.custoBase,
-                    anoMesBase: it.anoMesBase || null // mês da NF que originou o custo base
+                    anoMesCustoBase // mês da NF que originou o custo base
                 };
             })
             .filter(Boolean);
