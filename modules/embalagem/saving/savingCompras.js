@@ -695,15 +695,23 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(cod => {
                 const it = estadoAtual.itens.find(i => i.codigo === cod);
                 if (!it || it.custoBase == null) return null; // sem custo base não há como calcular saving
-                // Só envia anoMesCustoBase quando origem é NF (mês real da nota).
-                // Para metas já salvas (origem='meta'), envia null para preservar valor existente no banco.
-                const anoMesCustoBase = (it.custoBaseOrigem === 'nf' && it.anoMesBase) ? it.anoMesBase : null;
+
+                // Regra de atualização:
+                // - Se o período atual contém a NF antes do mês-meta (anoMesCustoBaseNF),
+                //   envia esse mês E o custo da NF para o banco (atualiza referência).
+                //   Isso permite "consertar" metas salvas com mês-base errado/legado.
+                // - Senão, envia null/null para PRESERVAR o que já está salvo no banco
+                //   (não perde a referência histórica quando o período não contém a NF original).
+                const temNFNoPeriodo = it.anoMesCustoBaseNF != null && it.custoBaseNF != null;
+                const anoMesCustoBase = temNFNoPeriodo ? it.anoMesCustoBaseNF : null;
+                const custoBaseEnviar = temNFNoPeriodo ? it.custoBaseNF : null;
+
                 return {
                     codigo: cod,
                     anoMes: estadoAtual.anoMesMeta,
                     metaPct: estadoAtual.alteracoes[cod],
-                    custoBase: it.custoBase,
-                    anoMesCustoBase // mês da NF que originou o custo base
+                    custoBase: custoBaseEnviar, // null = preserva valor salvo no banco
+                    anoMesCustoBase // null = preserva mês salvo no banco
                 };
             })
             .filter(Boolean);

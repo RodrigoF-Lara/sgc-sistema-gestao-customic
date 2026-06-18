@@ -1202,12 +1202,19 @@ async function savingList(req, res) {
             const consumoMensal = consumoPorItem[cod] || 0;
             const savingProjetado12m = (savingValor != null && consumoMensal > 0)
                 ? +(savingValor * consumoMensal * 12).toFixed(2) : null;
+            // Custo/mês calculados das NFs do período atual (para permitir re-salvar e atualizar)
+            const anoMesCustoBaseNF = anoMesBaseNF; // mês real da última NF antes do mês-meta
+            const custoBaseNF = anoMesBaseNF != null ? custos[anoMesBaseNF] : null;
             return {
                 codigo: cod,
                 descricao: it.DESCRICAO,
                 anoMesBase,
                 custoBase,
                 custoBaseOrigem, // 'meta', 'nf' ou null
+                // Mês e custo calculados das NFs do período atual (independente da meta salva).
+                // Usado pelo frontend ao re-salvar uma meta para atualizar a referência no banco.
+                anoMesCustoBaseNF,
+                custoBaseNF,
                 metaPct,
                 savingValor,
                 custoTarget,
