@@ -1250,17 +1250,38 @@ async function savingIndicador(req, res) {
         const dtInicio = new Date(ano, mes - 1, 1);
         const dtFim = new Date(ano, mes, 0, 23, 59, 59, 999);
 
+        // PASSO 1: lista códigos das metas desse mês (evita scan amplo nas NFs/Kardex)
+        const codigosResult = await pool.request()
+            .input("anoMes", sql.Char(7), anoMes)
+            .query(`SELECT CODIGO FROM [dbo].[TB_SAVING_META] WHERE ANO_MES = @anoMes`);
+        const codigos = codigosResult.recordset.map(r => String(r.CODIGO));
+        
+        if (codigos.length === 0) {
+            return res.status(200).json({
+                anoMes,
+                anoMesComparacao: anoMes,
+                itens: [],
+                totais: { planejado: 0, realizado: 0, projetado12m: 0, realizado12m: 0, realizadoMes: 0, qtdCompradaMes: 0, atingimentoPct: null }
+            });
+        }
+
+        // Monta lista parametrizada de códigos para usar como filtro IN(...)
+        const codigosRequest = pool.request()
+            .input("anoMes", sql.Char(7), anoMes)
+            .input("dtInicio", sql.DateTime, dtInicio)
+            .input("dtFim", sql.DateTime, dtFim);
+        const codigoParams = codigos.map((cod, i) => {
+            const pname = `cod${i}`;
+            codigosRequest.input(pname, sql.NVarChar(50), cod);
+            return `@${pname}`;
+        }).join(",");
+
         // Custo Real = última NF lançada DENTRO do mês-meta
         let result;
         try {
-            const request = pool.request()
-                .input("anoMes", sql.Char(7), anoMes)
-                .input("dtInicio", sql.DateTime, dtInicio)
-                .input("dtFim", sql.DateTime, dtFim);
+            codigosRequest.timeout = 60000; // 60 segundos
             
-            request.timeout = 60000; // 60 segundos (padrão é 15s)
-            
-            result = await request.query(`
+            result = await codigosRequest.query(`
                 ;WITH UltimaNFMesMeta AS (
                     SELECT
                         p.PROD_COD_PROD AS CODIGO,
@@ -1273,6 +1294,7 @@ async function savingIndicador(req, res) {
                     INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
                     WHERE c.CAB_DT_EMISSAO >= @dtInicio
                       AND c.CAB_DT_EMISSAO <= @dtFim
+                      AND p.PROD_COD_PROD IN (${codigoParams})
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                       AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
                 ),
@@ -1285,6 +1307,7 @@ async function savingIndicador(req, res) {
                       AND k.USUARIO <> 'BEATRIZ JULHAO'
                       AND k.DT >= DATEADD(DAY, -365, GETDATE())
                       AND k.DT >= '2026-04-01'
+                      AND k.CODIGO IN (${codigoParams})
                     GROUP BY k.CODIGO
                 ),
                 ComprasMesMeta AS (
@@ -1295,6 +1318,7 @@ async function savingIndicador(req, res) {
                     INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
                     WHERE c.CAB_DT_EMISSAO >= @dtInicio
                       AND c.CAB_DT_EMISSAO <= @dtFim
+                      AND p.PROD_COD_PROD IN (${codigoParams})
                     GROUP BY p.PROD_COD_PROD
                 )
                 SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE,
@@ -1450,17 +1474,70 @@ async function savingIndicador(req, res) {
 async function savingResumoMeses(req, res) {
     try {
         const pool = await getConnection();
-        const result = await pool.request().query(`
+
+        // PASSO 1: descobrir range de datas das metas e códigos envolvidos
+        const rangeResult = await pool.request().query(`
+            SELECT
+                MIN(ANO_MES) AS MIN_ANO_MES,
+                MAX(ANO_MES) AS MAX_ANO_MES
+            FROM [dbo].[TB_SAVING_META]
+        `);
+        const minAnoMes = rangeResult.recordset[0]?.MIN_ANO_MES;
+        const maxAnoMes = rangeResult.recordset[0]?.MAX_ANO_MES;
+        if (!minAnoMes || !maxAnoMes) {
+            return res.status(200).json({ meses: [] });
+        }
+        // Converte 'YYYY-MM' para Date (início do mês mín, fim do mês máx)
+        const [yMin, mMin] = minAnoMes.split("-").map(Number);
+        const [yMax, mMax] = maxAnoMes.split("-").map(Number);
+        const dtMin = new Date(yMin, mMin - 1, 1);
+        const dtMax = new Date(yMax, mMax, 0, 23, 59, 59, 999);
+
+        const request = pool.request()
+            .input("dtMin", sql.DateTime, dtMin)
+            .input("dtMax", sql.DateTime, dtMax);
+        request.timeout = 60000;
+
+        // Query otimizada: pré-agrega NFs por (CODIGO, ANO_MES) usando range de datas
+        // (em vez de YEAR/MONTH em subqueries correlacionadas)
+        const result = await request.query(`
             ;WITH ConsumoMensal AS (
                 SELECT
                     k.CODIGO,
                     ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
                 FROM [dbo].[KARDEX_2026] k
+                INNER JOIN [dbo].[TB_SAVING_META] m ON m.CODIGO = k.CODIGO
                 WHERE k.OPERACAO = 'SAÍDA'
                   AND k.USUARIO <> 'BEATRIZ JULHAO'
                   AND k.DT >= DATEADD(DAY, -365, GETDATE())
                   AND k.DT >= '2026-04-01'
                 GROUP BY k.CODIGO
+            ),
+            -- Pré-agrega NFs por (CODIGO, ANO_MES) — escaneia NF_PRODUTOS uma única vez
+            NFPorMes AS (
+                SELECT
+                    p.PROD_COD_PROD AS CODIGO,
+                    CONVERT(CHAR(7), c.CAB_DT_EMISSAO, 120) AS ANO_MES, -- 'YYYY-MM'
+                    p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO,
+                    ISNULL(p.PROD_QNT, 0) AS QNT,
+                    c.CAB_DT_EMISSAO,
+                    c.CAB_ID_NF
+                FROM [dbo].[NF_PRODUTOS] p
+                INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
+                WHERE c.CAB_DT_EMISSAO >= @dtMin
+                  AND c.CAB_DT_EMISSAO <= @dtMax
+                  AND p.PROD_COD_PROD IN (SELECT DISTINCT CODIGO FROM [dbo].[TB_SAVING_META])
+            ),
+            UltimaNFPorMes AS (
+                SELECT CODIGO, ANO_MES, CUSTO,
+                       ROW_NUMBER() OVER (PARTITION BY CODIGO, ANO_MES ORDER BY CAB_DT_EMISSAO DESC, CAB_ID_NF DESC) AS rn
+                FROM NFPorMes
+                WHERE CUSTO IS NOT NULL AND CUSTO > 0
+            ),
+            ComprasPorMes AS (
+                SELECT CODIGO, ANO_MES, SUM(QNT) AS QTD_COMPRADA
+                FROM NFPorMes
+                GROUP BY CODIGO, ANO_MES
             ),
             MetasComReal AS (
                 SELECT
@@ -1469,27 +1546,12 @@ async function savingResumoMeses(req, res) {
                     m.META_PCT,
                     m.CUSTO_BASE,
                     ISNULL(cm.CONSUMO_MENSAL, 0) AS CONSUMO_MENSAL,
-                    (
-                        SELECT TOP 1 p.PROD_CUSTO_FISCAL_MEDIO_NOVO
-                        FROM [dbo].[NF_PRODUTOS] p
-                        INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
-                        WHERE p.PROD_COD_PROD = m.CODIGO
-                          AND YEAR(c.CAB_DT_EMISSAO)  = CAST(LEFT(m.ANO_MES, 4)     AS INT)
-                          AND MONTH(c.CAB_DT_EMISSAO) = CAST(SUBSTRING(m.ANO_MES, 6, 2) AS INT)
-                          AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
-                          AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
-                        ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
-                    ) AS CUSTO_REAL,
-                    (
-                        SELECT ISNULL(SUM(p.PROD_QNT), 0)
-                        FROM [dbo].[NF_PRODUTOS] p
-                        INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
-                        WHERE p.PROD_COD_PROD = m.CODIGO
-                          AND YEAR(c.CAB_DT_EMISSAO)  = CAST(LEFT(m.ANO_MES, 4)     AS INT)
-                          AND MONTH(c.CAB_DT_EMISSAO) = CAST(SUBSTRING(m.ANO_MES, 6, 2) AS INT)
-                    ) AS QTD_COMPRADA_MES
+                    u.CUSTO AS CUSTO_REAL,
+                    ISNULL(cp.QTD_COMPRADA, 0) AS QTD_COMPRADA_MES
                 FROM [dbo].[TB_SAVING_META] m
                 LEFT JOIN ConsumoMensal cm ON cm.CODIGO = m.CODIGO
+                LEFT JOIN UltimaNFPorMes u ON u.CODIGO = m.CODIGO AND u.ANO_MES = m.ANO_MES AND u.rn = 1
+                LEFT JOIN ComprasPorMes cp ON cp.CODIGO = m.CODIGO AND cp.ANO_MES = m.ANO_MES
             )
             SELECT
                 ANO_MES,
