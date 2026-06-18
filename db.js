@@ -11,6 +11,8 @@ const config = {
         min: 0,
         idleTimeoutMillis: 30000
     },
+    requestTimeout: 60000, // 60s para queries pesadas (saving, relatórios)
+    connectionTimeout: 30000,
     options: {
         encrypt: true,
         trustServerCertificate: false

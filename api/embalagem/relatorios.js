@@ -1250,86 +1250,71 @@ async function savingIndicador(req, res) {
         const dtInicio = new Date(ano, mes - 1, 1);
         const dtFim = new Date(ano, mes, 0, 23, 59, 59, 999);
 
-        // PASSO 1: lista códigos das metas desse mês (evita scan amplo nas NFs/Kardex)
-        const codigosResult = await pool.request()
-            .input("anoMes", sql.Char(7), anoMes)
-            .query(`SELECT CODIGO FROM [dbo].[TB_SAVING_META] WHERE ANO_MES = @anoMes`);
-        const codigos = codigosResult.recordset.map(r => String(r.CODIGO));
-        
-        if (codigos.length === 0) {
-            return res.status(200).json({
-                anoMes,
-                anoMesComparacao: anoMes,
-                itens: [],
-                totais: { planejado: 0, realizado: 0, projetado12m: 0, realizado12m: 0, realizadoMes: 0, qtdCompradaMes: 0, atingimentoPct: null }
-            });
-        }
-
-        // Monta lista parametrizada de códigos para usar como filtro IN(...)
-        const codigosRequest = pool.request()
-            .input("anoMes", sql.Char(7), anoMes)
-            .input("dtInicio", sql.DateTime, dtInicio)
-            .input("dtFim", sql.DateTime, dtFim);
-        const codigoParams = codigos.map((cod, i) => {
-            const pname = `cod${i}`;
-            codigosRequest.input(pname, sql.NVarChar(50), cod);
-            return `@${pname}`;
-        }).join(",");
-
         // Custo Real = última NF lançada DENTRO do mês-meta
+        // Estratégia: começar de TB_SAVING_META (tabela pequena, ~dezenas de linhas)
+        // e fazer JOIN seek em NF_PRODUTOS (via PROD_COD_PROD) → NF_CABECALHO (via PK).
+        // Isso evita o scan amplo que ocorria com IN(@cod0,...,@codN).
         let result;
         try {
-            codigosRequest.timeout = 60000; // 60 segundos
-            
-            result = await codigosRequest.query(`
-                ;WITH UltimaNFMesMeta AS (
+            const request = pool.request()
+                .input("anoMes", sql.Char(7), anoMes)
+                .input("dtInicio", sql.DateTime, dtInicio)
+                .input("dtFim", sql.DateTime, dtFim);
+
+            result = await request.query(`
+                ;WITH MetasMes AS (
+                    SELECT CODIGO, META_PCT, CUSTO_BASE
+                    FROM [dbo].[TB_SAVING_META]
+                    WHERE ANO_MES = @anoMes
+                ),
+                NFMesMeta AS (
+                    -- Drive a partir das metas (dezenas de linhas) e faz seek nas NFs
                     SELECT
-                        p.PROD_COD_PROD AS CODIGO,
-                        p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO_REAL,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY p.PROD_COD_PROD
-                            ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
-                        ) AS rn
-                    FROM [dbo].[NF_PRODUTOS] p
+                        m.CODIGO,
+                        p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO,
+                        ISNULL(p.PROD_QNT, 0) AS QNT,
+                        c.CAB_DT_EMISSAO,
+                        c.CAB_ID_NF
+                    FROM MetasMes m
+                    INNER JOIN [dbo].[NF_PRODUTOS] p ON p.PROD_COD_PROD = m.CODIGO
                     INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
                     WHERE c.CAB_DT_EMISSAO >= @dtInicio
                       AND c.CAB_DT_EMISSAO <= @dtFim
-                      AND p.PROD_COD_PROD IN (${codigoParams})
-                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
-                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                ),
+                UltimaNFMesMeta AS (
+                    SELECT CODIGO, CUSTO AS CUSTO_REAL,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY CODIGO
+                               ORDER BY CAB_DT_EMISSAO DESC, CAB_ID_NF DESC
+                           ) AS rn
+                    FROM NFMesMeta
+                    WHERE CUSTO IS NOT NULL AND CUSTO > 0
+                ),
+                ComprasMesMeta AS (
+                    SELECT CODIGO, SUM(QNT) AS QTD_COMPRADA
+                    FROM NFMesMeta
+                    GROUP BY CODIGO
                 ),
                 ConsumoMensal AS (
                     SELECT
                         k.CODIGO,
                         ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
                     FROM [dbo].[KARDEX_2026] k
+                    INNER JOIN MetasMes m ON m.CODIGO = k.CODIGO
                     WHERE k.OPERACAO = 'SAÍDA'
                       AND k.USUARIO <> 'BEATRIZ JULHAO'
                       AND k.DT >= DATEADD(DAY, -365, GETDATE())
                       AND k.DT >= '2026-04-01'
-                      AND k.CODIGO IN (${codigoParams})
                     GROUP BY k.CODIGO
-                ),
-                ComprasMesMeta AS (
-                    SELECT
-                        p.PROD_COD_PROD AS CODIGO,
-                        SUM(ISNULL(p.PROD_QNT, 0)) AS QTD_COMPRADA
-                    FROM [dbo].[NF_PRODUTOS] p
-                    INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
-                    WHERE c.CAB_DT_EMISSAO >= @dtInicio
-                      AND c.CAB_DT_EMISSAO <= @dtFim
-                      AND p.PROD_COD_PROD IN (${codigoParams})
-                    GROUP BY p.PROD_COD_PROD
                 )
                 SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE,
                        u.CUSTO_REAL, ISNULL(cm.CONSUMO_MENSAL, 0) AS CONSUMO_MENSAL,
                        ISNULL(cc.QTD_COMPRADA, 0) AS QTD_COMPRADA_MES
-                FROM [dbo].[TB_SAVING_META] m
+                FROM MetasMes m
                 LEFT JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = m.CODIGO
                 LEFT JOIN UltimaNFMesMeta u ON u.CODIGO = m.CODIGO AND u.rn = 1
                 LEFT JOIN ConsumoMensal cm ON cm.CODIGO = m.CODIGO
                 LEFT JOIN ComprasMesMeta cc ON cc.CODIGO = m.CODIGO
-                WHERE m.ANO_MES = @anoMes
                 ORDER BY cp.DESCRICAO
             `);
         } catch (queryErr) {
