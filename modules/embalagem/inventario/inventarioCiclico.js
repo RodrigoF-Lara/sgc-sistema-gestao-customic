@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const gerarListaBtn = document.getElementById('gerarListaBtn');
     const carregarInventariosBtn = document.getElementById('carregarInventariosBtn');
     const adicionarItemBtn = document.getElementById('adicionarItemBtn');
