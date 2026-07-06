@@ -425,6 +425,26 @@ button:hover, .btn-destaque:hover, .btn-login:hover, .btn-detalhes:hover {
     background-color: var(--cor-principal-escura);
 }
 
+/* Botão de recalcular inventário (secundário, laranja para chamar atenção) */
+.btn-recalcular {
+    background-color: #ff9800;
+    color: #fff;
+    border: none;
+    padding: 7px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-left: 6px;
+    transition: background-color 0.2s;
+}
+.btn-recalcular:hover {
+    background-color: #f57c00;
+}
+.btn-recalcular:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;

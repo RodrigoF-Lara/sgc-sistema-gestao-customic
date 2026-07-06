@@ -30,10 +30,97 @@ export default async function handler(req, res) {
             return await adicionarItemInventario(req, res);
         } else if (acao === 'removerItem') {
             return await removerItemInventario(req, res);
+        } else if (acao === 'recalcular') {
+            return await recalcularInventario(req, res);
         }
     }
 
     return res.status(400).json({ message: "Ação não especificada ou inválida" });
+}
+
+// Recalcula DIFERENCA, ACURACIDADE por item e totais do cabeçalho.
+// Útil quando dados foram alterados diretamente no banco.
+async function recalcularInventario(req, res) {
+    try {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const { idInventario } = body;
+
+        if (!idInventario) {
+            return res.status(400).json({ message: "ID do inventário é obrigatório" });
+        }
+
+        const pool = await getConnection();
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // 1) Recalcula DIFERENCA e ACURACIDADE de cada item
+            //    baseado em CONTAGEM_FISICA e SALDO_SISTEMA atuais no banco
+            await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .query(`
+                    UPDATE [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                    SET DIFERENCA = ISNULL(CONTAGEM_FISICA, 0) - ISNULL(SALDO_SISTEMA, 0),
+                        ACURACIDADE = CASE
+                            WHEN ISNULL(SALDO_SISTEMA, 0) = 0 AND ISNULL(CONTAGEM_FISICA, 0) = 0 THEN 100
+                            WHEN ISNULL(SALDO_SISTEMA, 0) = 0 OR ISNULL(CONTAGEM_FISICA, 0) = 0 THEN 0
+                            ELSE (CAST(CASE WHEN CONTAGEM_FISICA < SALDO_SISTEMA THEN CONTAGEM_FISICA ELSE SALDO_SISTEMA END AS FLOAT) /
+                                  CAST(CASE WHEN CONTAGEM_FISICA > SALDO_SISTEMA THEN CONTAGEM_FISICA ELSE SALDO_SISTEMA END AS FLOAT)) * 100
+                        END
+                    WHERE ID_INVENTARIO = @ID_INVENTARIO;
+                `);
+
+            // 2) Recalcula estatísticas gerais
+            const statsResult = await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .query(`
+                    SELECT
+                        AVG(ACURACIDADE) AS ACURACIDADE_GERAL,
+                        COUNT(*) AS TOTAL_ITENS,
+                        SUM(CASE WHEN ISNULL(DIFERENCA, 0) = 0 THEN 1 ELSE 0 END) AS ITENS_CORRETOS,
+                        SUM(CASE WHEN ISNULL(DIFERENCA, 0) <> 0 THEN 1 ELSE 0 END) AS ITENS_DIVERGENTES,
+                        ISNULL(SUM(VALOR_TOTAL_ESTOQUE), 0) AS VALOR_TOTAL_GERAL
+                    FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                    WHERE ID_INVENTARIO = @ID_INVENTARIO;
+                `);
+
+            const stats = statsResult.recordset[0];
+
+            // 3) Atualiza cabeçalho (mantém STATUS atual)
+            await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .input('ACURACIDADE', sql.Float, stats.ACURACIDADE_GERAL)
+                .input('TOTAL_ITENS', sql.Int, stats.TOTAL_ITENS)
+                .input('VALOR_TOTAL_GERAL', sql.Decimal(18, 2), stats.VALOR_TOTAL_GERAL)
+                .query(`
+                    UPDATE [dbo].[TB_INVENTARIO_CICLICO]
+                    SET ACURACIDADE = @ACURACIDADE,
+                        TOTAL_ITENS = @TOTAL_ITENS,
+                        VALOR_TOTAL_GERAL = @VALOR_TOTAL_GERAL
+                    WHERE ID_INVENTARIO = @ID_INVENTARIO;
+                `);
+
+            await transaction.commit();
+
+            return res.status(200).json({
+                message: "Inventário recalculado com sucesso",
+                acuracidadeGeral: stats.ACURACIDADE_GERAL,
+                totalItens: stats.TOTAL_ITENS,
+                itensCorretos: stats.ITENS_CORRETOS,
+                itensDivergentes: stats.ITENS_DIVERGENTES,
+                valorTotalGeral: stats.VALOR_TOTAL_GERAL
+            });
+        } catch (innerErr) {
+            await transaction.rollback();
+            throw innerErr;
+        }
+    } catch (err) {
+        console.error("ERRO ao recalcular inventário:", err);
+        return res.status(500).json({
+            message: "Erro ao recalcular inventário",
+            error: err.message
+        });
+    }
 }
 
 // Gera uma nova lista de inventário com 3 blocos

@@ -291,6 +291,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             <button class="btn-detalhes" onclick="abrirInventario(${inv.ID_INVENTARIO})">
                                 <i class="fa-solid fa-folder-open"></i> Abrir
                             </button>
+                            <button class="btn-recalcular" onclick="recalcularInventario(${inv.ID_INVENTARIO})" title="Recalcular totais (útil quando dados foram alterados diretamente no banco)">
+                                <i class="fa-solid fa-calculator"></i> Recalcular
+                            </button>
                         </td>
                     </tr>
                 `}).join('')}
@@ -341,6 +344,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Erro ao abrir inventário:', error);
+            statusMessage.style.color = '#c00';
+            statusMessage.textContent = `Erro: ${error.message}`;
+        }
+    };
+
+    // Recalcula totais do inventário (útil quando dados foram alterados diretamente no banco)
+    window.recalcularInventario = async function(idInventario) {
+        if (!confirm(`Deseja recalcular os totais do inventário #${idInventario}?\n\nIsso irá recalcular DIFERENÇA, ACURACIDADE de cada item e os totais gerais (Acuracidade, Valor Total, Divergências) a partir das quantidades contadas atualmente no banco.`)) {
+            return;
+        }
+
+        try {
+            statusMessage.style.color = '#222';
+            statusMessage.textContent = `Recalculando inventário #${idInventario}...`;
+
+            const response = await fetch('/api/embalagem/inventarioCiclico', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ acao: 'recalcular', idInventario })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Erro ao recalcular inventário');
+            }
+
+            statusMessage.style.color = 'green';
+            statusMessage.textContent = `Inventário #${idInventario} recalculado! Acuracidade: ${data.acuracidadeGeral?.toFixed(2)}% | Divergências: ${data.itensDivergentes} | Valor: R$ ${(data.valorTotalGeral || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Recarrega a lista para refletir os novos valores
+            await carregarInventariosSalvos();
+            setTimeout(() => { statusMessage.textContent = ''; }, 6000);
+        } catch (error) {
+            console.error('Erro ao recalcular inventário:', error);
             statusMessage.style.color = '#c00';
             statusMessage.textContent = `Erro: ${error.message}`;
         }
