@@ -277,7 +277,8 @@ async function listarProdutos(req, res, pool) {
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     const result = await request.query(`
-      SELECT TOP 500 CODIGO, DESCRICAO, TIPO, DEPOSITO, CURVA_A_B_C, ATIVO
+      SELECT TOP 500 CODIGO, DESCRICAO, TIPO, DEPOSITO, CURVA_A_B_C, ATIVO,
+             ESTOQUE_MINIMO, ESTOQUE_IDEAL, ESTOQUE_MAXIMO
       FROM [dbo].[CAD_PROD]
       ${whereSql}
       ORDER BY CODIGO
@@ -328,6 +329,18 @@ async function atualizarProdutosAlteracoes(req, res, pool) {
       if (alt.ativo !== undefined) {
         reqUp.input('ativo', sql.Int, parseInt(alt.ativo, 10));
         sets.push('ATIVO = @ativo');
+      }
+      if (alt.estoqueMinimo !== undefined) {
+        reqUp.input('estoqueMinimo', sql.Decimal(18, 3), alt.estoqueMinimo === null || alt.estoqueMinimo === '' ? null : Number(alt.estoqueMinimo));
+        sets.push('ESTOQUE_MINIMO = @estoqueMinimo');
+      }
+      if (alt.estoqueIdeal !== undefined) {
+        reqUp.input('estoqueIdeal', sql.Decimal(18, 3), alt.estoqueIdeal === null || alt.estoqueIdeal === '' ? null : Number(alt.estoqueIdeal));
+        sets.push('ESTOQUE_IDEAL = @estoqueIdeal');
+      }
+      if (alt.estoqueMaximo !== undefined) {
+        reqUp.input('estoqueMaximo', sql.Decimal(18, 3), alt.estoqueMaximo === null || alt.estoqueMaximo === '' ? null : Number(alt.estoqueMaximo));
+        sets.push('ESTOQUE_MAXIMO = @estoqueMaximo');
       }
 
       if (sets.length === 0) continue;

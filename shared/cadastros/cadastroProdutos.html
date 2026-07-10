@@ -166,6 +166,20 @@
             </select>
           </div>
         </div>
+        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; margin-bottom:14px;">
+          <div class="form-group">
+            <label for="editEstoqueMinimo" style="font-weight:bold; display:block; margin-bottom:4px;">Estoque Mínimo:</label>
+            <input type="number" id="editEstoqueMinimo" min="0" step="0.001" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
+          </div>
+          <div class="form-group">
+            <label for="editEstoqueIdeal" style="font-weight:bold; display:block; margin-bottom:4px;">Estoque Ideal:</label>
+            <input type="number" id="editEstoqueIdeal" min="0" step="0.001" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
+          </div>
+          <div class="form-group">
+            <label for="editEstoqueMaximo" style="font-weight:bold; display:block; margin-bottom:4px;">Estoque Máximo:</label>
+            <input type="number" id="editEstoqueMaximo" min="0" step="0.001" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
+          </div>
+        </div>
         <div id="editModalMsg" style="margin-bottom:12px; font-size:14px;"></div>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
           <button id="btnCancelarEditar" class="btn-destaque" style="background:#777;">Cancelar</button>

@@ -325,6 +325,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const editTipo          = document.getElementById('editTipo');
     const editCurva         = document.getElementById('editCurva');
     const editAtivo         = document.getElementById('editAtivo');
+    const editEstoqueMinimo = document.getElementById('editEstoqueMinimo');
+    const editEstoqueIdeal  = document.getElementById('editEstoqueIdeal');
+    const editEstoqueMaximo = document.getElementById('editEstoqueMaximo');
     const editModalMsg      = document.getElementById('editModalMsg');
     let produtoEmEdicao     = null;
 
@@ -335,6 +338,9 @@ document.addEventListener('DOMContentLoaded', function() {
         editTipo.value      = produto.TIPO || 'OUTROS';
         editCurva.value     = produto.CURVA_A_B_C || 'C';
         editAtivo.value     = (produto.ATIVO !== undefined ? produto.ATIVO : 1).toString();
+        editEstoqueMinimo.value = produto.ESTOQUE_MINIMO ?? '';
+        editEstoqueIdeal.value  = produto.ESTOQUE_IDEAL ?? '';
+        editEstoqueMaximo.value = produto.ESTOQUE_MAXIMO ?? '';
         editModalMsg.textContent = '';
         modalEditar.style.display = 'flex';
         setTimeout(() => editDescricao.focus(), 50);
@@ -368,7 +374,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         descricao: descricao,
                         tipo: editTipo.value,
                         curva: editCurva.value,
-                        ativo: parseInt(editAtivo.value)
+                        ativo: parseInt(editAtivo.value),
+                        estoqueMinimo: normalizarNumeroCampo(editEstoqueMinimo.value),
+                        estoqueIdeal: normalizarNumeroCampo(editEstoqueIdeal.value),
+                        estoqueMaximo: normalizarNumeroCampo(editEstoqueMaximo.value)
                     }]
                 })
             });
@@ -379,6 +388,9 @@ document.addEventListener('DOMContentLoaded', function() {
             produtoEmEdicao.TIPO       = editTipo.value;
             produtoEmEdicao.CURVA_A_B_C = editCurva.value;
             produtoEmEdicao.ATIVO      = parseInt(editAtivo.value);
+            produtoEmEdicao.ESTOQUE_MINIMO = normalizarNumeroCampo(editEstoqueMinimo.value);
+            produtoEmEdicao.ESTOQUE_IDEAL  = normalizarNumeroCampo(editEstoqueIdeal.value);
+            produtoEmEdicao.ESTOQUE_MAXIMO = normalizarNumeroCampo(editEstoqueMaximo.value);
             editModalMsg.style.color = '#2e7d32';
             editModalMsg.textContent = 'Salvo com sucesso!';
             mostrarMensagem('Produto atualizado com sucesso!', 'success');
@@ -401,5 +413,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusMessage.style.display = 'none';
             }, 5000);
         }
+    }
+
+    function normalizarNumeroCampo(valor) {
+        const texto = String(valor || '').trim();
+        if (!texto) return null;
+        const numero = Number(texto.replace(',', '.'));
+        return Number.isNaN(numero) ? null : numero;
     }
 });
