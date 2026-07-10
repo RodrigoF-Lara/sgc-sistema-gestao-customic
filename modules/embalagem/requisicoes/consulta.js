@@ -73,6 +73,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return `Solicitação: ${solicitacao}\nConclusão: ${conclusao}`;
     }
 
+    function exibirDetalhesLeadTime(req) {
+        const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
+        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(new Date(req.DT_CONCLUSAO)) : 'Em aberto';
+        alert(`Solicitação: ${solicitacao}\nConclusão: ${conclusao}`);
+    }
+
     function formatarLeadTime(ms) {
         if (ms === null) return 'N/A';
 
@@ -128,7 +134,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${req.SOLICITANTE || '-'}</td>
                         <td><span class="prioridade-badge prioridade-${prioridade.toLowerCase()}">${prioridade}</span></td>
                         <td><span class="status-badge status-${statusClass}">${status || 'Pendente'}</span></td>
-                        <td><span title="${obterTooltipLeadTime(req)}">${obterTextoLeadTime(req)}</span></td>
+                        <td>
+                            <span
+                                class="lead-time-clickable"
+                                title="${obterTooltipLeadTime(req)}"
+                                data-id-req="${req.ID_REQ}"
+                                style="cursor:pointer; text-decoration: underline dotted; text-underline-offset: 2px;"
+                            >${obterTextoLeadTime(req)}</span>
+                        </td>
                         <td>${req.TOTAL_ITENS || 0}</td>
                         <td>
                             <button class="btn-detalhes" data-id="${req.ID_REQ}">
@@ -229,6 +242,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const detalhesButton = event.target.closest('.btn-detalhes');
         if(detalhesButton) {
             window.location.href = `detalhes.html?id=${detalhesButton.dataset.id}`;
+            return;
+        }
+
+        const leadTimeElement = event.target.closest('.lead-time-clickable');
+        if (leadTimeElement) {
+            const idReqLeadTime = Number(leadTimeElement.dataset.idReq);
+            const req = todasRequisicoes.find(item => Number(item.ID_REQ) === idReqLeadTime);
+            if (req) {
+                exibirDetalhesLeadTime(req);
+            }
         }
     });
 
