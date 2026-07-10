@@ -25,6 +25,61 @@ document.addEventListener('DOMContentLoaded', function() {
         return statusLimpo;
     }
 
+    function montarDataHoraRequisicao(req) {
+        if (!req?.DT_REQUISICAO) return null;
+
+        const dataBase = new Date(req.DT_REQUISICAO);
+        if (Number.isNaN(dataBase.getTime())) return null;
+
+        const horaTexto = (req.HR_REQUSICAO || '').trim();
+        const horaMatch = horaTexto.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+
+        if (!horaMatch) return dataBase;
+
+        const horas = Number(horaMatch[1]);
+        const minutos = Number(horaMatch[2]);
+        const segundos = Number(horaMatch[3] || 0);
+
+        dataBase.setHours(horas, minutos, segundos, 0);
+        return dataBase;
+    }
+
+    function calcularLeadTimeMs(req) {
+        const inicio = montarDataHoraRequisicao(req);
+        const fim = req.DT_CONCLUSAO ? new Date(req.DT_CONCLUSAO) : new Date();
+
+        if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
+
+        return Math.max(0, fim.getTime() - inicio.getTime());
+    }
+
+    function formatarLeadTime(ms) {
+        if (ms === null) return 'N/A';
+
+        const totalHoras = ms / (1000 * 60 * 60);
+        const totalDias = ms / (1000 * 60 * 60 * 24);
+
+        if (totalHoras < 24) {
+            return `${Math.round(totalHoras)}h`;
+        }
+
+        if (totalDias < 10) {
+            return `${totalDias.toFixed(1).replace('.', ',')} dias`;
+        }
+
+        return `${Math.round(totalDias)} dias`;
+    }
+
+    function obterTextoLeadTime(req) {
+        const leadTimeMs = calcularLeadTimeMs(req);
+        const status = padronizarStatus(req.STATUS);
+        const leadTime = formatarLeadTime(leadTimeMs);
+
+        if (leadTime === 'N/A') return leadTime;
+
+        return status === 'Concluído' ? leadTime : `Em aberto: ${leadTime}`;
+    }
+
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function renderRequisicoes(listaDeRequisicoes) {
         container.innerHTML = '';
@@ -38,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
         table.innerHTML = `
             <thead>
                 <tr>
-                    <th>ID</th><th>Data</th><th>Solicitante</th><th>Prioridade</th><th>Status</th><th>Nº de Itens</th><th>Ações</th>
+                    <th>ID</th><th>Data</th><th>Solicitante</th><th>Prioridade</th><th>Status</th><th>Lead Time</th><th>Nº de Itens</th><th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -53,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${req.SOLICITANTE || '-'}</td>
                         <td><span class="prioridade-badge prioridade-${prioridade.toLowerCase()}">${prioridade}</span></td>
                         <td><span class="status-badge status-${statusClass}">${status || 'Pendente'}</span></td>
+                        <td>${obterTextoLeadTime(req)}</td>
                         <td>${req.TOTAL_ITENS || 0}</td>
                         <td>
                             <button class="btn-detalhes" data-id="${req.ID_REQ}">
@@ -71,12 +127,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const pendentes = listaDeRequisicoes.filter(r => padronizarStatus(r.STATUS) === 'Pendente').length;
         const concluidas = listaDeRequisicoes.filter(r => padronizarStatus(r.STATUS) === 'Concluído').length;
         const emAndamento = total - pendentes - concluidas;
+        const concluidasComLeadTime = listaDeRequisicoes
+            .filter(r => padronizarStatus(r.STATUS) === 'Concluído')
+            .map(calcularLeadTimeMs)
+            .filter(ms => ms !== null);
+        const leadTimeMedioMs = concluidasComLeadTime.length > 0
+            ? concluidasComLeadTime.reduce((acumulado, ms) => acumulado + ms, 0) / concluidasComLeadTime.length
+            : null;
 
         summaryContainer.innerHTML = `
             <div class="summary-card"><h3>Total</h3><p>${total}</p></div>
             <div class="summary-card"><h3>Pendentes</h3><p>${pendentes}</p></div>
             <div class="summary-card"><h3>Em Andamento</h3><p>${emAndamento}</p></div>
             <div class="summary-card"><h3>Concluídas</h3><p>${concluidas}</p></div>
+            <div class="summary-card"><h3>Lead Time Médio</h3><p>${formatarLeadTime(leadTimeMedioMs)}</p></div>
         `;
     }
 
@@ -114,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         renderRequisicoes(requisicoesFiltradas);
+        atualizarSumario(requisicoesFiltradas);
     }
     
     async function carregarDadosIniciais() {

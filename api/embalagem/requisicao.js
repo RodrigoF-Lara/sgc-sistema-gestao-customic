@@ -61,7 +61,7 @@ async function handleGet(req, res) {
         const result = await request.query(logQuery);
         return res.status(200).json(result.recordset);
     } else {
-        const result = await pool.request().query("SELECT H.ID_REQ, H.DT_REQUISICAO, H.DT_NECESSIDADE, H.STATUS, H.PRIORIDADE, H.SOLICITANTE, (SELECT COUNT(*) FROM [dbo].[TB_REQ_ITEM] I WHERE I.ID_REQ = H.ID_REQ) AS TOTAL_ITENS FROM [dbo].[TB_REQUISICOES] H ORDER BY H.ID_REQ DESC;");
+        const result = await pool.request().query("SELECT H.ID_REQ, H.DT_REQUISICAO, H.HR_REQUSICAO, H.DT_NECESSIDADE, H.DT_CONCLUSAO, H.STATUS, H.PRIORIDADE, H.SOLICITANTE, (SELECT COUNT(*) FROM [dbo].[TB_REQ_ITEM] I WHERE I.ID_REQ = H.ID_REQ) AS TOTAL_ITENS FROM [dbo].[TB_REQUISICOES] H ORDER BY H.ID_REQ DESC;");
         return res.status(200).json(result.recordset);
     }
 }
@@ -160,7 +160,11 @@ async function updateHeaderStatus(transaction, idReq) {
     } else {
         novoStatusHeader = 'Parcial';
     }
-    await request.input('STATUS_HEADER', sql.NVarChar, novoStatusHeader).query("UPDATE TB_REQUISICOES SET STATUS = @STATUS_HEADER WHERE ID_REQ = @ID_REQ_HEADER");
+    const dataConclusao = novoStatusHeader === 'Concluído' ? new Date() : null;
+    await request
+        .input('STATUS_HEADER', sql.NVarChar, novoStatusHeader)
+        .input('DT_CONCLUSAO', sql.DateTime2, dataConclusao)
+        .query("UPDATE TB_REQUISICOES SET STATUS = @STATUS_HEADER, DT_CONCLUSAO = @DT_CONCLUSAO WHERE ID_REQ = @ID_REQ_HEADER");
 }
 
 async function atenderRequisicao(req, res) {
@@ -207,7 +211,8 @@ async function atenderRequisicao(req, res) {
             await updateHeaderRequest
                 .input('ID_REQ', sql.Int, idReq)
                 .input('STATUS', sql.NVarChar, 'CONCLUIDO')
-                .query("UPDATE TB_REQUISICOES SET STATUS = @STATUS WHERE ID_REQ = @ID_REQ");
+                .input('DT_CONCLUSAO', sql.DateTime2, new Date())
+                .query("UPDATE TB_REQUISICOES SET STATUS = @STATUS, DT_CONCLUSAO = @DT_CONCLUSAO WHERE ID_REQ = @ID_REQ");
         }
 
         await transaction.commit();

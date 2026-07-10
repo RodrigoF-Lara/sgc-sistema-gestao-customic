@@ -69,7 +69,7 @@ modules/embalagem/
 
 | Tabela | Descrição |
 |--------|-----------|
-| `TB_REQUISICOES` | Cabeçalho das requisições |
+| `TB_REQUISICOES` | Cabeçalho das requisições, incluindo `DT_CONCLUSAO` para medir lead time de atendimento |
 | `TB_REQ_ITEM` | Itens das requisições |
 | `KARDEX_2026` | Movimentações e saldos de estoque (versionada por ano) |
 | `TB_INVENTARIO_CICLICO_LOG` | Histórico de contagens |
@@ -115,6 +115,8 @@ sequenceDiagram
     DB-->>API: OK
     API-->>FE: sucesso
 ```
+
+**Lead time de atendimento:** calculado entre `TB_REQUISICOES.DT_REQUISICAO` e `TB_REQUISICOES.DT_CONCLUSAO`. A data de conclusão é gravada automaticamente quando todos os itens da requisição ficam `Finalizado` e é limpa se a requisição voltar para status não concluído. Para requisições históricas já encerradas antes da criação da coluna, usar o script `sql/embalagem/backfill_tb_requisicoes_dt_conclusao.sql`, que reconstrói a conclusão pelo último `DT_HR_ALTERACAO` com `STATUS_NOVO = 'Finalizado'`.
 
 ### Inventário Cíclico (5 Blocos)
 
