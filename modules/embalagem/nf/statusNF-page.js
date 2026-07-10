@@ -97,6 +97,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${mins}min`;
     }
 
+    function calcularLeadTimeMedioMinutos(data) {
+        const temposValidos = data
+            .map(item => Number(item.LEAD_TIME_TOTAL_MIN))
+            .filter(valor => Number.isFinite(valor) && valor >= 0);
+
+        if (temposValidos.length === 0) return null;
+
+        const soma = temposValidos.reduce((acc, atual) => acc + atual, 0);
+        return Math.round(soma / temposValidos.length);
+    }
+
     /**
      * Popula o filtro de status com valores únicos da base de dados.
      */
@@ -121,7 +132,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return acc;
         }, {});
 
+        const leadTimeMedioMin = calcularLeadTimeMedioMinutos(data);
+
         summaryContainer.innerHTML = '';
+
+        const leadTimeCard = document.createElement('div');
+        leadTimeCard.className = 'summary-card';
+        leadTimeCard.innerHTML = `<h3>Lead Time Médio</h3><p>${formatarDuracaoMinutos(leadTimeMedioMin)}</p>`;
+        summaryContainer.appendChild(leadTimeCard);
+
         for (const status in statusCounts) {
             const count = statusCounts[status];
             const statusClass = 'status-' + status.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');

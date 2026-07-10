@@ -148,6 +148,7 @@ flowchart LR
 ### Status de NF (Lead Time por Etapa)
 
 - A tela [modules/embalagem/nf/statusNF.html](./nf/statusNF.html) exibe o **Lead Time Total** por item de NF (par `NF + CODIGO`), calculado entre o primeiro e o último evento em `TB_LOG_NF`.
+- Os cards de resumo da página incluem **Lead Time Médio** calculado sobre o conjunto atualmente filtrado (mesma lógica dos filtros da tela).
 - No modal de histórico, os eventos são exibidos em ordem cronológica e mostram o **tempo entre status consecutivos** (tempo até o próximo status).
 - O total do fluxo é mostrado no topo do modal com início e fim do ciclo.
 - O endpoint [api/embalagem/statusNF.js](../../api/embalagem/statusNF.js) retorna o agregado `LEAD_TIME_TOTAL_MIN` na listagem e `DT_HR_EVENTO` no histórico para suportar os cálculos.
