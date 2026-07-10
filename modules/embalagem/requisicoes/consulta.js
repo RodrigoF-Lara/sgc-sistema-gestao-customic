@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterDataNecessidade = document.getElementById('filterDataNecessidade');
     
     let todasRequisicoes = []; // Guarda todos os dados do servidor
+    let leadTimePopover = null;
 
     // --- FUNÇÕES AUXILIARES ---
     function formatarData(dataString) {
@@ -73,10 +74,75 @@ document.addEventListener('DOMContentLoaded', function() {
         return `Solicitação: ${solicitacao}\nConclusão: ${conclusao}`;
     }
 
-    function exibirDetalhesLeadTime(req) {
+    function fecharPopoverLeadTime() {
+        if (!leadTimePopover) return;
+        leadTimePopover.remove();
+        leadTimePopover = null;
+    }
+
+    function exibirDetalhesLeadTime(req, anchorEl) {
         const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
         const conclusao = req.DT_CONCLUSAO ? formatarDataHora(new Date(req.DT_CONCLUSAO)) : 'Em aberto';
-        alert(`Solicitação: ${solicitacao}\nConclusão: ${conclusao}`);
+
+        const idReqAtual = String(req.ID_REQ || '');
+        if (leadTimePopover && leadTimePopover.dataset.idReq === idReqAtual) {
+            fecharPopoverLeadTime();
+            return;
+        }
+
+        fecharPopoverLeadTime();
+
+        const popover = document.createElement('div');
+        popover.className = 'lead-time-popover';
+        popover.dataset.idReq = idReqAtual;
+        popover.style.position = 'fixed';
+        popover.style.zIndex = '1200';
+        popover.style.background = '#ffffff';
+        popover.style.border = '1px solid #d9e2ec';
+        popover.style.borderRadius = '10px';
+        popover.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.16)';
+        popover.style.padding = '10px 12px';
+        popover.style.minWidth = '250px';
+        popover.style.maxWidth = '320px';
+        popover.style.fontSize = '12px';
+        popover.style.lineHeight = '1.4';
+        popover.style.color = '#1f2937';
+
+        const titulo = document.createElement('div');
+        titulo.textContent = 'Detalhes do Lead Time';
+        titulo.style.fontWeight = '700';
+        titulo.style.marginBottom = '6px';
+
+        const linhaSolicitacao = document.createElement('div');
+        linhaSolicitacao.textContent = `Solicitação: ${solicitacao}`;
+
+        const linhaConclusao = document.createElement('div');
+        linhaConclusao.textContent = `Conclusão: ${conclusao}`;
+
+        popover.appendChild(titulo);
+        popover.appendChild(linhaSolicitacao);
+        popover.appendChild(linhaConclusao);
+        document.body.appendChild(popover);
+
+        const rect = anchorEl.getBoundingClientRect();
+        const popRect = popover.getBoundingClientRect();
+        const margem = 8;
+
+        let top = rect.bottom + margem;
+        if (top + popRect.height > window.innerHeight - margem) {
+            top = rect.top - popRect.height - margem;
+        }
+        if (top < margem) top = margem;
+
+        let left = rect.left;
+        if (left + popRect.width > window.innerWidth - margem) {
+            left = window.innerWidth - popRect.width - margem;
+        }
+        if (left < margem) left = margem;
+
+        popover.style.top = `${top}px`;
+        popover.style.left = `${left}px`;
+        leadTimePopover = popover;
     }
 
     function formatarLeadTime(ms) {
@@ -250,10 +316,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const idReqLeadTime = Number(leadTimeElement.dataset.idReq);
             const req = todasRequisicoes.find(item => Number(item.ID_REQ) === idReqLeadTime);
             if (req) {
-                exibirDetalhesLeadTime(req);
+                exibirDetalhesLeadTime(req, leadTimeElement);
             }
+            return;
+        }
+
+        if (leadTimePopover && !event.target.closest('.lead-time-popover')) {
+            fecharPopoverLeadTime();
         }
     });
+
+    window.addEventListener('scroll', fecharPopoverLeadTime, true);
+    window.addEventListener('resize', fecharPopoverLeadTime);
 
     carregarDadosIniciais();
 });
