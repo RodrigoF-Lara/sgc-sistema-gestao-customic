@@ -285,6 +285,7 @@ async function handleDelete(req, res) {
             .query("SELECT COUNT(1) AS TOTAL_ITENS FROM [dbo].[TB_REQ_ITEM] WHERE ID_REQ = @ID_REQ");
 
         const totalItens = Number(itensResult.recordset[0]?.TOTAL_ITENS || 0);
+        const horaRequisicaoSnapshot = normalizarHoraRequisicao(header.HR_REQUSICAO);
 
         await new sql.Request(transaction)
             .input('ID_REQ', sql.Int, idReq)
@@ -292,7 +293,7 @@ async function handleDelete(req, res) {
             .input('STATUS_ANTERIOR', sql.NVarChar, header.STATUS || null)
             .input('PRIORIDADE', sql.NVarChar, header.PRIORIDADE || null)
             .input('DT_REQUISICAO', sql.Date, header.DT_REQUISICAO || null)
-            .input('HR_REQUSICAO', sql.NVarChar, header.HR_REQUSICAO || null)
+            .input('HR_REQUSICAO', sql.NVarChar, horaRequisicaoSnapshot)
             .input('DT_NECESSIDADE', sql.Date, header.DT_NECESSIDADE || null)
             .input('DT_CONCLUSAO', sql.DateTime2, header.DT_CONCLUSAO || null)
             .input('TOTAL_ITENS', sql.Int, totalItens)
@@ -328,4 +329,34 @@ async function handleDelete(req, res) {
             details: err.message
         });
     }
+}
+
+function normalizarHoraRequisicao(valorHora) {
+    if (valorHora === null || valorHora === undefined) return null;
+
+    if (valorHora instanceof Date && !Number.isNaN(valorHora.getTime())) {
+        return valorHora.toTimeString().slice(0, 8);
+    }
+
+    if (typeof valorHora === 'string') {
+        const match = valorHora.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!match) return valorHora.trim().slice(0, 30) || null;
+
+        const hh = String(Number(match[1])).padStart(2, '0');
+        const mm = match[2];
+        const ss = String(Number(match[3] || '0')).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+    }
+
+    if (typeof valorHora === 'object') {
+        const hh = Number(valorHora.hours ?? valorHora.hour ?? valorHora.h ?? NaN);
+        const mm = Number(valorHora.minutes ?? valorHora.minute ?? valorHora.m ?? NaN);
+        const ss = Number(valorHora.seconds ?? valorHora.second ?? valorHora.s ?? 0);
+        if (Number.isFinite(hh) && Number.isFinite(mm) && Number.isFinite(ss)) {
+            return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+        }
+    }
+
+    const texto = String(valorHora).trim();
+    return texto ? texto.slice(0, 30) : null;
 }

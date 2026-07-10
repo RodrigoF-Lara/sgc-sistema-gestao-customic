@@ -320,7 +320,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Falha ao excluir requisição.');
+            if (!response.ok) {
+                const detalhe = result.details ? ` (${result.details})` : '';
+                throw new Error((result.message || 'Falha ao excluir requisição.') + detalhe);
+            }
 
             todasRequisicoes = todasRequisicoes.filter(req => Number(req.ID_REQ) !== Number(idReq));
             popularFiltroStatus(todasRequisicoes);
