@@ -132,6 +132,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const entradas = movimentos.filter(m => m.OPERACAO === 'ENTRADA');
     const saidas = movimentos.filter(m => m.OPERACAO === 'SAÍDA');
     const saldoTotal = data.saldo || 0;
+    const estoqueMinimo = data.estoqueMinimo;
+    const estoqueIdeal = data.estoqueIdeal;
+    const estoqueMaximo = data.estoqueMaximo;
+    const termometro = calcularTermometro(saldoTotal, estoqueMinimo, estoqueIdeal, estoqueMaximo);
     
     estatisticasContainer.innerHTML = `
       <h3>📊 Estatísticas Rápidas</h3>
@@ -157,9 +161,102 @@ document.addEventListener("DOMContentLoaded", () => {
           <span class="stat-value">${movimentos[0]?.DT ? movimentos[0].DT.split('-').reverse().join('/') : '-'}</span>
         </div>
       </div>
+      <div style="margin-top: 18px; background: #fff; border: 1px solid #d0d5dd; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(16,24,40,0.04);">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+          <div>
+            <h3 style="margin:0; color:#1f2937; font-size:20px;">🌡️ Termômetro de Estoque</h3>
+            <p style="margin:6px 0 0; color:#667085; font-size:14px;">Comparativo entre saldo atual e faixas mínimo, ideal e máximo.</p>
+          </div>
+          <span style="display:inline-flex; align-items:center; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:700; ${termometro.statusStyle}">${termometro.status}</span>
+        </div>
+        <div style="display:grid; grid-template-columns: minmax(260px, 1.3fr) repeat(4, minmax(120px, 1fr)); gap:12px; align-items:center;">
+          <div>
+            <div style="height:14px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+              <div style="height:100%; width:${termometro.percentual.toFixed(1)}%; background:${termometro.corBarra}; border-radius:999px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:8px; margin-top:8px; font-size:12px; color:#667085; flex-wrap:wrap;">
+              <span>Mín: ${numeroFormatado(estoqueMinimo)}</span>
+              <span>Ideal: ${numeroFormatado(estoqueIdeal)}</span>
+              <span>Máx: ${numeroFormatado(estoqueMaximo)}</span>
+              <span>${termometro.percentual.toFixed(1)}% do máximo</span>
+            </div>
+          </div>
+          <div style="background:#f8fafc; border-radius:10px; padding:12px;">
+            <div style="font-size:12px; color:#667085;">Saldo Atual</div>
+            <div style="font-size:24px; font-weight:700; color:#111827; margin-top:4px;">${numeroFormatado(saldoTotal)}</div>
+          </div>
+          <div style="background:#f8fafc; border-radius:10px; padding:12px;">
+            <div style="font-size:12px; color:#667085;">Estoque Mínimo</div>
+            <div style="font-size:22px; font-weight:700; color:#111827; margin-top:4px;">${numeroFormatado(estoqueMinimo)}</div>
+          </div>
+          <div style="background:#f8fafc; border-radius:10px; padding:12px;">
+            <div style="font-size:12px; color:#667085;">Estoque Ideal</div>
+            <div style="font-size:22px; font-weight:700; color:#111827; margin-top:4px;">${numeroFormatado(estoqueIdeal)}</div>
+          </div>
+          <div style="background:#f8fafc; border-radius:10px; padding:12px;">
+            <div style="font-size:12px; color:#667085;">Necessidade p/ Ideal</div>
+            <div style="font-size:22px; font-weight:700; color:#111827; margin-top:4px;">${numeroFormatado(termometro.necessidadeIdeal)}</div>
+          </div>
+        </div>
+      </div>
     `;
     
     estatisticasContainer.style.display = "block";
+  }
+
+  function calcularTermometro(saldo, estoqueMinimo, estoqueIdeal, estoqueMaximo) {
+    const minimo = numeroOuNulo(estoqueMinimo);
+    const ideal = numeroOuNulo(estoqueIdeal);
+    const maximo = numeroOuNulo(estoqueMaximo);
+    const saldoNumerico = Number(saldo || 0);
+
+    if (minimo === null || ideal === null || maximo === null) {
+      return {
+        status: 'SEM PARAMETRO',
+        percentual: 0,
+        necessidadeIdeal: 0,
+        corBarra: '#98a2b3',
+        statusStyle: 'background:#f1f5f9; color:#475467;'
+      };
+    }
+
+    let status = 'REGULAR';
+    let corBarra = '#1d4ed8';
+    let statusStyle = 'background:#e8f2ff; color:#1d4ed8;';
+
+    if (saldoNumerico < minimo) {
+      status = 'ABAIXO DO MINIMO';
+      corBarra = '#ef4444';
+      statusStyle = 'background:#ffe3e3; color:#b42318;';
+    } else if (saldoNumerico === minimo) {
+      status = 'NO MINIMO';
+      corBarra = '#f59e0b';
+      statusStyle = 'background:#fff4cc; color:#9a6700;';
+    } else if (saldoNumerico > maximo) {
+      status = 'EXCEDENTE';
+      corBarra = '#12b76a';
+      statusStyle = 'background:#e8f8ef; color:#067647;';
+    }
+
+    return {
+      status,
+      percentual: maximo > 0 ? Math.min((saldoNumerico / maximo) * 100, 100) : 0,
+      necessidadeIdeal: saldoNumerico < ideal ? ideal - saldoNumerico : 0,
+      corBarra,
+      statusStyle
+    };
+  }
+
+  function numeroOuNulo(valor) {
+    return valor === null || valor === undefined ? null : Number(valor);
+  }
+
+  function numeroFormatado(valor) {
+    if (valor === null || valor === undefined || Number.isNaN(Number(valor))) {
+      return '-';
+    }
+
+    return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
   }
 
   function renderHistorico(rows) {

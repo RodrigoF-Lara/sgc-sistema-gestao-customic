@@ -80,7 +80,16 @@ export default async function handler(req, res) {
 
       const prod = await pool.request()
         .input("CODIGO", sql.VarChar(10), codigoQuery)
-        .query("SELECT TOP 1 CODIGO, DESCRICAO FROM [dbo].[CAD_PROD] WHERE CODIGO = @CODIGO");
+        .query(`
+          SELECT TOP 1
+            CODIGO,
+            DESCRICAO,
+            ESTOQUE_MINIMO,
+            ESTOQUE_IDEAL,
+            ESTOQUE_MAXIMO
+          FROM [dbo].[CAD_PROD]
+          WHERE CODIGO = @CODIGO
+        `);
 
       const saldoRes = await pool.request()
         .input("CODIGO", sql.VarChar(10), codigoQuery)
@@ -112,6 +121,9 @@ export default async function handler(req, res) {
       return res.status(200).json({
         codigo: codigoQuery,
         descricao: (prod.recordset[0] && prod.recordset[0].DESCRICAO) || null,
+        estoqueMinimo: (prod.recordset[0] && prod.recordset[0].ESTOQUE_MINIMO) || null,
+        estoqueIdeal: (prod.recordset[0] && prod.recordset[0].ESTOQUE_IDEAL) || null,
+        estoqueMaximo: (prod.recordset[0] && prod.recordset[0].ESTOQUE_MAXIMO) || null,
         saldo: (saldoRes.recordset[0] && saldoRes.recordset[0].SALDO) || 0,
         movimentos: mov.recordset,
       });

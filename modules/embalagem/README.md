@@ -11,6 +11,7 @@
 
 - 📝 **Requisições de material** com upload por CSV
 - 📦 **Kardex** (movimentação e saldo de estoque)
+- 🌡️ **Consulta individual de estoque** com termômetro por mínimo, ideal e máximo
 - 🧾 **Notas Fiscais** (lançamento e status)
 - 📋 **Inventário Cíclico** com 5 blocos de prioridade
 - 📊 **Relatórios** gerenciais
