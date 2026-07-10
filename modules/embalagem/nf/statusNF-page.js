@@ -32,6 +32,71 @@ document.addEventListener('DOMContentLoaded', function() {
         return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     }
 
+    function formatarDataHoraLocalSemFuso(valor) {
+        if (!valor) return 'N/A';
+
+        if (typeof valor === 'string') {
+            const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+            if (match) {
+                const data = new Date(
+                    Number(match[1]),
+                    Number(match[2]) - 1,
+                    Number(match[3]),
+                    Number(match[4]),
+                    Number(match[5]),
+                    Number(match[6] || 0),
+                    0
+                );
+                return data.toLocaleString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+            }
+        }
+
+        const data = new Date(valor);
+        if (Number.isNaN(data.getTime())) return 'N/A';
+        return data.toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    function parseDataHoraSemFuso(valor) {
+        if (!valor) return null;
+
+        if (typeof valor === 'string') {
+            const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+            if (match) {
+                return new Date(
+                    Number(match[1]),
+                    Number(match[2]) - 1,
+                    Number(match[3]),
+                    Number(match[4]),
+                    Number(match[5]),
+                    Number(match[6] || 0),
+                    0
+                );
+            }
+        }
+
+        const data = new Date(valor);
+        return Number.isNaN(data.getTime()) ? null : data;
+    }
+
+    function formatarDuracaoMinutos(totalMinutos) {
+        const minutos = Number(totalMinutos);
+        if (!Number.isFinite(minutos) || minutos < 0) return 'N/A';
+
+        const dias = Math.floor(minutos / (60 * 24));
+        const horas = Math.floor((minutos % (60 * 24)) / 60);
+        const mins = minutos % 60;
+
+        if (dias > 0) return `${dias}d ${horas}h ${mins}min`;
+        if (horas > 0) return `${horas}h ${mins}min`;
+        return `${mins}min`;
+    }
+
     /**
      * Popula o filtro de status com valores únicos da base de dados.
      */
@@ -103,13 +168,14 @@ document.addEventListener('DOMContentLoaded', function() {
         table.innerHTML = `
             <thead>
                 <tr>
-                    <th>NF</th><th>Código</th><th>Descrição</th><th>Quantidade</th><th>Usuário</th><th>Data</th><th>Hora</th><th>Último Status</th><th>Ações</th>
+                    <th>NF</th><th>Código</th><th>Descrição</th><th>Quantidade</th><th>Usuário</th><th>Data</th><th>Hora</th><th>Último Status</th><th>Lead Time Total</th><th>Ações</th>
                 </tr>
             </thead>
             <tbody></tbody>`;
         const tbody = table.querySelector('tbody');
         data.forEach(item => {
             const dataFormatada = formatarDataUTC(item.DT);
+            const leadTimeTotal = formatarDuracaoMinutos(item.LEAD_TIME_TOTAL_MIN);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td data-label="NF">${item.NF}</td>
@@ -120,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td data-label="Data">${dataFormatada}</td>
                 <td data-label="Hora">${item.HH}</td>
                 <td data-label="Último Status">${item.PROCESSO}</td>
+                <td data-label="Lead Time Total">${leadTimeTotal}</td>
                 <td class="actions-cell" data-label="Ações">
                     <button class="btn-detalhes btn-update" 
                             data-nf="${item.NF}" data-codigo="${item.CODIGO}" 
@@ -213,16 +280,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 logContent.innerHTML = '<p>Nenhum histórico encontrado para este item.</p>';
                 return;
             }
+
+            const logComDuracao = logData.map((entry, index) => {
+                const atual = parseDataHoraSemFuso(entry.DT_HR_EVENTO);
+                const proximo = index < logData.length - 1 ? parseDataHoraSemFuso(logData[index + 1].DT_HR_EVENTO) : null;
+                const diffMin = proximo && atual
+                    ? Math.max(0, Math.round((proximo.getTime() - atual.getTime()) / (1000 * 60)))
+                    : null;
+
+                return {
+                    ...entry,
+                    TEMPO_ATE_PROXIMO: diffMin
+                };
+            });
+
+            const inicio = parseDataHoraSemFuso(logData[0].DT_HR_EVENTO);
+            const fim = parseDataHoraSemFuso(logData[logData.length - 1].DT_HR_EVENTO);
+            const totalMin = inicio && fim
+                ? Math.max(0, Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60)))
+                : null;
+
             logContent.innerHTML = `
+                <div class="info-message" style="margin-bottom: 10px;">
+                    <strong>Lead Time Total:</strong> ${formatarDuracaoMinutos(totalMin)}
+                    <br>
+                    <strong>Início:</strong> ${formatarDataHoraLocalSemFuso(logData[0].DT_HR_EVENTO)}
+                    <br>
+                    <strong>Fim:</strong> ${formatarDataHoraLocalSemFuso(logData[logData.length - 1].DT_HR_EVENTO)}
+                </div>
                 <table id="logTable">
-                    <thead><tr><th>Data</th><th>Hora</th><th>Usuário</th><th>Processo</th></tr></thead>
+                    <thead><tr><th>Data</th><th>Hora</th><th>Usuário</th><th>Processo</th><th>Tempo até próximo status</th></tr></thead>
                     <tbody>
-                        ${logData.map(entry => `
+                        ${logComDuracao.map(entry => `
                             <tr>
                                 <td>${formatarDataUTC(entry.DT)}</td>
                                 <td>${entry.HH}</td>
                                 <td>${entry.USUARIO}</td>
                                 <td>${entry.PROCESSO}</td>
+                                <td>${entry.TEMPO_ATE_PROXIMO === null ? '-' : formatarDuracaoMinutos(entry.TEMPO_ATE_PROXIMO)}</td>
                             </tr>
                         `).join('')}
                     </tbody>

@@ -54,7 +54,21 @@ async function listarStatus(req, res) {
         const result = await pool.request()
             .input('tipoProduto', sql.VarChar, tipoProduto)
             .query(`
-                WITH RankedLogs AS (
+                WITH LeadTimePorItem AS (
+                    SELECT
+                        log.NF,
+                        log.CODIGO,
+                        MIN(DATEADD(SECOND, DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(log.HH AS time)), CAST(log.DT AS datetime2))) AS DT_HR_INICIO,
+                        MAX(DATEADD(SECOND, DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(log.HH AS time)), CAST(log.DT AS datetime2))) AS DT_HR_FIM,
+                        DATEDIFF(
+                            MINUTE,
+                            MIN(DATEADD(SECOND, DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(log.HH AS time)), CAST(log.DT AS datetime2))),
+                            MAX(DATEADD(SECOND, DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(log.HH AS time)), CAST(log.DT AS datetime2)))
+                        ) AS LEAD_TIME_TOTAL_MIN
+                    FROM [dbo].[TB_LOG_NF] log
+                    GROUP BY log.NF, log.CODIGO
+                ),
+                RankedLogs AS (
                     SELECT 
                         log.[NF], log.[CODIGO], log.[USUARIO], log.[DT],
                         log.[HH], log.[PROCESSO], log.[ID_NF], log.[ID_NF_PROD],
@@ -66,9 +80,13 @@ async function listarStatus(req, res) {
                     rl.NF, rl.CODIGO, cp.DESCRICAO, rl.USUARIO, rl.DT,
                     CONVERT(varchar(8), rl.HH, 108) as HH,
                     rl.PROCESSO, rl.ID_NF, rl.ID_NF_PROD,
-                    rl.QNT
+                    rl.QNT,
+                    lt.DT_HR_INICIO,
+                    lt.DT_HR_FIM,
+                    lt.LEAD_TIME_TOTAL_MIN
                 FROM RankedLogs rl
                 INNER JOIN [dbo].[CAD_PROD] cp ON rl.CODIGO = cp.CODIGO
+                LEFT JOIN LeadTimePorItem lt ON lt.NF = rl.NF AND lt.CODIGO = rl.CODIGO
                 WHERE rl.rn = 1 AND (${tipoWhereCondition})
                 ORDER BY rl.DT DESC, rl.HH DESC;
             `);
@@ -98,13 +116,14 @@ async function buscarLog(req, res) {
                     USUARIO,
                     DT,
                     CONVERT(varchar(8), HH, 108) as HH,
-                    PROCESSO
+                    PROCESSO,
+                    DATEADD(SECOND, DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(HH AS time)), CAST(DT AS datetime2)) AS DT_HR_EVENTO
                 FROM 
                     [dbo].[TB_LOG_NF]
                 WHERE 
                     NF = @NF AND CODIGO = @CODIGO
                 ORDER BY 
-                    DT DESC, HH DESC;
+                    DT ASC, HH ASC;
             `);
         
         return res.status(200).json(result.recordset);
