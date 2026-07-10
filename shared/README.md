@@ -3,7 +3,7 @@
 > Código transversal usado por **todos os módulos** do SGC.
 > Tudo aqui deve ser **estável, genérico e bem testado** — mudanças impactam o sistema inteiro.
 >
-> **Última atualização:** 21/05/2026
+> **Última atualização:** 10/07/2026
 
 ---
 
@@ -22,7 +22,7 @@
 ## Recursos do `frontend/`
 
 - **Sidebar** ([menu-lateral.html](frontend/menu-lateral.html)) — 3 módulos top-level colapsáveis (Embalagens, Produção, Geral) com sub-acordeões aninhados.
-- **layout.js** — carrega a sidebar via `fetch`, gerencia accordion, item ativo, notificações e botão hamburger com **comportamento dual**:
+- **layout.js** — carrega a sidebar via `fetch`, gerencia accordion, item ativo (incluindo páginas derivadas como `relatorioNecessidadeCompras.html`), notificações e botão hamburger com **comportamento dual**:
   - **Desktop (>768px):** alterna mini-sidebar (modo só ícones, 64px) com preferência persistida em `localStorage.sgcSidebarCollapsed`.
   - **Mobile (≤768px):** slide-out lateral com overlay, ESC e fecha-ao-clicar-link.
 - **style.css** — variáveis CSS (`--cor-principal` etc.), regras globais, mini-sidebar desktop (`body.sidebar-collapsed`), responsividade mobile (`body.sidebar-open`), tabelas com scroll horizontal e filtros em coluna única no mobile.

@@ -1,7 +1,7 @@
 # SGC — Sistema de Gestão Customic
 
 > Documento de arquitetura geral do projeto.
-> **Última atualização:** 21/05/2026
+> **Última atualização:** 10/07/2026
 
 ---
 
@@ -99,7 +99,7 @@ requisicoes/
 │   │   ├── nf/                  ← lancamentoNF, statusNF
 │   │   ├── inventario/          ← inventarioCiclico, configInventario
 │   │   ├── saving/              ← savingCompras (metas redução curva A)
-│   │   └── relatorios/          ← relatorio* (todos)
+│   │   └── relatorios/          ← relatorio* (inclui relatorioNecessidadeCompras)
 │   │
 │   └── producao/
 │       ├── README.md
@@ -125,7 +125,7 @@ requisicoes/
 │   │   ├── statusNF.js
 │   │   ├── inventarioCiclico.js
 │   │   ├── config.js
-│   │   └── relatorios.js   ← inclui Saving de Compras (acao=saving*)
+│   │   └── relatorios.js   ← inclui Saving de Compras (acao=saving*) e necessidadeCompras
 │   └── producao/
 │       └── (vazio inicialmente)
 │

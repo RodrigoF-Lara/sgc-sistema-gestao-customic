@@ -59,6 +59,7 @@ function inicializarSidebar() {
     'lancamentonf': 'nav-lancamento-nf',
     'inventariociclico': 'nav-inventario-ciclico',
     'relatorios': 'nav-relatorios',
+    'relatorionecessidadecompras': 'nav-relatorios',
     'relatoriobaixaporperiodo': 'nav-relatorios',
     'relatoriorequisicoes': 'nav-relatorios',
     'relatoriosaldo': 'nav-relatorios',

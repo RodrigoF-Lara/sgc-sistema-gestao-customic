@@ -3,7 +3,7 @@
 > Setor de Embalagem — Requisições, Kardex, Notas Fiscais, Inventário e Relatórios.
 > Módulo original do SGC, em produção.
 >
-> **Última atualização:** 21/05/2026 (pós-Fase 1 da refatoração)
+> **Última atualização:** 10/07/2026 (pós-Fase 1 da refatoração)
 
 ---
 
@@ -14,6 +14,7 @@
 - 🧾 **Notas Fiscais** (lançamento e status)
 - 📋 **Inventário Cíclico** com 5 blocos de prioridade
 - 📊 **Relatórios** gerenciais
+- 🌡️ **Necessidade de Compras** com termômetro por estoque mínimo, ideal e máximo
 - ⚡ **Saída Rápida** via QR Code
 - 💰 **Saving de Compras** — metas de redução de custo para itens curva A
 
@@ -29,7 +30,8 @@ modules/embalagem/
 ├── inventario/    inventarioCiclico, configInventario
 ├── saving/        savingCompras (planejamento + indicador planejado x realizado)
 └── relatorios/    relatorios, relatorioRequisicoes, relatorioBaixaPorPeriodo,
-                   relatorioSaldo, relatorioAcuracidade, relatorioMovimentoDiario
+                   relatorioSaldo, relatorioNecessidadeCompras,
+                   relatorioAcuracidade, relatorioMovimentoDiario
 ```
 
 ---
@@ -45,7 +47,7 @@ modules/embalagem/
 | `/api/embalagem/lancamentoNF` | GET, POST, PUT | [api/embalagem/lancamentoNF.js](../../api/embalagem/lancamentoNF.js) | Lançamento de notas fiscais |
 | `/api/embalagem/statusNF` | GET, POST | [api/embalagem/statusNF.js](../../api/embalagem/statusNF.js) | Status e bipagem de NFs |
 | `/api/embalagem/inventarioCiclico` | GET, POST, PUT | [api/embalagem/inventarioCiclico.js](../../api/embalagem/inventarioCiclico.js) | Logs e blocos de inventário |
-| `/api/embalagem/relatorios` | GET, POST, DELETE | [api/embalagem/relatorios.js](../../api/embalagem/relatorios.js) | Relatórios consolidados + Saving de Compras (`?acao=savingList`, `savingIndicador`, `savingSaveMetasBatch`, `savingSaveMeta`, `savingDeleteMeta`) |
+| `/api/embalagem/relatorios` | GET, POST, DELETE | [api/embalagem/relatorios.js](../../api/embalagem/relatorios.js) | Relatórios consolidados + Saving de Compras (`?acao=savingList`, `savingIndicador`, `savingSaveMetasBatch`, `savingSaveMeta`, `savingDeleteMeta`) + Termômetro de Compras (`?acao=necessidadeCompras`) |
 
 ### Compartilhados (`/api/shared/`)
 
@@ -82,7 +84,7 @@ modules/embalagem/
 |--------|-----|
 | `TB_USUARIOS` | Login e permissões |
 | `CAD_FORNECEDOR` | Cadastro de fornecedores |
-| `TB_PRODUTOS` | Cadastro de produtos |
+| `TB_PRODUTOS` / `CAD_PROD` | Cadastro de produtos e parâmetros de estoque mínimo/ideal/máximo |
 | `TB_NOTIFICACOES` | Sistema de notificações |
 
 > Schema completo: `/memories/repo/database-schema.md`.
@@ -136,6 +138,13 @@ flowchart LR
 ```
 
 > Detalhes em [CHANGELOG_BLOCOS_4_5.md](../../CHANGELOG_BLOCOS_4_5.md).
+
+### Necessidade de Compras (Termômetro)
+
+- Fonte de saldo atual: `KARDEX_2026_EMBALAGEM`
+- Fonte de parâmetros: `CAD_PROD.ESTOQUE_MINIMO`, `CAD_PROD.ESTOQUE_IDEAL`, `CAD_PROD.ESTOQUE_MAXIMO`
+- Classificações: `ABAIXO DO MINIMO`, `NO MINIMO`, `REGULAR`, `EXCEDENTE`, `SEM PARAMETRO`
+- Necessidade de compra: diferença entre saldo atual e estoque ideal quando o saldo estiver abaixo do ideal
 
 ### Saving de Compras
 

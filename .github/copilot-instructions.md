@@ -1,6 +1,6 @@
 # SGC — Sistema de Gestão Customic — Instruções para AI
 
-> **Última atualização:** 21/05/2026 • Refatoração Fase 1 concluída.
+> **Última atualização:** 10/07/2026 • Refatoração Fase 1 concluída.
 > Sempre que algo mudar (estrutura, padrão, endpoint, tabela), atualize **este arquivo
 > e os documentos da seção [Documentação Viva](#-documentação-viva)** no MESMO commit.
 
@@ -40,12 +40,12 @@ requisicoes/
 │   │   ├── nf/                 ← lancamentoNF, statusNF
 │   │   ├── inventario/         ← inventarioCiclico, configInventario
 │   │   ├── saving/             ← savingCompras (metas de redução curva A)
-│   │   └── relatorios/         ← relatorio* (todos)
+│   │   └── relatorios/         ← relatorio* (inclui relatorioNecessidadeCompras)
 │   └── producao/               ← em desenvolvimento (somente README)
 │
 ├── api/
 │   ├── shared/                 ← auth, cadastros, config, fundos, notificacoes, listaTabelas
-│   └── embalagem/              ← requisicao, inventory, lancamentoNF, statusNF, inventarioCiclico, relatorios (inclui saving via `?acao=saving*`)
+│   └── embalagem/              ← requisicao, inventory, lancamentoNF, statusNF, inventarioCiclico, relatorios (inclui saving via `?acao=saving*` e necessidadeCompras)
 │
 └── sql/
     ├── shared/
@@ -90,6 +90,7 @@ item ativo seja destacado automaticamente.
 - **Requisição:** Upload CSV → `POST /api/embalagem/requisicao` (action: `createHeader` → `uploadItems`)
 - **Inventário Cíclico:** 5 blocos (1-3 = maior valor; 4 = maior custo unitário; 5 = não contados recentemente). Config em `TB_CONFIG_INVENTARIO`
 - **Kardex:** `KARDEX_2026` é a fonte de saldo/movimentação (versionada por ano)
+- **Necessidade de Compras:** compara saldo atual de `KARDEX_2026_EMBALAGEM` com `CAD_PROD.ESTOQUE_MINIMO`, `ESTOQUE_IDEAL` e `ESTOQUE_MAXIMO`
 - **NF:** `lancamentoNF` → `TB_LOG_NF`; `statusNF` faz bipagem contra `TB_STATUS_NF`
 
 ---
@@ -105,7 +106,7 @@ item ativo seja destacado automaticamente.
 | `TB_LOG_NF` / `TB_STATUS_NF` | Embalagem | Lançamento e bipagem de NFs |
 | `TB_SAVING_META` | Embalagem | Metas de redução de custo % por item e mês-âncora |
 | `TB_USUARIOS` | Shared | Login |
-| `CAD_FORNECEDOR` / `TB_PRODUTOS` | Shared | Cadastros |
+| `CAD_FORNECEDOR` / `TB_PRODUTOS` / `CAD_PROD` | Shared | Cadastros |
 | `TB_NOTIFICACOES` | Shared | Notificações |
 
 Schema completo em `/memories/repo/database-schema.md`.

@@ -30,6 +30,8 @@ export default async function handler(req, res) {
             return await buscarTiposProduto(req, res);
         } else if (acao === 'saldoEstoque') {
             return await relatorioSaldoEstoque(req, res);
+        } else if (acao === 'necessidadeCompras') {
+            return await relatorioNecessidadeCompras(req, res);
         } else if (acao === 'acuracidade') {
             return await relatorioAcuracidade(req, res);
         } else if (acao === 'detalhesInventario') {
@@ -536,6 +538,124 @@ async function relatorioSaldoEstoque(req, res) {
         console.error("? Erro ao gerar relatório de saldo:", err);
         return res.status(500).json({ 
             message: "Erro ao gerar relatório", 
+            error: err.message,
+            stack: err.stack
+        });
+    }
+}
+
+async function relatorioNecessidadeCompras(req, res) {
+    try {
+        const { curvaABC, tipoProduto, statusTermometro, ativos, inativos } = req.query;
+
+        const pool = await getConnection();
+
+        let query = `
+            WITH Base AS (
+                SELECT
+                    cp.CODIGO,
+                    cp.DESCRICAO,
+                    cp.TIPO,
+                    ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
+                    ISNULL(cp.ESTOQUE_MINIMO, 0) AS ESTOQUE_MINIMO,
+                    ISNULL(cp.ESTOQUE_IDEAL, 0) AS ESTOQUE_IDEAL,
+                    ISNULL(cp.ESTOQUE_MAXIMO, 0) AS ESTOQUE_MAXIMO,
+                    ISNULL(k.SALDO, 0) AS SALDO,
+                    CASE
+                        WHEN cp.ESTOQUE_MINIMO IS NULL OR cp.ESTOQUE_IDEAL IS NULL OR cp.ESTOQUE_MAXIMO IS NULL THEN 'SEM PARAMETRO'
+                        WHEN ISNULL(k.SALDO, 0) < ISNULL(cp.ESTOQUE_MINIMO, 0) THEN 'ABAIXO DO MINIMO'
+                        WHEN ISNULL(k.SALDO, 0) = ISNULL(cp.ESTOQUE_MINIMO, 0) THEN 'NO MINIMO'
+                        WHEN ISNULL(k.SALDO, 0) > ISNULL(cp.ESTOQUE_MAXIMO, 0) THEN 'EXCEDENTE'
+                        ELSE 'REGULAR'
+                    END AS STATUS_TERMOMETRO,
+                    CASE
+                        WHEN cp.ESTOQUE_IDEAL IS NULL THEN 0
+                        WHEN ISNULL(k.SALDO, 0) < ISNULL(cp.ESTOQUE_IDEAL, 0)
+                            THEN ISNULL(cp.ESTOQUE_IDEAL, 0) - ISNULL(k.SALDO, 0)
+                        ELSE 0
+                    END AS NECESSIDADE_COMPRA
+                FROM [dbo].[CAD_PROD] cp
+                LEFT JOIN (
+                    SELECT
+                        CODIGO,
+                        SUM(SALDO) AS SALDO
+                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                    WHERE D_E_L_E_T_ <> '*'
+                        AND KARDEX = 2026
+                    GROUP BY CODIGO
+                ) k ON cp.CODIGO = k.CODIGO
+                WHERE (
+                    (@ATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 1) OR
+                    (@INATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 0)
+                )
+            )
+            SELECT
+                CODIGO,
+                DESCRICAO,
+                TIPO,
+                CURVA_A_B_C,
+                SALDO,
+                ESTOQUE_MINIMO,
+                ESTOQUE_IDEAL,
+                ESTOQUE_MAXIMO,
+                STATUS_TERMOMETRO,
+                NECESSIDADE_COMPRA
+            FROM Base
+            WHERE 1 = 1`;
+
+        const request = pool.request();
+        request.input('ATIVOS', sql.Bit, ativos === 'sim' ? 1 : 0);
+        request.input('INATIVOS', sql.Bit, inativos === 'sim' ? 1 : 0);
+
+        if (curvaABC && curvaABC.trim()) {
+            if (curvaABC === 'C') {
+                query += ` AND (CURVA_A_B_C IS NULL OR CURVA_A_B_C = '' OR CURVA_A_B_C = 'C')`;
+            } else {
+                query += ` AND CURVA_A_B_C = @CURVA_ABC`;
+                request.input('CURVA_ABC', sql.NVarChar(1), curvaABC.trim());
+            }
+        }
+
+        if (tipoProduto && tipoProduto.trim()) {
+            query += ` AND TIPO = @TIPO_PRODUTO`;
+            request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
+        }
+
+        if (statusTermometro && statusTermometro.trim()) {
+            query += ` AND STATUS_TERMOMETRO = @STATUS_TERMOMETRO`;
+            request.input('STATUS_TERMOMETRO', sql.NVarChar(30), statusTermometro.trim());
+        }
+
+        query += `
+            ORDER BY
+                CASE STATUS_TERMOMETRO
+                    WHEN 'ABAIXO DO MINIMO' THEN 1
+                    WHEN 'NO MINIMO' THEN 2
+                    WHEN 'REGULAR' THEN 3
+                    WHEN 'EXCEDENTE' THEN 4
+                    ELSE 5
+                END,
+                NECESSIDADE_COMPRA DESC,
+                CODIGO`;
+
+        const result = await request.query(query);
+
+        const dados = result.recordset || [];
+
+        const totalizadores = {
+            totalProdutos: dados.length,
+            totalAbaixoMinimo: dados.filter(r => r.STATUS_TERMOMETRO === 'ABAIXO DO MINIMO').length,
+            totalNoMinimo: dados.filter(r => r.STATUS_TERMOMETRO === 'NO MINIMO').length,
+            totalRegular: dados.filter(r => r.STATUS_TERMOMETRO === 'REGULAR').length,
+            totalExcedente: dados.filter(r => r.STATUS_TERMOMETRO === 'EXCEDENTE').length,
+            necessidadeTotalIdeal: dados.reduce((acc, r) => acc + Number(r.NECESSIDADE_COMPRA || 0), 0)
+        };
+
+        return res.status(200).json({ dados, totalizadores });
+    } catch (err) {
+        console.error('? Erro ao gerar relatório de necessidade de compras:', err);
+        return res.status(500).json({
+            message: 'Erro ao gerar relatório de necessidade de compras',
             error: err.message,
             stack: err.stack
         });
