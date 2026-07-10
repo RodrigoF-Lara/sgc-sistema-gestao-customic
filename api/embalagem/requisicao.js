@@ -1,5 +1,25 @@
 import { getConnection, sql } from "../../db.js";
 
+function obterDataHoraSaoPaulo() {
+    const agora = new Date();
+    const partes = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    }).formatToParts(agora);
+
+    const map = Object.fromEntries(partes.map(p => [p.type, p.value]));
+    return {
+        dataISO: `${map.year}-${map.month}-${map.day}`,
+        horaLocal: `${map.hour}:${map.minute}:${map.second}`
+    };
+}
+
 // Função Principal que decide o que fazer
 export default async function handler(req, res) {
     const { method } = req;
@@ -74,7 +94,8 @@ async function handlePost(req, res) {
     
     if (action === 'createHeader') {
         const { dtNecessidade, prioridade, solicitante } = req.body;
-        const result = await pool.request().input('SOLICITANTE', sql.NVarChar, solicitante).input('DT_REQUISICAO', sql.Date, new Date()).input('HR_REQUSICAO', sql.NVarChar, new Date().toLocaleTimeString()).input('STATUS', sql.NVarChar, 'Pendente').input('DT_NECESSIDADE', sql.Date, dtNecessidade).input('PRIORIDADE', sql.NVarChar, prioridade).query("INSERT INTO [dbo].[TB_REQUISICOES] (SOLICITANTE, DT_REQUISICAO, HR_REQUSICAO, STATUS, DT_NECESSIDADE, PRIORIDADE) OUTPUT INSERTED.ID_REQ VALUES (@SOLICITANTE, @DT_REQUISICAO, @HR_REQUSICAO, @STATUS, @DT_NECESSIDADE, @PRIORIDADE);");
+        const agoraSP = obterDataHoraSaoPaulo();
+        const result = await pool.request().input('SOLICITANTE', sql.NVarChar, solicitante).input('DT_REQUISICAO', sql.Date, agoraSP.dataISO).input('HR_REQUSICAO', sql.NVarChar, agoraSP.horaLocal).input('STATUS', sql.NVarChar, 'Pendente').input('DT_NECESSIDADE', sql.Date, dtNecessidade).input('PRIORIDADE', sql.NVarChar, prioridade).query("INSERT INTO [dbo].[TB_REQUISICOES] (SOLICITANTE, DT_REQUISICAO, HR_REQUSICAO, STATUS, DT_NECESSIDADE, PRIORIDADE) OUTPUT INSERTED.ID_REQ VALUES (@SOLICITANTE, @DT_REQUISICAO, @HR_REQUSICAO, @STATUS, @DT_NECESSIDADE, @PRIORIDADE);");
         return res.status(201).json({ idReq: result.recordset[0].ID_REQ });
     } else if (action === 'uploadItems') {
         const { data, idReq } = req.body;

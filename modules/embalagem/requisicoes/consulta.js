@@ -54,8 +54,19 @@ document.addEventListener('DOMContentLoaded', function() {
     function montarDataHoraRequisicao(req) {
         if (!req?.DT_REQUISICAO) return null;
 
-        const dataBase = new Date(req.DT_REQUISICAO);
-        if (Number.isNaN(dataBase.getTime())) return null;
+        let dataBase = null;
+        if (typeof req.DT_REQUISICAO === 'string') {
+            const match = req.DT_REQUISICAO.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                dataBase = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 0, 0, 0, 0);
+            }
+        }
+
+        if (!dataBase) {
+            const parsed = new Date(req.DT_REQUISICAO);
+            if (Number.isNaN(parsed.getTime())) return null;
+            dataBase = new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate(), 0, 0, 0, 0);
+        }
 
         const horaTexto = (req.HR_REQUSICAO || '').trim();
         const horaMatch = horaTexto.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
