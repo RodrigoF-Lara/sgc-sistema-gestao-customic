@@ -97,9 +97,31 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${mins}min`;
     }
 
+    function processoEhFinalizado(processo) {
+        const status = (processo || '').trim().toUpperCase();
+        return ['ARMAZENADO', 'FINALIZADO', 'CONCLUIDO', 'CONCLUÍDO'].includes(status);
+    }
+
+    function calcularLeadTimeTotalItemMinutos(item) {
+        const inicio = parseDataHoraSemFuso(item.DT_HR_INICIO);
+        if (!inicio) return null;
+
+        const fluxoFinalizado = processoEhFinalizado(item.PROCESSO);
+        if (!fluxoFinalizado) {
+            return Math.max(0, Math.round((Date.now() - inicio.getTime()) / (1000 * 60)));
+        }
+
+        const totalInformado = Number(item.LEAD_TIME_TOTAL_MIN);
+        if (Number.isFinite(totalInformado) && totalInformado >= 0) return totalInformado;
+
+        const fim = parseDataHoraSemFuso(item.DT_HR_FIM);
+        if (!fim) return null;
+        return Math.max(0, Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60)));
+    }
+
     function calcularLeadTimeMedioMinutos(data) {
         const temposValidos = data
-            .map(item => Number(item.LEAD_TIME_TOTAL_MIN))
+            .map(item => calcularLeadTimeTotalItemMinutos(item))
             .filter(valor => Number.isFinite(valor) && valor >= 0);
 
         if (temposValidos.length === 0) return null;
@@ -194,7 +216,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const tbody = table.querySelector('tbody');
         data.forEach(item => {
             const dataFormatada = formatarDataUTC(item.DT);
-            const leadTimeTotal = formatarDuracaoMinutos(item.LEAD_TIME_TOTAL_MIN);
+            const leadTimeTotalMin = calcularLeadTimeTotalItemMinutos(item);
+            const leadTimeTotal = formatarDuracaoMinutos(leadTimeTotalMin);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td data-label="NF">${item.NF}</td>
@@ -301,31 +324,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const logComDuracao = logData.map((entry, index) => {
+                const ultimoEntry = logData[logData.length - 1];
+                const fluxoFinalizado = processoEhFinalizado(ultimoEntry?.PROCESSO);
                 const atual = parseDataHoraSemFuso(entry.DT_HR_EVENTO);
                 const proximo = index < logData.length - 1 ? parseDataHoraSemFuso(logData[index + 1].DT_HR_EVENTO) : null;
-                const diffMin = proximo && atual
-                    ? Math.max(0, Math.round((proximo.getTime() - atual.getTime()) / (1000 * 60)))
-                    : null;
+                let diffMin = null;
+                let emAberto = false;
+
+                if (proximo && atual) {
+                    diffMin = Math.max(0, Math.round((proximo.getTime() - atual.getTime()) / (1000 * 60)));
+                } else if (!fluxoFinalizado && atual) {
+                    diffMin = Math.max(0, Math.round((Date.now() - atual.getTime()) / (1000 * 60)));
+                    emAberto = true;
+                }
 
                 return {
                     ...entry,
-                    TEMPO_ATE_PROXIMO: diffMin
+                    TEMPO_ATE_PROXIMO: diffMin,
+                    TEMPO_EM_ABERTO: emAberto
                 };
             });
 
             const inicio = parseDataHoraSemFuso(logData[0].DT_HR_EVENTO);
-            const fim = parseDataHoraSemFuso(logData[logData.length - 1].DT_HR_EVENTO);
+            const ultimoEvento = logData[logData.length - 1];
+            const fluxoFinalizado = processoEhFinalizado(ultimoEvento?.PROCESSO);
+            const fim = fluxoFinalizado ? parseDataHoraSemFuso(ultimoEvento.DT_HR_EVENTO) : new Date();
             const totalMin = inicio && fim
                 ? Math.max(0, Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60)))
                 : null;
 
             logContent.innerHTML = `
                 <div class="info-message" style="margin-bottom: 10px;">
-                    <strong>Lead Time Total:</strong> ${formatarDuracaoMinutos(totalMin)}
+                    <strong>Lead Time Total:</strong> ${fluxoFinalizado ? formatarDuracaoMinutos(totalMin) : `Em aberto: ${formatarDuracaoMinutos(totalMin)}`}
                     <br>
                     <strong>Início:</strong> ${formatarDataHoraLocalSemFuso(logData[0].DT_HR_EVENTO)}
                     <br>
-                    <strong>Fim:</strong> ${formatarDataHoraLocalSemFuso(logData[logData.length - 1].DT_HR_EVENTO)}
+                    <strong>Fim:</strong> ${fluxoFinalizado ? formatarDataHoraLocalSemFuso(ultimoEvento.DT_HR_EVENTO) : 'Em andamento'}
                 </div>
                 <table id="logTable">
                     <thead><tr><th>Data</th><th>Hora</th><th>Usuário</th><th>Processo</th><th>Tempo até próximo status</th></tr></thead>
@@ -336,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td>${entry.HH}</td>
                                 <td>${entry.USUARIO}</td>
                                 <td>${entry.PROCESSO}</td>
-                                <td>${entry.TEMPO_ATE_PROXIMO === null ? '-' : formatarDuracaoMinutos(entry.TEMPO_ATE_PROXIMO)}</td>
+                                <td>${entry.TEMPO_ATE_PROXIMO === null ? '-' : (entry.TEMPO_EM_ABERTO ? `Em aberto: ${formatarDuracaoMinutos(entry.TEMPO_ATE_PROXIMO)}` : formatarDuracaoMinutos(entry.TEMPO_ATE_PROXIMO))}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -438,6 +472,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener para o formulário de update
     updateForm.addEventListener('submit', handleUpdateSubmit);
+
+    // Atualiza tempos em aberto sem exigir recarga manual da página
+    setInterval(() => {
+        if (allData.length > 0) {
+            applyFilters();
+        }
+    }, 30000);
 
     // --- Carga Inicial ---
     fetchDataAndRender();
