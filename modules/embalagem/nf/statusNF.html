@@ -6,6 +6,30 @@
     <title>Status de Processamento de NF - Kardex</title>
     <link rel="stylesheet" href="/shared/frontend/style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        #logModal .modal-content {
+            width: min(95vw, 920px);
+            max-width: 920px;
+        }
+
+        #logContent {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        #logTable {
+            width: 100%;
+            min-width: 760px;
+            table-layout: fixed;
+        }
+
+        #logTable th,
+        #logTable td {
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+    </style>
 </head>
 <body>
     <div id="sidebar-container" class="sidebar"></div>
