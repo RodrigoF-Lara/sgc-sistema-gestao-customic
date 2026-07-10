@@ -252,6 +252,18 @@ async function handleDelete(req, res) {
         return res.status(403).json({ message: "Apenas usuários ADMIN podem excluir requisições." });
     }
 
+    const tabelaLogExiste = await pool.request().query(`
+        SELECT COUNT(*) AS TOTAL
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_NAME = 'TB_REQ_DELETE_LOG'
+    `);
+
+    if (Number(tabelaLogExiste.recordset[0]?.TOTAL || 0) === 0) {
+        return res.status(400).json({
+            message: "Tabela de auditoria não encontrada. Execute o script sql/embalagem/create_tb_req_delete_log.sql antes de excluir requisições."
+        });
+    }
+
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
@@ -311,6 +323,9 @@ async function handleDelete(req, res) {
     } catch (err) {
         await transaction.rollback();
         console.error("Erro ao excluir requisição:", err);
-        return res.status(500).json({ message: "Erro interno ao excluir requisição." });
+        return res.status(500).json({
+            message: "Erro interno ao excluir requisição.",
+            details: err.message
+        });
     }
 }
