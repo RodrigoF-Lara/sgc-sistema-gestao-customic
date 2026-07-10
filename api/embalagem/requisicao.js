@@ -50,6 +50,13 @@ async function handleGet(req, res) {
             SELECT 
                 I.*, 
                 P.DESCRICAO AS DESCRICAO_PRODUTO,
+                ISNULL((
+                    SELECT SUM(ISNULL(K3.SALDO, 0))
+                    FROM [dbo].[KARDEX_2026_EMBALAGEM] K3
+                    WHERE K3.CODIGO = I.CODIGO
+                      AND K3.D_E_L_E_T_ = ''
+                      AND K3.KARDEX = 2026
+                ), 0) AS SALDO_ESTOQUE,
                 STUFF((
                     SELECT ', ' + ENDERECO_ARM
                     FROM (

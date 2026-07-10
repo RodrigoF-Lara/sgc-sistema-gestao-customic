@@ -254,13 +254,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         itemsContainer.innerHTML = '';
         const table = document.createElement('table');
         const statusOptions = ['Pendente', 'Em separação', 'Separado', 'Aguarda coleta', 'Finalizado'];
+
+        function formatarNumeroQuantidade(valor) {
+            const num = Number(valor);
+            if (!Number.isFinite(num)) return '0';
+            return num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+        }
+
         const tableRowsHTML = items.map(item => {
             const statusLimpo = (item.STATUS_ITEM || 'Pendente').trim();
             const optionsHTML = statusOptions.map(opt => `<option value="${opt}" ${statusLimpo === opt ? 'selected' : ''}>${opt}</option>`).join('');
             const descricao = item.DESCRICAO_PRODUTO || 'Descrição não encontrada';
-            return `<tr><td><input type="checkbox" class="item-checkbox" data-id-req-item="${item.ID_REQ_ITEM}"></td><td>${item.ID_REQ_ITEM}</td><td>${item.CODIGO}</td><td>${descricao}</td><td>${item.QNT_REQ}</td><td>${item.QNT_PAGA}</td><td>${item.SALDO}</td><td><span class="status-badge status-${statusLimpo.replace(/\s/g, '-').toLowerCase()}">${statusLimpo}</span></td><td><div class="acoes-container"><select class="status-select" data-id-req-item="${item.ID_REQ_ITEM}" data-original-status="${statusLimpo}" ${statusLimpo === 'Finalizado' ? 'disabled' : ''}>${optionsHTML}</select><button class="btn-log" data-id-req-item="${item.ID_REQ_ITEM}" title="Ver Histórico"><i class="fa-solid fa-history"></i></button></div></td></tr>`;
+            return `<tr><td><input type="checkbox" class="item-checkbox" data-id-req-item="${item.ID_REQ_ITEM}"></td><td>${item.ID_REQ_ITEM}</td><td>${item.CODIGO}</td><td>${descricao}</td><td>${formatarNumeroQuantidade(item.QNT_REQ)}</td><td>${formatarNumeroQuantidade(item.QNT_PAGA)}</td><td>${formatarNumeroQuantidade(item.SALDO)}</td><td>${formatarNumeroQuantidade(item.SALDO_ESTOQUE)}</td><td><span class="status-badge status-${statusLimpo.replace(/\s/g, '-').toLowerCase()}">${statusLimpo}</span></td><td><div class="acoes-container"><select class="status-select" data-id-req-item="${item.ID_REQ_ITEM}" data-original-status="${statusLimpo}" ${statusLimpo === 'Finalizado' ? 'disabled' : ''}>${optionsHTML}</select><button class="btn-log" data-id-req-item="${item.ID_REQ_ITEM}" title="Ver Histórico"><i class="fa-solid fa-history"></i></button></div></td></tr>`;
         }).join('');
-        table.innerHTML = `<thead><tr><th><input type="checkbox" id="select-all-checkbox"></th><th>Item</th><th>Código</th><th>Descrição</th><th>QNT REQ</th><th>QNT PAGA</th><th>Saldo</th><th>Status</th><th>Ações</th></tr></thead><tbody>${tableRowsHTML}</tbody>`;
+        table.innerHTML = `<thead><tr><th><input type="checkbox" id="select-all-checkbox"></th><th>Item</th><th>Código</th><th>Descrição</th><th>QNT REQ</th><th>QNT PAGA</th><th>Pendente</th><th>Saldo em Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>${tableRowsHTML}</tbody>`;
         itemsContainer.appendChild(table);
     }
 
