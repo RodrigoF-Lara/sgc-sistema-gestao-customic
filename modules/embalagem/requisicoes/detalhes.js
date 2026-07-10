@@ -23,6 +23,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     }
 
+    function montarDataHoraRequisicao(header) {
+        if (!header?.DT_REQUISICAO) return null;
+
+        const dataBase = new Date(header.DT_REQUISICAO);
+        if (Number.isNaN(dataBase.getTime())) return null;
+
+        const horaTexto = (header.HR_REQUSICAO || '').trim();
+        const horaMatch = horaTexto.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+
+        if (!horaMatch) return dataBase;
+
+        dataBase.setHours(Number(horaMatch[1]), Number(horaMatch[2]), Number(horaMatch[3] || 0), 0);
+        return dataBase;
+    }
+
     // --- NOVA FUNÇÃO PARA FORMATAR DATA E HORA LOCAL ---
     function formatarDataHoraLocal(dataStringUTC) {
         if (!dataStringUTC) return 'N/A';
@@ -33,12 +48,45 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
+    function formatarDataHora(data) {
+        if (!data || Number.isNaN(data.getTime())) return 'N/A';
+        return data.toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    function calcularLeadTimeMs(header) {
+        const inicio = montarDataHoraRequisicao(header);
+        const fim = header?.DT_CONCLUSAO ? new Date(header.DT_CONCLUSAO) : new Date();
+
+        if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
+
+        return Math.max(0, fim.getTime() - inicio.getTime());
+    }
+
+    function formatarLeadTime(ms) {
+        if (ms === null) return 'N/A';
+
+        const totalMinutos = Math.round(ms / (1000 * 60));
+        const dias = Math.floor(totalMinutos / (60 * 24));
+        const horas = Math.floor((totalMinutos % (60 * 24)) / 60);
+        const minutos = totalMinutos % 60;
+
+        if (dias > 0) return `${dias}d ${horas}h ${minutos}min`;
+        if (horas > 0) return `${horas}h ${minutos}min`;
+        return `${minutos}min`;
+    }
+
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function renderHeader(header) {
-        const dataRequisicao = formatarData(header.DT_REQUISICAO);
+        const dataRequisicao = formatarDataHora(montarDataHoraRequisicao(header));
         const dataNecessidade = formatarData(header.DT_NECESSIDADE);
+        const dataConclusao = header.DT_CONCLUSAO ? formatarDataHoraLocal(header.DT_CONCLUSAO) : 'Em aberto';
+        const leadTime = formatarLeadTime(calcularLeadTimeMs(header));
         const prioridade = (header.PRIORIDADE || 'NORMAL').trim();
         const status = (header.STATUS || 'PENDENTE').trim();
+        const leadTimeLabel = header.DT_CONCLUSAO ? leadTime : `Em aberto: ${leadTime}`;
         headerContainer.innerHTML = `
             <div class="detalhe-header">
                 <div class="detalhe-header-title">
@@ -62,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <div class="detalhe-info-item">
                         <div class="detalhe-info-icon"><i class="fa-solid fa-calendar-plus"></i></div>
                         <div class="detalhe-info-body">
-                            <span class="detalhe-info-label">Data da Requisição</span>
+                            <span class="detalhe-info-label">Solicitação</span>
                             <span class="detalhe-info-valor">${dataRequisicao}</span>
                         </div>
                     </div>
@@ -71,6 +119,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <div class="detalhe-info-body">
                             <span class="detalhe-info-label">Data de Necessidade</span>
                             <span class="detalhe-info-valor">${dataNecessidade}</span>
+                        </div>
+                    </div>
+                    <div class="detalhe-info-item">
+                        <div class="detalhe-info-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                        <div class="detalhe-info-body">
+                            <span class="detalhe-info-label">Conclusão</span>
+                            <span class="detalhe-info-valor">${dataConclusao}</span>
+                        </div>
+                    </div>
+                    <div class="detalhe-info-item">
+                        <div class="detalhe-info-icon"><i class="fa-regular fa-clock"></i></div>
+                        <div class="detalhe-info-body">
+                            <span class="detalhe-info-label">Lead Time</span>
+                            <span class="detalhe-info-valor">${leadTimeLabel}</span>
                         </div>
                     </div>
                 </div>
@@ -231,8 +293,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             const ws_data = [
                 ['Requisição Nº', data.header.ID_REQ],
                 ['Solicitante', data.header.SOLICITANTE || 'N/A'],
-                ['Data Requisição', formatarData(data.header.DT_REQUISICAO)],
+                ['Data/Hora Solicitação', formatarDataHora(montarDataHoraRequisicao(data.header))],
                 ['Data Necessidade', formatarData(data.header.DT_NECESSIDADE)],
+                ['Data/Hora Conclusão', data.header.DT_CONCLUSAO ? formatarDataHoraLocal(data.header.DT_CONCLUSAO) : 'Em aberto'],
+                ['Lead Time', data.header.DT_CONCLUSAO ? formatarLeadTime(calcularLeadTimeMs(data.header)) : `Em aberto: ${formatarLeadTime(calcularLeadTimeMs(data.header))}`],
                 ['Prioridade', (data.header.PRIORIDADE || 'NORMAL').trim()],
                 ['Status', (data.header.STATUS || 'PENDENTE').trim()],
                 [],
