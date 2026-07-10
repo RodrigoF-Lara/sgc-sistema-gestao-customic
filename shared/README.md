@@ -13,7 +13,7 @@
 |-------|----------|
 | `frontend/` | `layout.js`, `menu-lateral.html`, `style.css`, `script.js`, `fundos.js` |
 | `cadastros/` | `cadastros.html` + `cadastro{Usuarios,Fornecedores,Produtos}.{html,js}` |
-| `config/` | `configuracoes.html`, `configNotificacoes.{html,js}` |
+| `config/` | `configuracoes.html`, `configNotificacoes.{html,js}`, `calendarioProdutivo.{html,js}` |
 
 > O login (`index.html`) permanece na raiz por exigência do roteamento Vercel.
 

@@ -72,7 +72,8 @@ function inicializarSidebar() {
     'cadastrousuarios': 'nav-usuarios',
     'configuracoes': 'nav-configuracoes',
     'configinventario': 'nav-configuracoes',
-    'confignotificacoes': 'nav-configuracoes'
+    'confignotificacoes': 'nav-configuracoes',
+    'calendarioprodutivo': 'nav-configuracoes'
   };
   const navId = idMap[pageKey] || `nav-${pageKey}`;
   const navLink = document.getElementById(navId);

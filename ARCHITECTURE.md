@@ -87,7 +87,8 @@ requisicoes/
 │   │   └── cadastroProdutos.{html,js}
 │   ├── config/
 │   │   ├── configuracoes.html
-│   │   └── configNotificacoes.{html,js}
+│   │   ├── configNotificacoes.{html,js}
+│   │   └── calendarioProdutivo.{html,js}
 │   └── menu.html                ← hub de seleção de módulos
 │
 ├── modules/

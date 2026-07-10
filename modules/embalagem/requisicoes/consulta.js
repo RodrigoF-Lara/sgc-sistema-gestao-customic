@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let todasRequisicoes = []; // Guarda todos os dados do servidor
     let leadTimePopover = null;
+    let calendarioProdutivo = {
+        horaInicio: '08:00',
+        horaFim: '18:00',
+        diasAtivos: { seg: true, ter: true, qua: true, qui: true, sex: true, sab: false, dom: false }
+    };
 
     function usuarioEhAdmin() {
         return userLevel === '1' || userLevel === 1 || Number(userLevel) === 1;
@@ -65,13 +70,66 @@ document.addEventListener('DOMContentLoaded', function() {
         return dataBase;
     }
 
+    function diaProdutivo(dateObj) {
+        const diaSemana = dateObj.getDay(); // 0=dom, 1=seg ... 6=sab
+        const diasAtivos = calendarioProdutivo.diasAtivos || {};
+        if (diaSemana === 1) return diasAtivos.seg !== false;
+        if (diaSemana === 2) return diasAtivos.ter !== false;
+        if (diaSemana === 3) return diasAtivos.qua !== false;
+        if (diaSemana === 4) return diasAtivos.qui !== false;
+        if (diaSemana === 5) return diasAtivos.sex !== false;
+        if (diaSemana === 6) return diasAtivos.sab === true;
+        return diasAtivos.dom === true;
+    }
+
+    function parseHoraParaMinutos(hora) {
+        const partes = String(hora || '').split(':');
+        if (partes.length < 2) return null;
+        const hh = Number(partes[0]);
+        const mm = Number(partes[1]);
+        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+        return hh * 60 + mm;
+    }
+
+    function construirDiaComMinutos(baseDate, minutosDia) {
+        const data = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), 0, 0, 0, 0);
+        data.setMinutes(minutosDia);
+        return data;
+    }
+
     function calcularLeadTimeMs(req) {
         const inicio = montarDataHoraRequisicao(req);
         const fim = req.DT_CONCLUSAO ? new Date(req.DT_CONCLUSAO) : new Date();
 
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
-        return Math.max(0, fim.getTime() - inicio.getTime());
+        if (fim <= inicio) return 0;
+
+        const inicioMin = parseHoraParaMinutos(calendarioProdutivo.horaInicio);
+        const fimMin = parseHoraParaMinutos(calendarioProdutivo.horaFim);
+        if (inicioMin === null || fimMin === null || inicioMin >= fimMin) return Math.max(0, fim.getTime() - inicio.getTime());
+
+        let totalMs = 0;
+        let cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), 0, 0, 0, 0);
+        const ultimoDia = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 0, 0, 0, 0);
+
+        while (cursor <= ultimoDia) {
+            if (diaProdutivo(cursor)) {
+                const janelaInicio = construirDiaComMinutos(cursor, inicioMin);
+                const janelaFim = construirDiaComMinutos(cursor, fimMin);
+
+                const inicioEfetivo = inicio > janelaInicio ? inicio : janelaInicio;
+                const fimEfetivo = fim < janelaFim ? fim : janelaFim;
+
+                if (fimEfetivo > inicioEfetivo) {
+                    totalMs += fimEfetivo.getTime() - inicioEfetivo.getTime();
+                }
+            }
+
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        return totalMs;
     }
 
     function obterTooltipLeadTime(req) {
@@ -335,10 +393,33 @@ document.addEventListener('DOMContentLoaded', function() {
     async function carregarDadosIniciais() {
         try {
             container.innerHTML = '<div class="loader-container"><div class="loader"></div><p>Buscando requisições...</p></div>';
-            const response = await fetch("/api/embalagem/requisicao"); 
-            if (!response.ok) throw new Error('Falha ao buscar dados do servidor.');
-            
-            todasRequisicoes = await response.json();
+            const [responseReqs, responseCal] = await Promise.all([
+                fetch('/api/embalagem/requisicao'),
+                fetch('/api/shared/config?tipo=calendarioProdutivo&action=get')
+            ]);
+
+            if (!responseReqs.ok) throw new Error('Falha ao buscar dados do servidor.');
+
+            todasRequisicoes = await responseReqs.json();
+
+            if (responseCal.ok) {
+                const calData = await responseCal.json();
+                if (calData?.config) {
+                    calendarioProdutivo = {
+                        horaInicio: calData.config.horaInicio || '08:00',
+                        horaFim: calData.config.horaFim || '18:00',
+                        diasAtivos: {
+                            seg: calData.config?.diasAtivos?.seg !== false,
+                            ter: calData.config?.diasAtivos?.ter !== false,
+                            qua: calData.config?.diasAtivos?.qua !== false,
+                            qui: calData.config?.diasAtivos?.qui !== false,
+                            sex: calData.config?.diasAtivos?.sex !== false,
+                            sab: calData.config?.diasAtivos?.sab === true,
+                            dom: calData.config?.diasAtivos?.dom === true
+                        }
+                    };
+                }
+            }
             
             renderRequisicoes(todasRequisicoes);
             atualizarSumario(todasRequisicoes);

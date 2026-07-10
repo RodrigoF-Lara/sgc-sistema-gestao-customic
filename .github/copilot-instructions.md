@@ -31,7 +31,7 @@ requisicoes/
 ├── shared/                     ← código transversal a todos os módulos
 │   ├── frontend/               ← layout.js, menu-lateral.html, style.css, script.js, fundos.js
 │   ├── cadastros/              ← cadastroUsuarios/Fornecedores/Produtos + cadastros.html
-│   └── config/                 ← configuracoes.html, configNotificacoes.{html,js}
+│   └── config/                 ← configuracoes.html, configNotificacoes.{html,js}, calendarioProdutivo.{html,js}
 │
 ├── modules/
 │   ├── embalagem/              ← módulo em produção

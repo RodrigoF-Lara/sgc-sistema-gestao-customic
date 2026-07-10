@@ -117,7 +117,7 @@ sequenceDiagram
     API-->>FE: sucesso
 ```
 
-**Lead time de atendimento:** calculado entre `TB_REQUISICOES.DT_REQUISICAO` e `TB_REQUISICOES.DT_CONCLUSAO`. A data de conclusão é gravada automaticamente quando todos os itens da requisição ficam `Finalizado` e é limpa se a requisição voltar para status não concluído. Para requisições históricas já encerradas antes da criação da coluna, usar o script `sql/embalagem/backfill_tb_requisicoes_dt_conclusao.sql`, que reconstrói a conclusão pelo último `DT_HR_ALTERACAO` com `STATUS_NOVO = 'Finalizado'`.
+**Lead time de atendimento:** calculado entre `TB_REQUISICOES.DT_REQUISICAO` e `TB_REQUISICOES.DT_CONCLUSAO`, respeitando o **Calendário Produtivo** (`/shared/config/calendarioProdutivo.html`) para contabilizar apenas horas úteis (dias ativos + janela de horário configurada). A data de conclusão é gravada automaticamente quando todos os itens da requisição ficam `Finalizado` e é limpa se a requisição voltar para status não concluído. Para requisições históricas já encerradas antes da criação da coluna, usar o script `sql/embalagem/backfill_tb_requisicoes_dt_conclusao.sql`, que reconstrói a conclusão pelo último `DT_HR_ALTERACAO` com `STATUS_NOVO = 'Finalizado'`.
 
 **Exclusão de requisição (somente ADMIN):** disponível na lista de requisições para usuários nível 1. A exclusão exige motivo, grava auditoria em `TB_REQ_DELETE_LOG` e remove cabeçalho, itens e log de itens da requisição em transação única.
 

@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     const bulkApplyBtn = document.getElementById('bulk-apply-btn');
     const logModal = document.getElementById('logModal');
     const logContent = document.getElementById('logContent');
+    let calendarioProdutivo = {
+        horaInicio: '08:00',
+        horaFim: '18:00',
+        diasAtivos: { seg: true, ter: true, qua: true, qui: true, sex: true, sab: false, dom: false }
+    };
 
     if (!idReq) {
         headerContainer.innerHTML = "<p class='error-message'>ID da requisição não encontrado.</p>";
@@ -56,13 +61,66 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
+    function diaProdutivo(dateObj) {
+        const diaSemana = dateObj.getDay();
+        const diasAtivos = calendarioProdutivo.diasAtivos || {};
+        if (diaSemana === 1) return diasAtivos.seg !== false;
+        if (diaSemana === 2) return diasAtivos.ter !== false;
+        if (diaSemana === 3) return diasAtivos.qua !== false;
+        if (diaSemana === 4) return diasAtivos.qui !== false;
+        if (diaSemana === 5) return diasAtivos.sex !== false;
+        if (diaSemana === 6) return diasAtivos.sab === true;
+        return diasAtivos.dom === true;
+    }
+
+    function parseHoraParaMinutos(hora) {
+        const partes = String(hora || '').split(':');
+        if (partes.length < 2) return null;
+        const hh = Number(partes[0]);
+        const mm = Number(partes[1]);
+        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+        return hh * 60 + mm;
+    }
+
+    function construirDiaComMinutos(baseDate, minutosDia) {
+        const data = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), 0, 0, 0, 0);
+        data.setMinutes(minutosDia);
+        return data;
+    }
+
     function calcularLeadTimeMs(header) {
         const inicio = montarDataHoraRequisicao(header);
         const fim = header?.DT_CONCLUSAO ? new Date(header.DT_CONCLUSAO) : new Date();
 
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
-        return Math.max(0, fim.getTime() - inicio.getTime());
+        if (fim <= inicio) return 0;
+
+        const inicioMin = parseHoraParaMinutos(calendarioProdutivo.horaInicio);
+        const fimMin = parseHoraParaMinutos(calendarioProdutivo.horaFim);
+        if (inicioMin === null || fimMin === null || inicioMin >= fimMin) return Math.max(0, fim.getTime() - inicio.getTime());
+
+        let totalMs = 0;
+        let cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), 0, 0, 0, 0);
+        const ultimoDia = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 0, 0, 0, 0);
+
+        while (cursor <= ultimoDia) {
+            if (diaProdutivo(cursor)) {
+                const janelaInicio = construirDiaComMinutos(cursor, inicioMin);
+                const janelaFim = construirDiaComMinutos(cursor, fimMin);
+
+                const inicioEfetivo = inicio > janelaInicio ? inicio : janelaInicio;
+                const fimEfetivo = fim < janelaFim ? fim : janelaFim;
+
+                if (fimEfetivo > inicioEfetivo) {
+                    totalMs += fimEfetivo.getTime() - inicioEfetivo.getTime();
+                }
+            }
+
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        return totalMs;
     }
 
     function formatarLeadTime(ms) {
@@ -164,9 +222,33 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             headerContainer.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
             itemsContainer.innerHTML = '';
-            const response = await fetch(`/api/embalagem/requisicao?id=${idReq}`);
-            const responseData = await response.json();
-            if (!response.ok) { throw new Error(responseData.message); }
+            const [responseDetalhe, responseCal] = await Promise.all([
+                fetch(`/api/embalagem/requisicao?id=${idReq}`),
+                fetch('/api/shared/config?tipo=calendarioProdutivo&action=get')
+            ]);
+
+            const responseData = await responseDetalhe.json();
+            if (!responseDetalhe.ok) { throw new Error(responseData.message); }
+
+            if (responseCal.ok) {
+                const calData = await responseCal.json();
+                if (calData?.config) {
+                    calendarioProdutivo = {
+                        horaInicio: calData.config.horaInicio || '08:00',
+                        horaFim: calData.config.horaFim || '18:00',
+                        diasAtivos: {
+                            seg: calData.config?.diasAtivos?.seg !== false,
+                            ter: calData.config?.diasAtivos?.ter !== false,
+                            qua: calData.config?.diasAtivos?.qua !== false,
+                            qui: calData.config?.diasAtivos?.qui !== false,
+                            sex: calData.config?.diasAtivos?.sex !== false,
+                            sab: calData.config?.diasAtivos?.sab === true,
+                            dom: calData.config?.diasAtivos?.dom === true
+                        }
+                    };
+                }
+            }
+
             renderHeader(responseData.header);
             renderItems(responseData.items);
             updateBulkActionBar();
