@@ -8,9 +8,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterStatus = document.getElementById('filterStatus');
     const filterPrioridade = document.getElementById('filterPrioridade');
     const filterDataNecessidade = document.getElementById('filterDataNecessidade');
+    const userLevel = localStorage.getItem('userLevel');
+    const userName = localStorage.getItem('userName');
+    const userCode = localStorage.getItem('userCode');
     
     let todasRequisicoes = []; // Guarda todos os dados do servidor
     let leadTimePopover = null;
+
+    function usuarioEhAdmin() {
+        return userLevel === '1' || userLevel === 1 || Number(userLevel) === 1;
+    }
 
     // --- FUNÇÕES AUXILIARES ---
     function formatarData(dataString) {
@@ -213,12 +220,57 @@ document.addEventListener('DOMContentLoaded', function() {
                             <button class="btn-detalhes" data-id="${req.ID_REQ}">
                                 <i class="fa-solid fa-circle-info"></i> Detalhes
                             </button>
+                            ${usuarioEhAdmin() ? `
+                                <button class="btn-excluir-req" data-id="${req.ID_REQ}" style="margin-left:8px; background:#c0392b;">
+                                    <i class="fa-solid fa-trash"></i> Excluir
+                                </button>
+                            ` : ''}
                         </td>
                     </tr>
                 `}).join('')}
             </tbody>
         `;
         container.appendChild(table);
+    }
+
+    async function excluirRequisicao(idReq) {
+        if (!usuarioEhAdmin()) {
+            alert('Apenas usuários ADMIN podem excluir requisições.');
+            return;
+        }
+
+        const motivo = prompt(`Informe o motivo da exclusão da requisição #${idReq}:`);
+        if (motivo === null) return;
+        if (!motivo.trim()) {
+            alert('O motivo da exclusão é obrigatório para auditoria.');
+            return;
+        }
+
+        const confirmado = confirm(`Confirma excluir a requisição #${idReq}? Esta ação remove cabeçalho e itens.`);
+        if (!confirmado) return;
+
+        try {
+            const response = await fetch('/api/embalagem/requisicao', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idReq,
+                    usuario: userName || 'Usuário não identificado',
+                    usuarioCodigo: userCode || '',
+                    motivo: motivo.trim()
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Falha ao excluir requisição.');
+
+            todasRequisicoes = todasRequisicoes.filter(req => Number(req.ID_REQ) !== Number(idReq));
+            popularFiltroStatus(todasRequisicoes);
+            aplicarFiltros();
+            alert(result.message || 'Requisição excluída com sucesso.');
+        } catch (error) {
+            alert(`Erro ao excluir requisição: ${error.message}`);
+        }
     }
 
     function atualizarSumario(listaDeRequisicoes) {
@@ -308,6 +360,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const detalhesButton = event.target.closest('.btn-detalhes');
         if(detalhesButton) {
             window.location.href = `detalhes.html?id=${detalhesButton.dataset.id}`;
+            return;
+        }
+
+        const excluirButton = event.target.closest('.btn-excluir-req');
+        if (excluirButton) {
+            excluirRequisicao(excluirButton.dataset.id);
             return;
         }
 

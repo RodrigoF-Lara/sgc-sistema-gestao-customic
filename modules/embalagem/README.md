@@ -43,7 +43,7 @@ modules/embalagem/
 
 | Endpoint | Métodos | Arquivo | Função |
 |----------|---------|---------|--------|
-| `/api/embalagem/requisicao` | GET, POST, PUT | [api/embalagem/requisicao.js](../../api/embalagem/requisicao.js) | CRUD de requisições + upload CSV |
+| `/api/embalagem/requisicao` | GET, POST, PUT, DELETE | [api/embalagem/requisicao.js](../../api/embalagem/requisicao.js) | CRUD de requisições + upload CSV + exclusão (somente ADMIN) com log de auditoria |
 | `/api/embalagem/inventory` | GET, POST | [api/embalagem/inventory.js](../../api/embalagem/inventory.js) | Movimentações Kardex e saldos |
 | `/api/embalagem/lancamentoNF` | GET, POST, PUT | [api/embalagem/lancamentoNF.js](../../api/embalagem/lancamentoNF.js) | Lançamento de notas fiscais |
 | `/api/embalagem/statusNF` | GET, POST | [api/embalagem/statusNF.js](../../api/embalagem/statusNF.js) | Status e bipagem de NFs |
@@ -71,6 +71,7 @@ modules/embalagem/
 |--------|-----------|
 | `TB_REQUISICOES` | Cabeçalho das requisições, incluindo `DT_CONCLUSAO` para medir lead time de atendimento |
 | `TB_REQ_ITEM` | Itens das requisições |
+| `TB_REQ_DELETE_LOG` | Log de auditoria de exclusões de requisições (somente ADMIN) |
 | `KARDEX_2026` | Movimentações e saldos de estoque (versionada por ano) |
 | `TB_INVENTARIO_CICLICO_LOG` | Histórico de contagens |
 | `TB_INVENTARIO_CICLICO_ITEM` | Itens contados |
@@ -117,6 +118,8 @@ sequenceDiagram
 ```
 
 **Lead time de atendimento:** calculado entre `TB_REQUISICOES.DT_REQUISICAO` e `TB_REQUISICOES.DT_CONCLUSAO`. A data de conclusão é gravada automaticamente quando todos os itens da requisição ficam `Finalizado` e é limpa se a requisição voltar para status não concluído. Para requisições históricas já encerradas antes da criação da coluna, usar o script `sql/embalagem/backfill_tb_requisicoes_dt_conclusao.sql`, que reconstrói a conclusão pelo último `DT_HR_ALTERACAO` com `STATUS_NOVO = 'Finalizado'`.
+
+**Exclusão de requisição (somente ADMIN):** disponível na lista de requisições para usuários nível 1. A exclusão exige motivo, grava auditoria em `TB_REQ_DELETE_LOG` e remove cabeçalho, itens e log de itens da requisição em transação única.
 
 ### Inventário Cíclico (5 Blocos)
 

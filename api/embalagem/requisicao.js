@@ -8,8 +8,9 @@ export default async function handler(req, res) {
             case "GET": await handleGet(req, res); break;
             case "POST": await handlePost(req, res); break;
             case "PUT": await handlePut(req, res); break;
+            case "DELETE": await handleDelete(req, res); break;
             default:
-                res.setHeader("Allow", ["GET", "POST", "PUT"]);
+                res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE"]);
                 res.status(405).end(`Method ${method} Not Allowed`);
         }
     } catch (err) {
@@ -222,5 +223,94 @@ async function atenderRequisicao(req, res) {
         await transaction.rollback();
         console.error("Erro na transação de atendimento:", err);
         return res.status(500).json({ message: "Erro no servidor ao tentar atender o item.", error: err.message });
+    }
+}
+
+async function usuarioEhAdmin(pool, usuarioCodigo) {
+    if (!usuarioCodigo) return false;
+
+    const result = await pool.request()
+        .input('USUARIO_CODIGO', sql.NVarChar, usuarioCodigo)
+        .query("SELECT TOP 1 NIVEL FROM [dbo].[CAD_USUARIO] WHERE USUARIO = @USUARIO_CODIGO");
+
+    if (result.recordset.length === 0) return false;
+
+    const nivel = Number(result.recordset[0].NIVEL);
+    return Number.isFinite(nivel) && nivel === 1;
+}
+
+async function handleDelete(req, res) {
+    const { idReq, usuario, usuarioCodigo, motivo } = req.body || {};
+
+    if (!idReq || !usuario || !usuarioCodigo) {
+        return res.status(400).json({ message: "Campos obrigatórios: idReq, usuario e usuarioCodigo." });
+    }
+
+    const pool = await getConnection();
+    const admin = await usuarioEhAdmin(pool, usuarioCodigo);
+    if (!admin) {
+        return res.status(403).json({ message: "Apenas usuários ADMIN podem excluir requisições." });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+
+        const headerResult = await request
+            .input('ID_REQ', sql.Int, idReq)
+            .query("SELECT TOP 1 ID_REQ, SOLICITANTE, STATUS, PRIORIDADE, DT_REQUISICAO, HR_REQUSICAO, DT_NECESSIDADE, DT_CONCLUSAO FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @ID_REQ");
+
+        if (headerResult.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Requisição não encontrada." });
+        }
+
+        const header = headerResult.recordset[0];
+
+        const itensResult = await new sql.Request(transaction)
+            .input('ID_REQ', sql.Int, idReq)
+            .query("SELECT COUNT(1) AS TOTAL_ITENS FROM [dbo].[TB_REQ_ITEM] WHERE ID_REQ = @ID_REQ");
+
+        const totalItens = Number(itensResult.recordset[0]?.TOTAL_ITENS || 0);
+
+        await new sql.Request(transaction)
+            .input('ID_REQ', sql.Int, idReq)
+            .input('SOLICITANTE', sql.NVarChar, header.SOLICITANTE || null)
+            .input('STATUS_ANTERIOR', sql.NVarChar, header.STATUS || null)
+            .input('PRIORIDADE', sql.NVarChar, header.PRIORIDADE || null)
+            .input('DT_REQUISICAO', sql.Date, header.DT_REQUISICAO || null)
+            .input('HR_REQUSICAO', sql.NVarChar, header.HR_REQUSICAO || null)
+            .input('DT_NECESSIDADE', sql.Date, header.DT_NECESSIDADE || null)
+            .input('DT_CONCLUSAO', sql.DateTime2, header.DT_CONCLUSAO || null)
+            .input('TOTAL_ITENS', sql.Int, totalItens)
+            .input('USUARIO_EXCLUSAO', sql.NVarChar, usuario)
+            .input('USUARIO_CODIGO_EXCLUSAO', sql.NVarChar, usuarioCodigo)
+            .input('MOTIVO', sql.NVarChar, motivo || null)
+            .query(`
+                INSERT INTO [dbo].[TB_REQ_DELETE_LOG]
+                    (ID_REQ, SOLICITANTE, STATUS_ANTERIOR, PRIORIDADE, DT_REQUISICAO, HR_REQUSICAO, DT_NECESSIDADE, DT_CONCLUSAO, TOTAL_ITENS, USUARIO_EXCLUSAO, USUARIO_CODIGO_EXCLUSAO, MOTIVO)
+                VALUES
+                    (@ID_REQ, @SOLICITANTE, @STATUS_ANTERIOR, @PRIORIDADE, @DT_REQUISICAO, @HR_REQUSICAO, @DT_NECESSIDADE, @DT_CONCLUSAO, @TOTAL_ITENS, @USUARIO_EXCLUSAO, @USUARIO_CODIGO_EXCLUSAO, @MOTIVO)
+            `);
+
+        await new sql.Request(transaction)
+            .input('ID_REQ', sql.Int, idReq)
+            .query("DELETE FROM [dbo].[TB_REQ_ITEM_LOG] WHERE ID_REQ = @ID_REQ");
+
+        await new sql.Request(transaction)
+            .input('ID_REQ', sql.Int, idReq)
+            .query("DELETE FROM [dbo].[TB_REQ_ITEM] WHERE ID_REQ = @ID_REQ");
+
+        await new sql.Request(transaction)
+            .input('ID_REQ', sql.Int, idReq)
+            .query("DELETE FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @ID_REQ");
+
+        await transaction.commit();
+        return res.status(200).json({ message: `Requisição #${idReq} excluída com sucesso.` });
+    } catch (err) {
+        await transaction.rollback();
+        console.error("Erro ao excluir requisição:", err);
+        return res.status(500).json({ message: "Erro interno ao excluir requisição." });
     }
 }
