@@ -224,23 +224,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatarLeadTime(ms) {
         if (ms === null) return 'N/A';
 
-        const totalHoras = ms / (1000 * 60 * 60);
-        const totalDias = ms / (1000 * 60 * 60 * 24);
+        const totalMinutos = Math.max(1, Math.round(ms / (1000 * 60)));
+        const dias = Math.floor(totalMinutos / (60 * 24));
+        const horas = Math.floor((totalMinutos % (60 * 24)) / 60);
+        const minutos = totalMinutos % 60;
 
-        if (totalHoras < 1) {
-            const totalMinutos = Math.max(1, Math.round(ms / (1000 * 60)));
-            return `${totalMinutos}min`;
-        }
-
-        if (totalHoras < 24) {
-            return `${Math.round(totalHoras)}h`;
-        }
-
-        if (totalDias < 10) {
-            return `${totalDias.toFixed(1).replace('.', ',')} dias`;
-        }
-
-        return `${Math.round(totalDias)} dias`;
+        if (dias > 0) return `${dias}d ${horas}h ${minutos}min`;
+        if (horas > 0) return `${horas}h ${minutos}min`;
+        return `${minutos}min`;
     }
 
     function obterTextoLeadTime(req) {
