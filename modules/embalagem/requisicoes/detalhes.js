@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const bulkApplyBtn = document.getElementById('bulk-apply-btn');
     const logModal = document.getElementById('logModal');
     const logContent = document.getElementById('logContent');
+    const btnVoltarRequisicoes = document.getElementById('btnVoltarRequisicoes');
     let calendarioProdutivo = {
         horaInicio: '08:00',
         horaFim: '18:00',
@@ -19,6 +20,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!idReq) {
         headerContainer.innerHTML = "<p class='error-message'>ID da requisição não encontrado.</p>";
         return;
+    }
+
+    if (btnVoltarRequisicoes) {
+        btnVoltarRequisicoes.addEventListener('click', () => {
+            window.location.href = 'requisicoes.html?tab=consulta';
+        });
     }
 
     // --- FUNÇÕES AUXILIARES ---

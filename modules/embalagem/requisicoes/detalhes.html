@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="/shared/frontend/style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <style>
+        .page-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .page-title-row h1 {
+            margin: 0;
+        }
+
         .itens-header {
             display: flex;
             justify-content: space-between;
@@ -25,7 +37,12 @@
     <!-- Todo o conteúdo da página fica dentro desta div -->
     <div class="main-content">
         <div class="container">
-            <h1>Detalhes da Requisição</h1>
+            <div class="page-title-row">
+                <h1>Detalhes da Requisição</h1>
+                <button id="btnVoltarRequisicoes" class="btn-detalhes" type="button">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar para Requisições
+                </button>
+            </div>
             
             <div id="detalhe-header-container">
                 <!-- O cabeçalho da requisição será inserido aqui -->
