@@ -227,6 +227,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalHoras = ms / (1000 * 60 * 60);
         const totalDias = ms / (1000 * 60 * 60 * 24);
 
+        if (totalHoras < 1) {
+            const totalMinutos = Math.max(1, Math.round(ms / (1000 * 60)));
+            return `${totalMinutos}min`;
+        }
+
         if (totalHoras < 24) {
             return `${Math.round(totalHoras)}h`;
         }
