@@ -18,6 +18,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     }
 
+    function formatarDataHora(data) {
+        if (!data || Number.isNaN(data.getTime())) return 'N/A';
+
+        return data.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
     function padronizarStatus(status) {
         let statusLimpo = (status || 'Pendente').trim();
         if (statusLimpo === '') return 'Pendente';
@@ -51,6 +64,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
         return Math.max(0, fim.getTime() - inicio.getTime());
+    }
+
+    function obterTooltipLeadTime(req) {
+        const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
+        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(new Date(req.DT_CONCLUSAO)) : 'Em aberto';
+
+        return `Solicitação: ${solicitacao}\nConclusão: ${conclusao}`;
     }
 
     function formatarLeadTime(ms) {
@@ -108,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${req.SOLICITANTE || '-'}</td>
                         <td><span class="prioridade-badge prioridade-${prioridade.toLowerCase()}">${prioridade}</span></td>
                         <td><span class="status-badge status-${statusClass}">${status || 'Pendente'}</span></td>
-                        <td>${obterTextoLeadTime(req)}</td>
+                        <td><span title="${obterTooltipLeadTime(req)}">${obterTextoLeadTime(req)}</span></td>
                         <td>${req.TOTAL_ITENS || 0}</td>
                         <td>
                             <button class="btn-detalhes" data-id="${req.ID_REQ}">
