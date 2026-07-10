@@ -72,6 +72,41 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
+    function parseDataHoraSemFuso(valor) {
+        if (!valor) return null;
+
+        if (valor instanceof Date) {
+            if (Number.isNaN(valor.getTime())) return null;
+            return new Date(
+                valor.getUTCFullYear(),
+                valor.getUTCMonth(),
+                valor.getUTCDate(),
+                valor.getUTCHours(),
+                valor.getUTCMinutes(),
+                valor.getUTCSeconds(),
+                valor.getUTCMilliseconds()
+            );
+        }
+
+        if (typeof valor === 'string') {
+            const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+            if (match) {
+                return new Date(
+                    Number(match[1]),
+                    Number(match[2]) - 1,
+                    Number(match[3]),
+                    Number(match[4]),
+                    Number(match[5]),
+                    Number(match[6] || 0),
+                    0
+                );
+            }
+        }
+
+        const parsed = new Date(valor);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
     function diaProdutivo(dateObj) {
         const diaSemana = dateObj.getDay();
         const diasAtivos = calendarioProdutivo.diasAtivos || {};
@@ -101,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     function calcularLeadTimeMs(header) {
         const inicio = montarDataHoraRequisicao(header);
-        const fim = header?.DT_CONCLUSAO ? new Date(header.DT_CONCLUSAO) : new Date();
+        const fim = header?.DT_CONCLUSAO ? parseDataHoraSemFuso(header.DT_CONCLUSAO) : new Date();
 
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
@@ -151,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     function renderHeader(header) {
         const dataRequisicao = formatarDataHora(montarDataHoraRequisicao(header));
         const dataNecessidade = formatarData(header.DT_NECESSIDADE);
-        const dataConclusao = header.DT_CONCLUSAO ? formatarDataHoraLocal(header.DT_CONCLUSAO) : 'Em aberto';
+        const dataConclusao = header.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(header.DT_CONCLUSAO)) : 'Em aberto';
         const leadTime = formatarLeadTime(calcularLeadTimeMs(header));
         const prioridade = (header.PRIORIDADE || 'NORMAL').trim();
         const status = (header.STATUS || 'PENDENTE').trim();
@@ -388,7 +423,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ['Solicitante', data.header.SOLICITANTE || 'N/A'],
                 ['Data/Hora Solicitação', formatarDataHora(montarDataHoraRequisicao(data.header))],
                 ['Data Necessidade', formatarData(data.header.DT_NECESSIDADE)],
-                ['Data/Hora Conclusão', data.header.DT_CONCLUSAO ? formatarDataHoraLocal(data.header.DT_CONCLUSAO) : 'Em aberto'],
+                ['Data/Hora Conclusão', data.header.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(data.header.DT_CONCLUSAO)) : 'Em aberto'],
                 ['Lead Time', data.header.DT_CONCLUSAO ? formatarLeadTime(calcularLeadTimeMs(data.header)) : `Em aberto: ${formatarLeadTime(calcularLeadTimeMs(data.header))}`],
                 ['Prioridade', (data.header.PRIORIDADE || 'NORMAL').trim()],
                 ['Status', (data.header.STATUS || 'PENDENTE').trim()],

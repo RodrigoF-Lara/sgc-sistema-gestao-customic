@@ -44,6 +44,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function parseDataHoraSemFuso(valor) {
+        if (!valor) return null;
+
+        if (valor instanceof Date) {
+            if (Number.isNaN(valor.getTime())) return null;
+            return new Date(
+                valor.getUTCFullYear(),
+                valor.getUTCMonth(),
+                valor.getUTCDate(),
+                valor.getUTCHours(),
+                valor.getUTCMinutes(),
+                valor.getUTCSeconds(),
+                valor.getUTCMilliseconds()
+            );
+        }
+
+        if (typeof valor === 'string') {
+            const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+            if (match) {
+                return new Date(
+                    Number(match[1]),
+                    Number(match[2]) - 1,
+                    Number(match[3]),
+                    Number(match[4]),
+                    Number(match[5]),
+                    Number(match[6] || 0),
+                    0
+                );
+            }
+        }
+
+        const parsed = new Date(valor);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
     function padronizarStatus(status) {
         let statusLimpo = (status || 'Pendente').trim();
         if (statusLimpo === '') return 'Pendente';
@@ -110,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calcularLeadTimeMs(req) {
         const inicio = montarDataHoraRequisicao(req);
-        const fim = req.DT_CONCLUSAO ? new Date(req.DT_CONCLUSAO) : new Date();
+        const fim = req.DT_CONCLUSAO ? parseDataHoraSemFuso(req.DT_CONCLUSAO) : new Date();
 
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
@@ -145,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function obterTooltipLeadTime(req) {
         const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
-        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(new Date(req.DT_CONCLUSAO)) : 'Em aberto';
+        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(req.DT_CONCLUSAO)) : 'Em aberto';
 
         return `Solicitação: ${solicitacao}\nConclusão: ${conclusao}`;
     }
@@ -158,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function exibirDetalhesLeadTime(req, anchorEl) {
         const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
-        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(new Date(req.DT_CONCLUSAO)) : 'Em aberto';
+        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(req.DT_CONCLUSAO)) : 'Em aberto';
 
         const idReqAtual = String(req.ID_REQ || '');
         if (leadTimePopover && leadTimePopover.dataset.idReq === idReqAtual) {
