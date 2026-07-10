@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalStatus = document.getElementById('modalStatus');
     const logModal = document.getElementById('logModal');
     const logContent = document.getElementById('logContent');
+    const leadTimeStatusContent = document.getElementById('leadTimeStatusContent');
+    let filteredDataView = [];
 
     // --- Elementos de Filtro ---
     const filters = {
@@ -159,7 +161,8 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryContainer.innerHTML = '';
 
         const leadTimeCard = document.createElement('div');
-        leadTimeCard.className = 'summary-card';
+        leadTimeCard.className = 'summary-card leadtime-clickable';
+        leadTimeCard.id = 'leadTimeMedioCard';
         leadTimeCard.innerHTML = `<h3>Lead Time Médio</h3><p>${formatarDuracaoMinutos(leadTimeMedioMin)}</p>`;
         summaryContainer.appendChild(leadTimeCard);
 
@@ -171,6 +174,63 @@ document.addEventListener('DOMContentLoaded', function() {
             card.innerHTML = `<h3>${status}</h3><p>${count}</p>`;
             summaryContainer.appendChild(card);
         }
+    }
+
+    function renderLeadTimePorStatusModal(data) {
+        const agregados = data.reduce((acc, item) => {
+            const status = (item.PROCESSO || 'Indefinido').trim() || 'Indefinido';
+            const leadTimeMin = calcularLeadTimeTotalItemMinutos(item);
+            if (!Number.isFinite(leadTimeMin) || leadTimeMin < 0) return acc;
+
+            if (!acc[status]) {
+                acc[status] = { status, quantidade: 0, somaMinutos: 0 };
+            }
+
+            acc[status].quantidade += 1;
+            acc[status].somaMinutos += leadTimeMin;
+            return acc;
+        }, {});
+
+        const linhas = Object.values(agregados)
+            .map(item => ({
+                status: item.status,
+                quantidade: item.quantidade,
+                mediaMinutos: Math.round(item.somaMinutos / item.quantidade)
+            }))
+            .sort((a, b) => b.quantidade - a.quantidade || a.status.localeCompare(b.status, 'pt-BR'));
+
+        if (linhas.length === 0) {
+            leadTimeStatusContent.innerHTML = '<p class="info-message">Sem dados suficientes para calcular a média por status com os filtros atuais.</p>';
+            return;
+        }
+
+        const mediaGeral = calcularLeadTimeMedioMinutos(data);
+
+        leadTimeStatusContent.innerHTML = `
+            <div class="info-message" style="margin-bottom: 10px;">
+                <strong>Média Geral:</strong> ${formatarDuracaoMinutos(mediaGeral)}
+                <br>
+                <strong>Itens considerados:</strong> ${linhas.reduce((acc, item) => acc + item.quantidade, 0)}
+            </div>
+            <table id="leadTimeStatusTable">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Quantidade de Itens</th>
+                        <th>Lead Time Médio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhas.map(linha => `
+                        <tr>
+                            <td>${linha.status}</td>
+                            <td>${linha.quantidade}</td>
+                            <td>${formatarDuracaoMinutos(linha.mediaMinutos)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
     }
 
     /**
@@ -274,6 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 (!filterValues.processo || item.PROCESSO === filterValues.processo)
             );
         });
+        filteredDataView = filteredData;
         renderTable(filteredData);
         renderSummary(filteredData);
     }
@@ -457,6 +518,14 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (logBtn) {
             openModal('logModal', { ...logBtn.dataset });
         }
+    });
+
+    summaryContainer.addEventListener('click', function(e) {
+        const leadTimeCard = e.target.closest('#leadTimeMedioCard');
+        if (!leadTimeCard) return;
+
+        renderLeadTimePorStatusModal(filteredDataView);
+        openModal('leadTimeStatusModal', {});
     });
     
     // Listeners para fechar os modais
