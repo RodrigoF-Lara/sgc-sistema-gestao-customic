@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function abrirModal() {
         novoCodigo.value = '';
         novoDescricao.value = '';
-        novoTipo.value = 'OUTROS';
+        novoTipo.value = 'EMBALAGEM';
         modalMsg.textContent = '';
         modalMsg.style.color = '';
         modalNovoProduto.style.display = 'flex';

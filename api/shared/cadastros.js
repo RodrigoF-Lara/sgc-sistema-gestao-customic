@@ -370,7 +370,17 @@ async function criarProduto(req, res, pool) {
     return res.status(400).json({ message: "Preencha todos os campos" });
   }
 
-  const tiposValidos = ['OUTROS', 'EMBALAGEM'];
+  const tiposValidos = [
+    'EMBALAGEM',
+    'CAPAS',
+    'MAQUINA DE FILMES',
+    'ALCAS',
+    'WALLETS',
+    'CABOS',
+    'MATERIAL DE ESCRITORIO',
+    'MATERIAL DE LIMPEZA',
+    'OUTROS'
+  ];
   const tipoUpper = String(tipo).toUpperCase().trim();
   if (!tiposValidos.includes(tipoUpper)) {
     return res.status(400).json({ message: "Tipo inválido" });
