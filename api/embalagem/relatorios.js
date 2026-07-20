@@ -199,12 +199,27 @@ async function relatorioBaixaPorPeriodo(req, res) {
 }
 
 async function gerarRelatorioConsumo(req, res) {
+    const debug = {
+        etapa: 'inicio',
+        filtros: {},
+        tempos: {},
+        contagens: {}
+    };
+    const t0 = Date.now();
+
     try {
         const { periodo, fornecedor, tipoProduto } = req.query;
 
+        debug.filtros = {
+            periodo: periodo || null,
+            tipoProduto: tipoProduto || null,
+            fornecedor: fornecedor || null
+        };
+
         if (!periodo) {
             return res.status(400).json({
-                message: "Período é obrigatório (formato: YYYY-MM)"
+                message: "Período é obrigatório (formato: YYYY-MM)",
+                debug
             });
         }
 
@@ -212,32 +227,44 @@ async function gerarRelatorioConsumo(req, res) {
 
         if (isNaN(ano) || isNaN(mes) || mes < 1 || mes > 12) {
             return res.status(400).json({
-                message: "Período inválido (use formato YYYY-MM)"
+                message: "Período inválido (use formato YYYY-MM)",
+                debug
             });
         }
 
-        console.log('Gerando relatório de consumo para:', {
-            ano,
-            mes,
-            tipoProduto: tipoProduto || 'Todos',
-            fornecedor: fornecedor || 'Todos'
-        });
+        console.log('[consumoMedio] inicio', debug.filtros);
 
+        debug.etapa = 'conectando_banco';
+        const tConn = Date.now();
         const pool = await getConnection();
+        debug.tempos.conexaoMs = Date.now() - tConn;
+        console.log('[consumoMedio] conexao ok em', debug.tempos.conexaoMs, 'ms');
 
-        // Estrutura original da query (que performava bem).
-        // Filtro de tipo só no SELECT final (AND cp.TIPO = ...).
-        // Consumo em 2ª query só para os códigos retornados.
+        // Otimizado com base nos testes SSMS:
+        // - filtra TIPO cedo (CAD_PROD)
+        // - saldo só desses códigos
+        // - última NF só dos códigos com saldo (evita ROW_NUMBER em 3000+ produtos)
+        // - consumo em 2ª query só dos códigos finais
+        const temTipo = !!(tipoProduto && tipoProduto.trim());
+        const temForn = !!(fornecedor && fornecedor.trim());
+
         let queryBase = `
-            WITH SaldoAtual AS (
+            WITH Produtos AS (
+                SELECT CODIGO, DESCRICAO, TIPO
+                FROM [dbo].[CAD_PROD]
+                WHERE 1=1
+                  ${temTipo ? 'AND TIPO = @TIPO_PRODUTO' : ''}
+            ),
+            SaldoAtual AS (
                 SELECT
-                    CODIGO,
-                    ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                WHERE D_E_L_E_T_ <> '*'
-                    AND KARDEX = 2026
-                GROUP BY CODIGO
-                HAVING ISNULL(SUM(SALDO), 0) > 0
+                    k.CODIGO,
+                    ISNULL(SUM(k.SALDO), 0) AS SALDO_ATUAL
+                FROM [dbo].[KARDEX_2026_EMBALAGEM] k
+                INNER JOIN Produtos p ON p.CODIGO = k.CODIGO
+                WHERE k.D_E_L_E_T_ <> '*'
+                  AND k.KARDEX = 2026
+                GROUP BY k.CODIGO
+                HAVING ISNULL(SUM(k.SALDO), 0) > 0
             ),
             UltimaNFPorProduto AS (
                 SELECT
@@ -245,11 +272,15 @@ async function gerarRelatorioConsumo(req, res) {
                     np.PROD_CUSTO_FISCAL_MEDIO_NOVO AS PRECO_UNITARIO,
                     nc.CAB_NUM_FORN AS COD_FORNECEDOR,
                     nc.CAB_DT_EMISSAO,
-                    ROW_NUMBER() OVER (PARTITION BY np.PROD_COD_PROD ORDER BY nc.CAB_DT_EMISSAO DESC) AS RN
+                    ROW_NUMBER() OVER (
+                        PARTITION BY np.PROD_COD_PROD
+                        ORDER BY nc.CAB_DT_EMISSAO DESC, nc.CAB_ID_NF DESC
+                    ) AS RN
                 FROM [dbo].[NF_PRODUTOS] np
                 INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
+                INNER JOIN SaldoAtual sa ON sa.CODIGO = np.PROD_COD_PROD
                 WHERE np.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
-                    AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                  AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
             ),
             UltimaFornecedor AS (
                 SELECT
@@ -265,62 +296,72 @@ async function gerarRelatorioConsumo(req, res) {
             SELECT
                 sa.CODIGO,
                 sa.SALDO_ATUAL,
-                ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
-                ISNULL(cp.TIPO, 'NÃO INFORMADO') AS TIPO,
+                ISNULL(p.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
+                ISNULL(p.TIPO, 'NÃO INFORMADO') AS TIPO,
                 ISNULL(uf.PRECO_UNITARIO, 0) AS PRECO_UNITARIO,
                 ISNULL(sa.SALDO_ATUAL, 0) * ISNULL(uf.PRECO_UNITARIO, 0) AS VALOR_TOTAL_ESTOQUE,
                 ISNULL(uf.FORNECEDOR, 'NÃO INFORMADO') AS FORNECEDOR,
                 uf.CAB_DT_EMISSAO
             FROM SaldoAtual sa
-            LEFT JOIN [dbo].[CAD_PROD] cp ON sa.CODIGO = cp.CODIGO
-            LEFT JOIN UltimaFornecedor uf ON sa.CODIGO = uf.CODIGO
+            INNER JOIN Produtos p ON p.CODIGO = sa.CODIGO
+            INNER JOIN UltimaFornecedor uf ON uf.CODIGO = sa.CODIGO
             WHERE ISNULL(uf.PRECO_UNITARIO, 0) > 0
         `;
 
-        if (tipoProduto && tipoProduto.trim()) {
-            queryBase += ` AND cp.TIPO = @TIPO_PRODUTO`;
-        }
-        if (fornecedor && fornecedor.trim()) {
+        if (temForn) {
             queryBase += ` AND uf.FORNECEDOR LIKE '%' + @FORNECEDOR + '%'`;
         }
 
         queryBase += ` ORDER BY VALOR_TOTAL_ESTOQUE DESC`;
 
         const requestBase = pool.request();
-        requestBase.timeout = 55000;
-        if (tipoProduto && tipoProduto.trim()) {
+        requestBase.timeout = 20000; // 20s por etapa — se estourar, devolve erro claro
+        if (temTipo) {
             requestBase.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
         }
-        if (fornecedor && fornecedor.trim()) {
+        if (temForn) {
             requestBase.input('FORNECEDOR', sql.NVarChar, fornecedor.trim());
         }
 
-        const started = Date.now();
+        debug.etapa = 'query_base';
+        const tBase = Date.now();
+        console.log('[consumoMedio] executando query base...');
         const baseResult = await requestBase.query(queryBase);
         const itens = baseResult.recordset || [];
-        console.log(`Consumo medio base: ${itens.length} produtos em ${Date.now() - started}ms`);
+        debug.tempos.queryBaseMs = Date.now() - tBase;
+        debug.contagens.itensBase = itens.length;
+        console.log('[consumoMedio] query base OK:', itens.length, 'itens em', debug.tempos.queryBaseMs, 'ms');
 
         if (itens.length === 0) {
+            debug.etapa = 'sem_itens';
+            debug.tempos.totalMs = Date.now() - t0;
             return res.status(200).json({
                 dados: [],
                 totalizadores: {
                     totalItens: 0,
                     valorTotalEstoque: 0,
                     totalFornecedores: 0
-                }
+                },
+                debug
             });
         }
 
         // 2ª query: consumo só dos códigos retornados
+        debug.etapa = 'query_consumo';
+        const tCons = Date.now();
         const codigos = [...new Set(itens.map(i => String(i.CODIGO)))];
+        debug.contagens.codigos = codigos.length;
         const consumoPorCodigo = {};
         const LOTE = 400;
+        let lotesExecutados = 0;
+
+        console.log('[consumoMedio] executando query consumo para', codigos.length, 'codigos...');
 
         for (let i = 0; i < codigos.length; i += LOTE) {
             const lote = codigos.slice(i, i + LOTE);
             const params = lote.map((_, idx) => `@C${idx}`).join(',');
             const reqCons = pool.request();
-            reqCons.timeout = 55000;
+            reqCons.timeout = 20000;
             lote.forEach((cod, idx) => {
                 reqCons.input(`C${idx}`, sql.VarChar(20), cod);
             });
@@ -344,7 +385,13 @@ async function gerarRelatorioConsumo(req, res) {
             for (const row of consResult.recordset) {
                 consumoPorCodigo[String(row.CODIGO)] = row;
             }
+            lotesExecutados++;
         }
+
+        debug.tempos.queryConsumoMs = Date.now() - tCons;
+        debug.contagens.lotesConsumo = lotesExecutados;
+        debug.contagens.codigosComConsumo = Object.keys(consumoPorCodigo).length;
+        console.log('[consumoMedio] query consumo OK em', debug.tempos.queryConsumoMs, 'ms');
 
         const dados = itens.map(item => {
             const c = consumoPorCodigo[String(item.CODIGO)] || {};
@@ -367,7 +414,9 @@ async function gerarRelatorioConsumo(req, res) {
                 .filter(f => f && f !== 'NÃO INFORMADO')
         );
 
-        console.log(`Consumo medio total em ${Date.now() - started}ms`);
+        debug.etapa = 'ok';
+        debug.tempos.totalMs = Date.now() - t0;
+        console.log('[consumoMedio] SUCESSO total em', debug.tempos.totalMs, 'ms | itens=', dados.length);
 
         return res.status(200).json({
             dados,
@@ -375,21 +424,35 @@ async function gerarRelatorioConsumo(req, res) {
                 totalItens: dados.length,
                 valorTotalEstoque: totalValor,
                 totalFornecedores: fornecedoresUnicos.size
-            }
+            },
+            debug
         });
 
     } catch (error) {
-        console.error('Erro ao gerar relatório de consumo:', error);
-        const isTimeout = /timeout|ETIMEOUT|RequestError/i.test(String(error.message || ''));
+        debug.etapa = 'erro';
+        debug.tempos.totalMs = Date.now() - t0;
+        debug.erro = {
+            message: error.message,
+            name: error.name,
+            code: error.code || null,
+            number: error.number || null
+        };
+        console.error('[consumoMedio] ERRO na etapa', debug.etapa, debug);
+
+        const isTimeout = /timeout|ETIMEOUT|RequestError|FUNCTION_INVOCATION/i.test(
+            String(error.message || '') + String(error.code || '')
+        );
+
         return res.status(isTimeout ? 504 : 500).json({
             message: isTimeout
-                ? 'A consulta demorou demais e foi cancelada. Tente novamente em instantes.'
-                : `Erro ao gerar relatório: ${error.message}`
+                ? 'A consulta demorou demais no servidor (timeout). Veja o console (F12) e o campo debug.'
+                : `Erro ao gerar relatório: ${error.message}`,
+            debug
         });
     }
 }
 
-async function movimentacoesProduto(req, res) {
+\nasync function movimentacoesProduto(req, res) {
     try {
         const { codigo, janela } = req.query;
         if (!codigo) return res.status(400).json({ message: 'Código é obrigatório' });

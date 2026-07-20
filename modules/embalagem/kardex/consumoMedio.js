@@ -80,37 +80,86 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
         gerarRelatorioBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
 
-        // Timeout no browser (alinhado ao maxDuration da API no Vercel)
+        // Timeout no browser (acima do maxDuration do Vercel para capturar a resposta de timeout)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90000);
+        const t0 = performance.now();
+
+        let url = `/api/embalagem/relatorios?acao=consumoMedio&periodo=${periodo}`;
+        if (tipoProduto) {
+            url += `&tipoProduto=${encodeURIComponent(tipoProduto)}`;
+        }
+        if (fornecedor) {
+            url += `&fornecedor=${encodeURIComponent(fornecedor)}`;
+        }
+
+        console.group('%c📊 Consumo Médio — diagnóstico', 'color:#1565c0;font-weight:bold');
+        console.log('Filtros:', { periodo, tipoProduto: tipoProduto || '(todos)', fornecedor: fornecedor || '(nenhum)' });
+        console.log('URL:', url);
+        console.log('Início:', new Date().toISOString());
 
         try {
-            let url = `/api/embalagem/relatorios?acao=consumoMedio&periodo=${periodo}`;
-            if (tipoProduto) {
-                url += `&tipoProduto=${encodeURIComponent(tipoProduto)}`;
-            }
-            if (fornecedor) {
-                url += `&fornecedor=${encodeURIComponent(fornecedor)}`;
-            }
-
-            console.log('🔍 URL da requisição:', url);
-
             const response = await fetch(url, { signal: controller.signal });
+            const elapsedMs = Math.round(performance.now() - t0);
+
+            console.log('HTTP status:', response.status, response.statusText);
+            console.log('Tempo até resposta (browser):', elapsedMs, 'ms');
+            console.log('Headers content-type:', response.headers.get('content-type'));
+
+            // Lê o corpo como texto primeiro (funciona para JSON e para erros do Vercel em texto puro)
+            const rawBody = await response.text();
+            console.log('Body (primeiros 800 chars):', rawBody.slice(0, 800));
+
+            let resultado = null;
+            try {
+                resultado = rawBody ? JSON.parse(rawBody) : null;
+            } catch (parseErr) {
+                console.warn('Resposta NÃO é JSON. Parse error:', parseErr.message);
+            }
+
+            if (resultado && resultado.debug) {
+                console.log('🔧 debug da API:', resultado.debug);
+            }
 
             if (!response.ok) {
+                // Detecta timeout do Vercel
+                const isVercelTimeout =
+                    response.status === 504 ||
+                    /FUNCTION_INVOCATION_TIMEOUT/i.test(rawBody) ||
+                    /FUNCTION_INVOCATION_TIMEOUT/i.test(JSON.stringify(resultado || {}));
+
                 let msg = 'Erro ao buscar dados';
-                try {
-                    const errorData = await response.json();
-                    console.error('❌ Erro na resposta:', errorData);
-                    msg = errorData.message || msg;
-                } catch (_) { /* ignore */ }
-                throw new Error(msg);
+                if (isVercelTimeout) {
+                    msg = 'Timeout no servidor Vercel (FUNCTION_INVOCATION_TIMEOUT). A função estourou o tempo máximo.';
+                } else if (resultado && resultado.message) {
+                    msg = resultado.message;
+                } else if (rawBody && rawBody.length < 300) {
+                    msg = rawBody.trim();
+                }
+
+                console.error('❌ Falha HTTP', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    elapsedMs,
+                    isVercelTimeout,
+                    resultado,
+                    rawBody: rawBody.slice(0, 500)
+                });
+
+                throw new Error(`HTTP ${response.status}: ${msg}`);
             }
 
-            const resultado = await response.json();
-            
-            console.log('✅ Resultado recebido:', resultado);
-            
+            if (!resultado) {
+                throw new Error('Resposta da API vazia ou inválida (não é JSON). Veja o body no console.');
+            }
+
+            console.log('✅ Sucesso. Itens:', (resultado.dados || []).length);
+            if (resultado.debug) {
+                console.table(resultado.debug.tempos || {});
+                console.log('Contagens:', resultado.debug.contagens);
+            }
+            console.log('Resultado completo:', resultado);
+
             dadosRelatorio = resultado.dados || [];
             totalizadores = resultado.totalizadores || {
                 totalItens: 0,
@@ -120,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (dadosRelatorio.length === 0) {
                 mostrarMensagem(
-                    `⚠️ Nenhum item encontrado para os filtros selecionados.`, 
+                    `⚠️ Nenhum item encontrado para os filtros selecionados.`,
                     'error'
                 );
                 totalizadoresContainer.style.display = 'none';
@@ -130,28 +179,44 @@ document.addEventListener('DOMContentLoaded', function() {
 
             renderizarTotalizadores();
             renderizarTabela();
-            
+
             totalizadoresContainer.style.display = 'block';
             resultadosContainer.style.display = 'block';
-            
+
+            const tempoApi = resultado.debug && resultado.debug.tempos
+                ? resultado.debug.tempos.totalMs
+                : null;
+            const extra = tempoApi != null ? ` (API: ${tempoApi} ms)` : ` (browser: ${elapsedMs} ms)`;
             mostrarMensagem(
-                `Relatório gerado com sucesso! ${dadosRelatorio.length} itens encontrados.`, 
+                `Relatório gerado com sucesso! ${dadosRelatorio.length} itens encontrados.${extra}`,
                 'success'
             );
 
         } catch (error) {
-            console.error('❌ Erro ao gerar relatório:', error);
+            const elapsedMs = Math.round(performance.now() - t0);
+            console.error('❌ Erro ao gerar relatório:', {
+                name: error.name,
+                message: error.message,
+                elapsedMs,
+                stack: error.stack
+            });
+
             if (error.name === 'AbortError') {
                 mostrarMensagem(
-                    'A consulta demorou demais e foi cancelada. Aguarde o deploy atualizar e tente novamente.',
+                    `Timeout no browser após ${elapsedMs} ms. Abra o console (F12) e copie o grupo "Consumo Médio — diagnóstico".`,
                     'error'
                 );
             } else {
-                mostrarMensagem(`Erro ao gerar relatório: ${error.message}`, 'error');
+                mostrarMensagem(
+                    `Erro: ${error.message} | Tempo: ${elapsedMs} ms | Veja o console (F12) e copie o diagnóstico.`,
+                    'error'
+                );
             }
             totalizadoresContainer.style.display = 'none';
             resultadosContainer.style.display = 'none';
         } finally {
+            console.log('Fim:', new Date().toISOString());
+            console.groupEnd();
             clearTimeout(timeoutId);
             gerarRelatorioBtn.disabled = false;
             gerarRelatorioBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-chart"></i> Gerar Relatório';
