@@ -226,11 +226,8 @@ async function gerarRelatorioConsumo(req, res) {
         const pool = await getConnection();
 
         // Estrutura original da query (que performava bem).
-        // Filtro de tipo é aplicado só no SELECT final (AND cp.TIPO = ...),
-        // sem reescrever CTEs / COLLATE / parâmetros opcionais que pioravam o plano.
-        //
-        // Consumo médio é buscado em 2ª query só para os códigos retornados
-        // (mais leve do que embutir ConsumoMedio no mesmo CTE pesado).
+        // Filtro de tipo só no SELECT final (AND cp.TIPO = ...).
+        // Consumo em 2ª query só para os códigos retornados.
         let queryBase = `
             WITH SaldoAtual AS (
                 SELECT
@@ -251,7 +248,6 @@ async function gerarRelatorioConsumo(req, res) {
                     ROW_NUMBER() OVER (PARTITION BY np.PROD_COD_PROD ORDER BY nc.CAB_DT_EMISSAO DESC) AS RN
                 FROM [dbo].[NF_PRODUTOS] np
                 INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
-                INNER JOIN SaldoAtual sa ON sa.CODIGO = np.PROD_COD_PROD
                 WHERE np.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                     AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
             ),
@@ -302,7 +298,7 @@ async function gerarRelatorioConsumo(req, res) {
         const started = Date.now();
         const baseResult = await requestBase.query(queryBase);
         const itens = baseResult.recordset || [];
-        console.log(`Consumo médio base: ${itens.length} produtos em ${Date.now() - started}ms`);
+        console.log(`Consumo medio base: ${itens.length} produtos em ${Date.now() - started}ms`);
 
         if (itens.length === 0) {
             return res.status(200).json({
@@ -315,12 +311,11 @@ async function gerarRelatorioConsumo(req, res) {
             });
         }
 
-        // 2ª query: consumo só dos códigos do resultado (bem menor que o kardex inteiro)
+        // 2ª query: consumo só dos códigos retornados
         const codigos = [...new Set(itens.map(i => String(i.CODIGO)))];
         const consumoPorCodigo = {};
-
-        // Processa em lotes para não estourar limite de parâmetros do SQL Server
         const LOTE = 400;
+
         for (let i = 0; i < codigos.length; i += LOTE) {
             const lote = codigos.slice(i, i + LOTE);
             const params = lote.map((_, idx) => `@C${idx}`).join(',');
@@ -339,7 +334,7 @@ async function gerarRelatorioConsumo(req, res) {
                     ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -365, GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 365, 0) AS CONSUMO_ANUAL
                 FROM [dbo].[KARDEX_2026] k
                 WHERE k.CODIGO IN (${params})
-                  AND (k.OPERACAO = 'SAÍDA' OR k.OPERACAO = 'SAIDA')
+                  AND (k.OPERACAO = N'SAÍDA' OR k.OPERACAO = N'SAIDA')
                   AND k.USUARIO <> 'BEATRIZ JULHAO'
                   AND k.USUARIO <> 'BJULHAO'
                   AND k.DT >= '2026-04-01'
@@ -372,7 +367,7 @@ async function gerarRelatorioConsumo(req, res) {
                 .filter(f => f && f !== 'NÃO INFORMADO')
         );
 
-        console.log(`Consumo médio total em ${Date.now() - started}ms`);
+        console.log(`Consumo medio total em ${Date.now() - started}ms`);
 
         return res.status(200).json({
             dados,
