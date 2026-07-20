@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Carrega as configurações atuais ao abrir a página
     carregarConfiguracoes();
+    inicializarAjudas();
 
     configForm.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -27,6 +28,93 @@ document.addEventListener('DOMContentLoaded', function () {
             restaurarPadrao();
         }
     });
+
+    /**
+     * Ajuda contextual nos campos (?):
+     * - hover: tooltip curto
+     * - clique no ? ou no input: painel detalhado abaixo do campo
+     */
+    function inicializarAjudas() {
+        const helpWraps = document.querySelectorAll('.help-wrap[data-help]');
+
+        function fecharTodasAjudas(excetoKey) {
+            document.querySelectorAll('.help-detail.is-visible').forEach(el => {
+                if (el.getAttribute('data-help-detail') !== excetoKey) {
+                    el.classList.remove('is-visible');
+                }
+            });
+            document.querySelectorAll('.help-wrap.is-open').forEach(el => {
+                if (el.getAttribute('data-help') !== excetoKey) {
+                    el.classList.remove('is-open');
+                    const btn = el.querySelector('.help-btn');
+                    if (btn) btn.classList.remove('is-open');
+                }
+            });
+        }
+
+        function toggleAjuda(key) {
+            const detail = document.querySelector(`.help-detail[data-help-detail="${key}"]`);
+            const wrap = document.querySelector(`.help-wrap[data-help="${key}"]`);
+            if (!detail || !wrap) return;
+
+            const jaAberto = detail.classList.contains('is-visible');
+            fecharTodasAjudas(null);
+
+            if (!jaAberto) {
+                detail.classList.add('is-visible');
+                wrap.classList.add('is-open');
+                const btn = wrap.querySelector('.help-btn');
+                if (btn) btn.classList.add('is-open');
+            }
+        }
+
+        helpWraps.forEach(wrap => {
+            const key = wrap.getAttribute('data-help');
+            const btn = wrap.querySelector('.help-btn');
+            if (!btn) return;
+
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleAjuda(key);
+            });
+        });
+
+        // Clique no próprio input também abre a ajuda do campo
+        const camposComAjuda = [
+            'bloco1Qtd', 'bloco1Dias',
+            'bloco2Qtd', 'bloco2Acuracidade',
+            'bloco3Qtd',
+            'bloco4Qtd',
+            'bloco5Qtd', 'bloco5Inventarios'
+        ];
+        camposComAjuda.forEach(id => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('click', function () {
+                const detail = document.querySelector(`.help-detail[data-help-detail="${id}"]`);
+                // Só abre; não fecha se já estiver aberto (evita atrapalhar digitação)
+                if (detail && !detail.classList.contains('is-visible')) {
+                    toggleAjuda(id);
+                } else if (detail && detail.classList.contains('is-visible')) {
+                    // Mantém aberto; fecha apenas as outras
+                    document.querySelectorAll('.help-detail.is-visible').forEach(el => {
+                        if (el.getAttribute('data-help-detail') !== id) {
+                            el.classList.remove('is-visible');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Fecha ao clicar fora
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.help-wrap') || e.target.closest('.help-detail') || e.target.closest('input[type="number"]')) {
+                return;
+            }
+            fecharTodasAjudas(null);
+        });
+    }
 
     async function carregarConfiguracoes() {
         try {
@@ -120,13 +208,16 @@ document.addEventListener('DOMContentLoaded', function () {
             ? new Date(config.DT_ALTERACAO).toLocaleString('pt-BR')
             : 'N/A';
 
+        const b5Qtd = config.BLOCO5_QTD_ITENS || 10;
+        const b5Atras = config.BLOCO5_INVENTARIOS_ATRAS || 3;
+
         configAtual.innerHTML = `
             <h3>Resumo da Configuração</h3>
             <p><strong>Bloco 1:</strong> ${config.BLOCO1_QTD_ITENS} itens mais movimentados nos últimos ${config.BLOCO1_DIAS_MOVIMENTACAO} dias</p>
-            <p><strong>Bloco 2:</strong> ${config.BLOCO2_QTD_ITENS} itens com acuracidade inferior a ${config.BLOCO2_ACURACIDADE_MIN}%</p>
-            <p><strong>Bloco 3:</strong> ${config.BLOCO3_QTD_ITENS} itens com maior valor em estoque</p>
+            <p><strong>Bloco 2:</strong> ${config.BLOCO2_QTD_ITENS} itens com acuracidade inferior a ${config.BLOCO2_ACURACIDADE_MIN}% (último inventário finalizado)</p>
+            <p><strong>Bloco 3:</strong> ${config.BLOCO3_QTD_ITENS} itens com maior valor total em estoque (qtd × custo)</p>
             <p><strong>Bloco 4:</strong> ${config.BLOCO4_QTD_ITENS || 5} itens com maior valor unitário</p>
-            <p><strong>Bloco 5:</strong> ${config.BLOCO5_QTD_ITENS || 10} itens não contados nos últimos ${config.BLOCO5_INVENTARIOS_ATRAS || 3} inventários</p>
+            <p><strong>Bloco 5:</strong> até ${b5Qtd} itens com saldo que <em>não foram contados</em> em nenhum dos últimos ${b5Atras} inventários finalizados (prioriza maior valor em estoque)</p>
             <hr style="margin: 15px 0; border: none; border-top: 1px solid #e0e0e0;">
             <p style="font-size: 0.9em; color: #666;">
                 <strong>Última alteração:</strong> ${dataAlteracao}<br>

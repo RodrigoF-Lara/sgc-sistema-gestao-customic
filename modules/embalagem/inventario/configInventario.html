@@ -9,6 +9,164 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     />
+    <style>
+      .bloco-descricao {
+        font-size: 0.92em;
+        color: #555;
+        margin: -5px 0 16px 0;
+        line-height: 1.45;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        position: relative;
+      }
+
+      .form-group label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #333;
+        cursor: default;
+      }
+
+      .form-group input[type="number"] {
+        padding: 10px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 1em;
+        max-width: 220px;
+      }
+
+      .form-group input[type="number"]:focus {
+        outline: none;
+        border-color: var(--cor-principal);
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+      }
+
+      /* Botão de ajuda (?) */
+      .help-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 1.5px solid var(--cor-principal);
+        background: #e3f2fd;
+        color: var(--cor-principal);
+        font-size: 0.72em;
+        font-weight: 700;
+        cursor: help;
+        padding: 0;
+        min-width: 20px;
+        line-height: 1;
+        transition: background 0.15s, color 0.15s, transform 0.15s;
+        flex-shrink: 0;
+      }
+
+      .help-btn:hover,
+      .help-btn:focus,
+      .help-btn.is-open {
+        background: var(--cor-principal);
+        color: #fff;
+        outline: none;
+        transform: scale(1.08);
+      }
+
+      /* Tooltip no hover */
+      .help-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+
+      .help-tooltip {
+        display: none;
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 10px);
+        transform: translateX(-50%);
+        width: min(320px, 70vw);
+        background: #1a253c;
+        color: #fff;
+        font-size: 0.82em;
+        font-weight: 400;
+        line-height: 1.45;
+        padding: 10px 12px;
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        z-index: 50;
+        pointer-events: none;
+        text-align: left;
+      }
+
+      .help-tooltip::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #1a253c;
+      }
+
+      .help-wrap:hover .help-tooltip,
+      .help-wrap:focus-within .help-tooltip,
+      .help-btn.is-open + .help-tooltip {
+        display: block;
+      }
+
+      /* Quando o botão está dentro do wrap e aberto via clique, o tooltip
+         é o irmão — usamos o estado no wrap também */
+      .help-wrap.is-open .help-tooltip {
+        display: block;
+      }
+
+      /* Painel de ajuda detalhada (clique) */
+      .help-detail {
+        display: none;
+        margin-top: 4px;
+        padding: 12px 14px;
+        background: #eef6ff;
+        border: 1px solid #bbdefb;
+        border-left: 4px solid var(--cor-principal);
+        border-radius: 6px;
+        font-size: 0.88em;
+        color: #333;
+        line-height: 1.5;
+        max-width: 520px;
+      }
+
+      .help-detail.is-visible {
+        display: block;
+      }
+
+      .help-detail strong {
+        color: var(--cor-principal-escura);
+      }
+
+      .help-detail .help-example {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed #90caf9;
+        color: #444;
+        font-style: italic;
+      }
+
+      .config-hint {
+        margin-top: 8px;
+        font-size: 0.85em;
+        color: #666;
+      }
+
+      .config-hint i {
+        color: var(--cor-principal);
+        margin-right: 4px;
+      }
+    </style>
   </head>
   <body>
     <div id="sidebar-container" class="sidebar"></div>
@@ -18,140 +176,229 @@
         <div style="margin-bottom: 20px; font-size: 0.9em; color: #666;">
           <a href="/shared/config/configuracoes.html" style="color: var(--cor-principal); text-decoration: none;">
             <i class="fa fa-cog"></i> Configurações
-          </a> 
+          </a>
           <i class="fa fa-chevron-right" style="font-size: 0.7em; margin: 0 8px;"></i>
           <span>Inventário Cíclico</span>
         </div>
-        
+
         <h1>Configurações de Inventário Cíclico</h1>
 
         <div class="card">
           <h2>Parâmetros dos Blocos de Inventário</h2>
+          <p class="config-hint">
+            <i class="fa-solid fa-circle-info"></i>
+            Passe o mouse no ícone <strong>?</strong> para uma dica rápida, ou clique nele para ver a explicação completa de cada campo.
+            Os blocos se complementam: um item que já entrou em um bloco não se repete nos seguintes.
+          </p>
 
           <form id="configForm">
+            <!-- BLOCO 1 -->
             <div class="config-section">
               <h3>
-                <i class="fa-solid fa-chart-line"></i> Bloco 1: Mais
-                Movimentados
+                <i class="fa-solid fa-chart-line"></i> Bloco 1: Mais Movimentados
               </h3>
+              <p class="bloco-descricao">
+                Seleciona os produtos com maior volume de movimentações no kardex no período definido.
+                Útil para priorizar itens de alto giro, onde divergências impactam mais o dia a dia.
+              </p>
               <div class="form-row">
                 <div class="form-group">
-                  <label for="bloco1Qtd">Quantidade de Itens:</label>
-                  <input
-                    type="number"
-                    id="bloco1Qtd"
-                    min="1"
-                    max="100"
-                    required
-                  />
+                  <label for="bloco1Qtd">
+                    Quantidade de Itens
+                    <span class="help-wrap" data-help="bloco1Qtd">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Quantidade de Itens do Bloco 1">?</button>
+                      <span class="help-tooltip">Quantos produtos entram neste bloco na lista do inventário (ex.: 10 = top 10 mais movimentados).</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco1Qtd" min="1" max="100" required />
+                  <div class="help-detail" data-help-detail="bloco1Qtd">
+                    <strong>O que controla:</strong> o número máximo de produtos que o Bloco 1 coloca na lista de inventário.<br>
+                    O sistema ordena pelo total de movimentações no período e pega os primeiros N.
+                    <div class="help-example">
+                      Exemplo: se for <strong>10</strong>, entram os 10 códigos com mais movimentações nos últimos X dias (definido no campo ao lado).
+                    </div>
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label for="bloco1Dias">Período de Análise (dias):</label>
-                  <input
-                    type="number"
-                    id="bloco1Dias"
-                    min="1"
-                    max="365"
-                    required
-                  />
+                  <label for="bloco1Dias">
+                    Período de Análise (dias)
+                    <span class="help-wrap" data-help="bloco1Dias">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Período de Análise">?</button>
+                      <span class="help-tooltip">Janela de tempo (em dias) usada para contar as movimentações no kardex.</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco1Dias" min="1" max="365" required />
+                  <div class="help-detail" data-help-detail="bloco1Dias">
+                    <strong>O que controla:</strong> quantos dias para trás o sistema analisa no kardex para medir o giro de cada produto.
+                    <div class="help-example">
+                      Exemplo: se for <strong>21</strong>, só contam movimentos dos últimos 21 dias. Um valor menor foca o giro recente; um maior captura tendências de médio prazo.
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- BLOCO 2 -->
             <div class="config-section">
               <h3>
-                <i class="fa-solid fa-triangle-exclamation"></i> Bloco 2: Baixa
-                Acuracidade
+                <i class="fa-solid fa-triangle-exclamation"></i> Bloco 2: Baixa Acuracidade
               </h3>
+              <p class="bloco-descricao">
+                Reapresenta produtos que tiveram baixa acuracidade no <strong>último inventário finalizado</strong>
+                (contagem física muito diferente do saldo do sistema). Este bloco tem prioridade sobre o Bloco 1.
+              </p>
               <div class="form-row">
                 <div class="form-group">
-                  <label for="bloco2Qtd">Quantidade de Itens:</label>
-                  <input
-                    type="number"
-                    id="bloco2Qtd"
-                    min="1"
-                    max="100"
-                    required
-                  />
+                  <label for="bloco2Qtd">
+                    Quantidade de Itens
+                    <span class="help-wrap" data-help="bloco2Qtd">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Quantidade de Itens do Bloco 2">?</button>
+                      <span class="help-tooltip">Máximo de itens com baixa acuracidade recolocados na próxima lista.</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco2Qtd" min="1" max="100" required />
+                  <div class="help-detail" data-help-detail="bloco2Qtd">
+                    <strong>O que controla:</strong> quantos produtos com acuracidade ruim do inventário anterior voltam a ser contados.
+                    A lista é ordenada da pior acuracidade para a melhor.
+                    <div class="help-example">
+                      Exemplo: se for <strong>10</strong> e existirem 25 itens abaixo do limite, só os 10 piores entram neste bloco.
+                    </div>
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label for="bloco2Acuracidade">Acuracidade Mínima (%):</label>
-                  <input
-                    type="number"
-                    id="bloco2Acuracidade"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    required
-                  />
+                  <label for="bloco2Acuracidade">
+                    Acuracidade Mínima (%)
+                    <span class="help-wrap" data-help="bloco2Acuracidade">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Acuracidade Mínima">?</button>
+                      <span class="help-tooltip">Limite: entram itens com acuracidade <em>abaixo</em> deste percentual no último inventário finalizado.</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco2Acuracidade" min="0" max="100" step="0.1" required />
+                  <div class="help-detail" data-help-detail="bloco2Acuracidade">
+                    <strong>O que controla:</strong> o corte de acuracidade. Entram apenas itens cuja acuracidade no último inventário
+                    <strong>finalizado</strong> foi <strong>menor</strong> que este valor.
+                    <div class="help-example">
+                      Exemplo: se for <strong>95%</strong>, um item com 94% volta a ser contado; um com 96% não entra por este bloco.
+                      Acuracidade = quanto a contagem física bateu com o saldo do sistema.
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- BLOCO 3 -->
             <div class="config-section">
               <h3>
-                <i class="fa-solid fa-sack-dollar"></i> Bloco 3: Maior Valor em
-                Estoque
+                <i class="fa-solid fa-sack-dollar"></i> Bloco 3: Maior Valor em Estoque
               </h3>
+              <p class="bloco-descricao">
+                Seleciona produtos com maior valor financeiro imobilizado
+                (saldo atual × custo unitário). Prioriza o que mais pesa no balanço de estoque.
+              </p>
               <div class="form-row">
                 <div class="form-group">
-                  <label for="bloco3Qtd">Quantidade de Itens:</label>
-                  <input
-                    type="number"
-                    id="bloco3Qtd"
-                    min="1"
-                    max="100"
-                    required
-                  />
+                  <label for="bloco3Qtd">
+                    Quantidade de Itens
+                    <span class="help-wrap" data-help="bloco3Qtd">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Quantidade de Itens do Bloco 3">?</button>
+                      <span class="help-tooltip">Quantos produtos de maior valor total em estoque entram na lista (top N).</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco3Qtd" min="1" max="100" required />
+                  <div class="help-detail" data-help-detail="bloco3Qtd">
+                    <strong>O que controla:</strong> quantos itens com maior <em>valor total</em> (quantidade × custo) entram no inventário.
+                    Exclui códigos que já foram escolhidos nos blocos 1 e 2.
+                    <div class="help-example">
+                      Exemplo: se for <strong>3</strong>, entram os 3 produtos com maior valor monetário em estoque (desde que tenham saldo e custo cadastrado).
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- BLOCO 4 -->
             <div class="config-section">
               <h3>
-                <i class="fa-solid fa-money-bill-trend-up"></i> Bloco 4: Maior
-                Valor Unitário
+                <i class="fa-solid fa-money-bill-trend-up"></i> Bloco 4: Maior Valor Unitário
               </h3>
+              <p class="bloco-descricao">
+                Seleciona produtos com o maior custo unitário (preço por peça/unidade),
+                independentemente da quantidade em estoque. Foca em itens caros, onde erro de contagem dói mais.
+              </p>
               <div class="form-row">
                 <div class="form-group">
-                  <label for="bloco4Qtd">Quantidade de Itens:</label>
-                  <input
-                    type="number"
-                    id="bloco4Qtd"
-                    min="1"
-                    max="100"
-                    required
-                  />
+                  <label for="bloco4Qtd">
+                    Quantidade de Itens
+                    <span class="help-wrap" data-help="bloco4Qtd">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Quantidade de Itens do Bloco 4">?</button>
+                      <span class="help-tooltip">Quantos produtos de maior custo unitário entram na lista (top N).</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco4Qtd" min="1" max="100" required />
+                  <div class="help-detail" data-help-detail="bloco4Qtd">
+                    <strong>O que controla:</strong> quantos itens com maior <em>custo por unidade</em> entram no inventário.
+                    Diferente do Bloco 3 (que olha o valor total = qtd × custo), aqui importa o preço unitário.
+                    <div class="help-example">
+                      Exemplo: se for <strong>5</strong>, entram os 5 produtos mais caros unitariamente (com saldo &gt; 0 e ainda não listados nos blocos anteriores).
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- BLOCO 5 -->
             <div class="config-section">
               <h3>
-                <i class="fa-solid fa-clock-rotate-left"></i> Bloco 5: Não
-                Contados Recentemente
+                <i class="fa-solid fa-clock-rotate-left"></i> Bloco 5: Não Contados Recentemente
               </h3>
+              <p class="bloco-descricao">
+                Traz produtos que “ficaram de fora” das contagens recentes: têm saldo em estoque,
+                mas <strong>não foram contados</strong> em nenhum dos últimos N inventários finalizados.
+                Garante que o inventário cíclico não ignore os mesmos itens para sempre.
+              </p>
               <div class="form-row">
                 <div class="form-group">
-                  <label for="bloco5Qtd">Quantidade de Itens:</label>
-                  <input
-                    type="number"
-                    id="bloco5Qtd"
-                    min="1"
-                    max="100"
-                    required
-                  />
+                  <label for="bloco5Qtd">
+                    Quantidade de Itens
+                    <span class="help-wrap" data-help="bloco5Qtd">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Quantidade de Itens do Bloco 5">?</button>
+                      <span class="help-tooltip">Quantos produtos “esquecidos” (não contados recentemente) entram na lista — máximo, priorizando maior valor em estoque.</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco5Qtd" min="1" max="100" required />
+                  <div class="help-detail" data-help-detail="bloco5Qtd">
+                    <strong>O que controla:</strong> quantos produtos sem contagem recente entram neste bloco.
+                    Entre os elegíveis, o sistema prioriza os de <strong>maior valor em estoque</strong> (saldo × custo).
+                    <div class="help-example">
+                      Exemplo com valor <strong>10</strong>: se 40 produtos não foram contados nos inventários recentes,
+                      só os 10 de maior valor financeiro entram no Bloco 5.
+                    </div>
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label for="bloco5Inventarios">Inventários Atrás:</label>
-                  <input
-                    type="number"
-                    id="bloco5Inventarios"
-                    min="1"
-                    max="50"
-                    required
-                    title="Quantos inventários anteriores considerar"
-                  />
+                  <label for="bloco5Inventarios">
+                    Inventários Atrás
+                    <span class="help-wrap" data-help="bloco5Inventarios">
+                      <button type="button" class="help-btn" aria-label="Ajuda: Inventários Atrás">?</button>
+                      <span class="help-tooltip">Quantos inventários finalizados recentes o sistema olha para decidir se o item “já foi contado” ou não.</span>
+                    </span>
+                  </label>
+                  <input type="number" id="bloco5Inventarios" min="1" max="50" required />
+                  <div class="help-detail" data-help-detail="bloco5Inventarios">
+                    <strong>O que controla:</strong> a “memória” de contagens. O sistema pega os últimos
+                    <em>N inventários com status FINALIZADO</em> e marca todos os códigos que neles tiveram contagem física.
+                    <br><br>
+                    Só entram no Bloco 5 os produtos que <strong>não apareceram com contagem</strong> em
+                    <strong>nenhum</strong> desses N inventários (e que ainda não entraram nos blocos 1–4).
+                    <div class="help-example">
+                      Exemplo com valor <strong>2</strong>:<br>
+                      • Olha os 2 inventários finalizados mais recentes.<br>
+                      • Se o código 307973 foi contado em qualquer um deles → <strong>não</strong> entra no Bloco 5.<br>
+                      • Se não foi contado em nenhum dos 2 → pode entrar (se tiver saldo e couber na quantidade de itens).<br><br>
+                      <strong>Valor maior</strong> (ex.: 5) = critério mais rigoroso: só entram itens realmente “antigos” na contagem.<br>
+                      <strong>Valor menor</strong> (ex.: 1 ou 2) = critério mais brando: basta não ter sido contado no(s) inventário(s) bem recente(s).
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
