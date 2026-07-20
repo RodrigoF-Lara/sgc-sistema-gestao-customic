@@ -76,8 +76,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        mostrarMensagem('Gerando relatório...', 'info');
+        mostrarMensagem('Gerando relatório... (pode levar alguns segundos)', 'info');
         gerarRelatorioBtn.disabled = true;
+        gerarRelatorioBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
+
+        // Timeout no browser: se a API/Vercel travar, libera a tela em ~50s
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 50000);
 
         try {
             let url = `/api/embalagem/relatorios?acao=consumoMedio&periodo=${periodo}`;
@@ -90,29 +95,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
             console.log('🔍 URL da requisição:', url);
 
-            const response = await fetch(url);
+            const response = await fetch(url, { signal: controller.signal });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error('❌ Erro na resposta:', errorData);
-                throw new Error(errorData.message || 'Erro ao buscar dados');
+                let msg = 'Erro ao buscar dados';
+                try {
+                    const errorData = await response.json();
+                    console.error('❌ Erro na resposta:', errorData);
+                    msg = errorData.message || msg;
+                } catch (_) { /* ignore */ }
+                throw new Error(msg);
             }
 
             const resultado = await response.json();
             
             console.log('✅ Resultado recebido:', resultado);
             
-            dadosRelatorio = resultado.dados;
-            totalizadores = resultado.totalizadores;
+            dadosRelatorio = resultado.dados || [];
+            totalizadores = resultado.totalizadores || {
+                totalItens: 0,
+                valorTotalEstoque: 0,
+                totalFornecedores: 0
+            };
 
             if (dadosRelatorio.length === 0) {
                 mostrarMensagem(
-                    `⚠️ Nenhum item encontrado para o período selecionado.`, 
+                    `⚠️ Nenhum item encontrado para os filtros selecionados.`, 
                     'error'
                 );
                 totalizadoresContainer.style.display = 'none';
                 resultadosContainer.style.display = 'none';
-                gerarRelatorioBtn.disabled = false;
                 return;
             }
 
@@ -129,9 +141,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('❌ Erro ao gerar relatório:', error);
-            mostrarMensagem(`Erro ao gerar relatório: ${error.message}`, 'error');
+            if (error.name === 'AbortError') {
+                mostrarMensagem(
+                    'A consulta demorou demais e foi cancelada. Tente filtrar por tipo de produto (ex.: EMBALAGEM) ou fornecedor e gere novamente.',
+                    'error'
+                );
+            } else {
+                mostrarMensagem(`Erro ao gerar relatório: ${error.message}`, 'error');
+            }
+            totalizadoresContainer.style.display = 'none';
+            resultadosContainer.style.display = 'none';
         } finally {
+            clearTimeout(timeoutId);
             gerarRelatorioBtn.disabled = false;
+            gerarRelatorioBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-chart"></i> Gerar Relatório';
         }
     }
 

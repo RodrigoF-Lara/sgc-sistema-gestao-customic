@@ -1,5 +1,10 @@
 import { getConnection, sql } from "../../db.js";
 
+// Vercel: permite até 60s (plano Pro). Hobby fica no limite da conta.
+export const config = {
+    maxDuration: 60
+};
+
 // Habilitar CORS
 const setCorsHeaders = (res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -212,44 +217,61 @@ async function gerarRelatorioConsumo(req, res) {
             });
         }
 
-        console.log('?? Gerando relatório de consumo para:', {
+        const tipoFiltro = tipoProduto && tipoProduto.trim() ? tipoProduto.trim() : null;
+        const fornFiltro = fornecedor && fornecedor.trim() ? fornecedor.trim() : null;
+
+        console.log('Gerando relatório de consumo para:', {
             ano,
             mes,
-            tipoProduto: tipoProduto || 'Todos',
-            fornecedor: fornecedor || 'Todos'
+            tipoProduto: tipoFiltro || 'Todos',
+            fornecedor: fornFiltro || 'Todos'
         });
 
         const pool = await getConnection();
-        
-        // Query para buscar saldo atual, preço da última NF e fornecedor
-        // Data de corte: apenas movimentações a partir de Abril/2026
-        const DATA_CORTE = '2026-04-01';
 
-        let query = `
-            WITH SaldoAtual AS (
-                SELECT 
-                    CODIGO,
-                    ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                WHERE D_E_L_E_T_ <> '*'
-                    AND KARDEX = 2026
-                GROUP BY CODIGO
-                HAVING ISNULL(SUM(SALDO), 0) > 0
+        // Query otimizada:
+        // 1) filtra CAD_PROD cedo (tipo)
+        // 2) saldo só desses códigos
+        // 3) NF e consumo só para códigos com saldo > 0
+        // Antes varria NF + KARDEX inteiros e filtrava só no final → timeout no Vercel.
+        const query = `
+            WITH Produtos AS (
+                SELECT
+                    cp.CODIGO,
+                    cp.DESCRICAO,
+                    cp.TIPO
+                FROM [dbo].[CAD_PROD] cp
+                WHERE (@TIPO_PRODUTO IS NULL OR cp.TIPO = @TIPO_PRODUTO)
+            ),
+            SaldoAtual AS (
+                SELECT
+                    k.CODIGO,
+                    ISNULL(SUM(k.SALDO), 0) AS SALDO_ATUAL
+                FROM [dbo].[KARDEX_2026_EMBALAGEM] k
+                INNER JOIN Produtos p ON p.CODIGO = k.CODIGO
+                WHERE k.D_E_L_E_T_ <> '*'
+                  AND k.KARDEX = 2026
+                GROUP BY k.CODIGO
+                HAVING ISNULL(SUM(k.SALDO), 0) > 0
             ),
             UltimaNFPorProduto AS (
-                SELECT 
+                SELECT
                     np.PROD_COD_PROD AS CODIGO,
                     np.PROD_CUSTO_FISCAL_MEDIO_NOVO AS PRECO_UNITARIO,
                     nc.CAB_NUM_FORN AS COD_FORNECEDOR,
                     nc.CAB_DT_EMISSAO,
-                    ROW_NUMBER() OVER (PARTITION BY np.PROD_COD_PROD ORDER BY nc.CAB_DT_EMISSAO DESC) AS RN
+                    ROW_NUMBER() OVER (
+                        PARTITION BY np.PROD_COD_PROD
+                        ORDER BY nc.CAB_DT_EMISSAO DESC, nc.CAB_ID_NF DESC
+                    ) AS RN
                 FROM [dbo].[NF_PRODUTOS] np
                 INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
-                WHERE np.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL 
-                    AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                INNER JOIN SaldoAtual sa ON sa.CODIGO = np.PROD_COD_PROD
+                WHERE np.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
+                  AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
             ),
             UltimaFornecedor AS (
-                SELECT 
+                SELECT
                     unf.CODIGO,
                     unf.PRECO_UNITARIO,
                     unf.COD_FORNECEDOR,
@@ -260,28 +282,26 @@ async function gerarRelatorioConsumo(req, res) {
                 WHERE unf.RN = 1
             ),
             ConsumoMedio AS (
-                SELECT 
+                SELECT
                     k.CODIGO,
-                    -- Consumo médio MENSAL: total de saídas no período ÷ número de meses da janela
-                    -- 1 mês (30 dias): total / 1  = o próprio total consumido no mês
-                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -30, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 30, 0) AS CONSUMO_1MES,
-                    -- Bimestral (60 dias): total / 2 meses
-                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -60, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 60, 0) AS CONSUMO_BIMESTRAL,
-                    -- Semestral (180 dias): total / 6 meses
-                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -180, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 180, 0) AS CONSUMO_SEMESTRAL,
-                    -- Anual (365 dias): total / 12.17 meses
-                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -365, GETDATE()) AND k.DT >= '2026-04-01' THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 365, 0) AS CONSUMO_ANUAL
+                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -30,  GETDATE()) THEN ABS(k.QNT) ELSE 0 END), 0) AS CONSUMO_1MES,
+                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -60,  GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 60, 0) AS CONSUMO_BIMESTRAL,
+                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -180, GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 180, 0) AS CONSUMO_SEMESTRAL,
+                    ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -365, GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 365, 0) AS CONSUMO_ANUAL
                 FROM [dbo].[KARDEX_2026] k
-                WHERE k.OPERACAO = 'SAÍDA'
-                    AND k.USUARIO <> 'BEATRIZ JULHAO'
-                    AND k.DT >= '2026-04-01'
+                INNER JOIN SaldoAtual sa ON sa.CODIGO = k.CODIGO
+                WHERE UPPER(LTRIM(RTRIM(k.OPERACAO))) COLLATE Latin1_General_CI_AI = 'SAIDA'
+                  AND k.USUARIO NOT IN ('BEATRIZ JULHAO', 'BJULHAO')
+                  AND k.D_E_L_E_T_ <> '*'
+                  AND k.DT >= '2026-04-01'
+                  AND k.DT >= DATEADD(DAY, -365, GETDATE())
                 GROUP BY k.CODIGO
             )
-            SELECT 
+            SELECT
                 sa.CODIGO,
                 sa.SALDO_ATUAL,
-                ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
-                ISNULL(cp.TIPO, 'NÃO INFORMADO') AS TIPO,
+                ISNULL(p.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
+                ISNULL(p.TIPO, 'NÃO INFORMADO') AS TIPO,
                 ISNULL(uf.PRECO_UNITARIO, 0) AS PRECO_UNITARIO,
                 ISNULL(sa.SALDO_ATUAL, 0) * ISNULL(uf.PRECO_UNITARIO, 0) AS VALOR_TOTAL_ESTOQUE,
                 ISNULL(uf.FORNECEDOR, 'NÃO INFORMADO') AS FORNECEDOR,
@@ -291,40 +311,25 @@ async function gerarRelatorioConsumo(req, res) {
                 ISNULL(cm.CONSUMO_ANUAL, 0) AS CONSUMO_MEDIO_ANUAL,
                 uf.CAB_DT_EMISSAO
             FROM SaldoAtual sa
-            LEFT JOIN [dbo].[CAD_PROD] cp ON sa.CODIGO = cp.CODIGO
-            LEFT JOIN UltimaFornecedor uf ON sa.CODIGO = uf.CODIGO
-            LEFT JOIN ConsumoMedio cm ON sa.CODIGO = cm.CODIGO
+            INNER JOIN Produtos p ON p.CODIGO = sa.CODIGO
+            INNER JOIN UltimaFornecedor uf ON uf.CODIGO = sa.CODIGO
+            LEFT JOIN ConsumoMedio cm ON cm.CODIGO = sa.CODIGO
             WHERE ISNULL(uf.PRECO_UNITARIO, 0) > 0
+              AND (
+                    @FORNECEDOR IS NULL
+                    OR uf.FORNECEDOR LIKE '%' + @FORNECEDOR + '%'
+                  )
+            ORDER BY VALOR_TOTAL_ESTOQUE DESC;
         `;
 
-        // Filtro por tipo de produto (CAD_PROD.TIPO)
-        if (tipoProduto && tipoProduto.trim()) {
-            query += ` AND cp.TIPO = @TIPO_PRODUTO`;
-        }
-
-        // Adiciona filtro de fornecedor se especificado
-        if (fornecedor && fornecedor.trim()) {
-            query += ` AND uf.FORNECEDOR LIKE '%' + @FORNECEDOR + '%'`;
-        }
-
-        query += ` ORDER BY VALOR_TOTAL_ESTOQUE DESC`;
-
         const request = pool.request();
+        request.timeout = 55000; // ms — evita hang eterno no pool
+        request.input('TIPO_PRODUTO', sql.NVarChar, tipoFiltro);
+        request.input('FORNECEDOR', sql.NVarChar, fornFiltro);
 
-        if (tipoProduto && tipoProduto.trim()) {
-            request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
-        }
-        
-        if (fornecedor && fornecedor.trim()) {
-            request.input('FORNECEDOR', sql.NVarChar, fornecedor);
-        }
-
+        const started = Date.now();
         const result = await request.query(query);
-
-        console.log('?? Produtos encontrados:', result.recordset.length);
-        if (result.recordset.length > 0) {
-            console.log('?? DEBUG - Primeiros registros:', result.recordset.slice(0, 3));
-        }
+        console.log(`Consumo médio: ${result.recordset.length} produtos em ${Date.now() - started}ms`);
 
         if (result.recordset.length === 0) {
             return res.status(200).json({
@@ -354,17 +359,18 @@ async function gerarRelatorioConsumo(req, res) {
             totalFornecedores: fornecedoresUnicos.size
         };
 
-        console.log('?? Totais calculados:', totalizadores);
-
         return res.status(200).json({
             dados: result.recordset,
             totalizadores: totalizadores
         });
 
     } catch (error) {
-        console.error('? Erro ao gerar relatório de consumo:', error);
-        return res.status(500).json({ 
-            message: `Erro ao gerar relatório: ${error.message}` 
+        console.error('Erro ao gerar relatório de consumo:', error);
+        const isTimeout = /timeout|ETIMEOUT|RequestError/i.test(String(error.message || ''));
+        return res.status(isTimeout ? 504 : 500).json({ 
+            message: isTimeout
+                ? 'A consulta demorou demais e foi cancelada. Tente filtrar por tipo de produto ou fornecedor.'
+                : `Erro ao gerar relatório: ${error.message}`
         });
     }
 }

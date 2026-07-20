@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/embalagem/relatorios.js": {
+      "maxDuration": 60
+    },
+    "api/embalagem/inventarioCiclico.js": {
+      "maxDuration": 60
+    },
+    "api/embalagem/inventory.js": {
+      "maxDuration": 30
+    }
+  }
+}
