@@ -122,18 +122,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (!response.ok) {
-                // Detecta timeout do Vercel
-                const isVercelTimeout =
-                    response.status === 504 ||
-                    /FUNCTION_INVOCATION_TIMEOUT/i.test(rawBody) ||
-                    /FUNCTION_INVOCATION_TIMEOUT/i.test(JSON.stringify(resultado || {}));
+                const isVercelPlatformTimeout =
+                    /FUNCTION_INVOCATION_TIMEOUT/i.test(rawBody);
 
                 let msg = 'Erro ao buscar dados';
-                if (isVercelTimeout) {
-                    msg = 'Timeout no servidor Vercel (FUNCTION_INVOCATION_TIMEOUT). A função estourou o tempo máximo.';
-                } else if (resultado && resultado.message) {
+                // Preferir mensagem JSON da nossa API (tem etapa/debug)
+                if (resultado && resultado.message) {
                     msg = resultado.message;
-                } else if (rawBody && rawBody.length < 300) {
+                    if (resultado.debug) {
+                        msg += ` | etapa=${resultado.debug.etapa}`;
+                        if (resultado.debug.tempos) {
+                            msg += ` | tempos=${JSON.stringify(resultado.debug.tempos)}`;
+                        }
+                        if (resultado.debug.erro && resultado.debug.erro.message) {
+                            msg += ` | sql=${resultado.debug.erro.message}`;
+                        }
+                    }
+                } else if (isVercelPlatformTimeout) {
+                    msg = 'Timeout do Vercel (FUNCTION_INVOCATION_TIMEOUT). A função estourou o tempo máximo da plataforma.';
+                } else if (rawBody && rawBody.length < 400) {
                     msg = rawBody.trim();
                 }
 
@@ -141,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     status: response.status,
                     statusText: response.statusText,
                     elapsedMs,
-                    isVercelTimeout,
+                    isVercelPlatformTimeout,
                     resultado,
                     rawBody: rawBody.slice(0, 500)
                 });

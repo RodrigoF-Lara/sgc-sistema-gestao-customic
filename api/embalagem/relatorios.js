@@ -206,9 +206,8 @@ async function gerarRelatorioConsumo(req, res) {
         contagens: {}
     };
     const t0 = Date.now();
-
-    // Garante resposta JSON antes do Vercel matar a função (~60s)
-    const OVERALL_MS = 45000;
+    const OVERALL_MS = 50000;
+    let timer;
 
     const run = async () => {
         const { periodo, fornecedor, tipoProduto } = req.query;
@@ -242,11 +241,16 @@ async function gerarRelatorioConsumo(req, res) {
         debug.tempos.conexaoMs = Date.now() - tConn;
         console.log('[consumoMedio] conexao ok em', debug.tempos.conexaoMs, 'ms');
 
-        // Query A (SSMS: ~1s, 179 linhas) — estrutura que o usuário mediu e funcionou.
-        // NOLOCK evita espera de lock (comum quando a função do Vercel morre no meio).
-        // Filtro de tipo no final (leve).
+        // ============================================================
+        // EXATAMENTE a Query A medida no SSMS (~1s, 179 linhas).
+        // Diferenças que matavam no Vercel:
+        //  - INNER JOIN SaldoAtual em UltimaNF gerava plano ruim
+        //  - falta de ARITHABORT (SSMS usa ON; node-mssql não)
+        //  - parameter sniffing → OPTION (RECOMPILE)
+        // ============================================================
         let queryBase = `
-            SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+            SET ARITHABORT ON;
+            SET NOCOUNT ON;
 
             WITH SaldoAtual AS (
                 SELECT
@@ -269,8 +273,8 @@ async function gerarRelatorioConsumo(req, res) {
                         ORDER BY nc.CAB_DT_EMISSAO DESC
                     ) AS RN
                 FROM [dbo].[NF_PRODUTOS] np WITH (NOLOCK)
-                INNER JOIN [dbo].[NF_CABECALHO] nc WITH (NOLOCK) ON np.PROD_ID_NF = nc.CAB_ID_NF
-                INNER JOIN SaldoAtual sa ON sa.CODIGO = np.PROD_COD_PROD
+                INNER JOIN [dbo].[NF_CABECALHO] nc WITH (NOLOCK)
+                    ON np.PROD_ID_NF = nc.CAB_ID_NF
                 WHERE np.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                     AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
             ),
@@ -282,7 +286,8 @@ async function gerarRelatorioConsumo(req, res) {
                     ISNULL(cf.RAZAO_SOCIAL, 'NÃO INFORMADO') AS FORNECEDOR,
                     unf.CAB_DT_EMISSAO
                 FROM UltimaNFPorProduto unf
-                LEFT JOIN [dbo].[CAD_FORNECEDOR] cf WITH (NOLOCK) ON unf.COD_FORNECEDOR = cf.COD_FORNECEDOR
+                LEFT JOIN [dbo].[CAD_FORNECEDOR] cf WITH (NOLOCK)
+                    ON unf.COD_FORNECEDOR = cf.COD_FORNECEDOR
                 WHERE unf.RN = 1
             )
             SELECT
@@ -300,26 +305,28 @@ async function gerarRelatorioConsumo(req, res) {
             WHERE ISNULL(uf.PRECO_UNITARIO, 0) > 0
         `;
 
+        // Tipo: literal escapado (evita parameter sniffing). Valores vêm do nosso cadastro.
         if (tipoProduto && tipoProduto.trim()) {
-            queryBase += ` AND cp.TIPO = @TIPO_PRODUTO`;
+            const tipoLit = String(tipoProduto.trim()).replace(/'/g, "''");
+            queryBase += ` AND cp.TIPO = N'${tipoLit}'`;
+            debug.filtros.tipoLiteral = tipoLit;
         }
         if (fornecedor && fornecedor.trim()) {
-            queryBase += ` AND uf.FORNECEDOR LIKE '%' + @FORNECEDOR + '%'`;
+            const fornLit = String(fornecedor.trim()).replace(/'/g, "''");
+            queryBase += ` AND uf.FORNECEDOR LIKE N'%${fornLit}%'`;
         }
-        queryBase += ` ORDER BY VALOR_TOTAL_ESTOQUE DESC;`;
+
+        queryBase += `
+            ORDER BY VALOR_TOTAL_ESTOQUE DESC
+            OPTION (RECOMPILE);
+        `;
 
         const requestBase = pool.request();
-        requestBase.timeout = 25000;
-        if (tipoProduto && tipoProduto.trim()) {
-            requestBase.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
-        }
-        if (fornecedor && fornecedor.trim()) {
-            requestBase.input('FORNECEDOR', sql.NVarChar, fornecedor.trim());
-        }
+        requestBase.timeout = 40000;
 
         debug.etapa = 'query_base';
         const tBase = Date.now();
-        console.log('[consumoMedio] query base...');
+        console.log('[consumoMedio] query base (Query A SSMS)...');
         const baseResult = await requestBase.query(queryBase);
         const itens = baseResult.recordset || [];
         debug.tempos.queryBaseMs = Date.now() - tBase;
@@ -336,20 +343,20 @@ async function gerarRelatorioConsumo(req, res) {
             });
         }
 
-        // Query C (SSMS: ~1s) — consumo só dos códigos com saldo/tipo
+        // Query C SSMS (~1s) — consumo só dos códigos retornados
         debug.etapa = 'query_consumo';
         const tCons = Date.now();
         const codigos = [...new Set(itens.map(i => String(i.CODIGO)))];
         debug.contagens.codigos = codigos.length;
 
-        // Uma única query com JOIN em tabela de códigos (mais estável que 400 parâmetros)
         const codigosSql = codigos.map(c => `N'${String(c).replace(/'/g, "''")}'`).join(',');
         const reqCons = pool.request();
-        reqCons.timeout = 25000;
+        reqCons.timeout = 40000;
 
         console.log('[consumoMedio] query consumo para', codigos.length, 'codigos...');
         const consResult = await reqCons.query(`
-            SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+            SET ARITHABORT ON;
+            SET NOCOUNT ON;
 
             SELECT
                 k.CODIGO,
@@ -363,7 +370,8 @@ async function gerarRelatorioConsumo(req, res) {
               AND k.USUARIO <> N'BEATRIZ JULHAO'
               AND k.USUARIO <> N'BJULHAO'
               AND k.DT >= '2026-04-01'
-            GROUP BY k.CODIGO;
+            GROUP BY k.CODIGO
+            OPTION (RECOMPILE);
         `);
 
         const consumoPorCodigo = {};
@@ -409,7 +417,6 @@ async function gerarRelatorioConsumo(req, res) {
         });
     };
 
-    let timer;
     try {
         await Promise.race([
             run(),
@@ -419,17 +426,14 @@ async function gerarRelatorioConsumo(req, res) {
                     debug.etapa = 'timeout_aplicacao';
                     debug.tempos.totalMs = Date.now() - t0;
                     reject(new Error(
-                        'Timeout interno da aplicação após ' + OVERALL_MS +
-                        'ms (última etapa: ' + etapaAntes + '). Evita FUNCTION_INVOCATION_TIMEOUT do Vercel.'
+                        'Timeout interno após ' + OVERALL_MS + 'ms (etapa: ' + etapaAntes + ')'
                     ));
                 }, OVERALL_MS);
             })
         ]);
     } catch (error) {
         debug.tempos.totalMs = Date.now() - t0;
-        if (debug.etapa === 'inicio' || debug.etapa === 'conectando_banco' || debug.etapa === 'query_base' || debug.etapa === 'query_consumo') {
-            // mantém etapa onde parou
-        } else if (debug.etapa !== 'timeout_aplicacao') {
+        if (debug.etapa !== 'timeout_aplicacao' && debug.etapa !== 'query_base' && debug.etapa !== 'query_consumo' && debug.etapa !== 'conectando_banco') {
             debug.etapa = 'erro';
         }
         debug.erro = {
@@ -439,7 +443,6 @@ async function gerarRelatorioConsumo(req, res) {
         };
         console.error('[consumoMedio] ERRO', debug);
 
-        // Pool pode ter ficado preso após timeout — força recriação na próxima request
         try { await resetPool(); } catch (_) { /* ignore */ }
 
         const isTimeout = /timeout|ETIMEOUT|RequestError|FUNCTION_INVOCATION/i.test(
@@ -449,7 +452,7 @@ async function gerarRelatorioConsumo(req, res) {
         if (!res.headersSent) {
             return res.status(isTimeout ? 504 : 500).json({
                 message: isTimeout
-                    ? 'Timeout: a API não concluiu a tempo. No SSMS a query é rápida (~1–2s); no Vercel a conexão/lock pode travar. Veja debug no console (F12).'
+                    ? 'Timeout na query_base/consumo. Se persistir, rode a Query A no SSMS e compare. Debug no console (F12).'
                     : `Erro ao gerar relatório: ${error.message}`,
                 debug
             });
@@ -458,7 +461,6 @@ async function gerarRelatorioConsumo(req, res) {
         if (timer) clearTimeout(timer);
     }
 }
-
 
 async function movimentacoesProduto(req, res) {
     try {
