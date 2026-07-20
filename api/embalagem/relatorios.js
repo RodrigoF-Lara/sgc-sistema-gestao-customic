@@ -452,7 +452,7 @@ async function gerarRelatorioConsumo(req, res) {
     }
 }
 
-\nasync function movimentacoesProduto(req, res) {
+async function movimentacoesProduto(req, res) {
     try {
         const { codigo, janela } = req.query;
         if (!codigo) return res.status(400).json({ message: 'Código é obrigatório' });
