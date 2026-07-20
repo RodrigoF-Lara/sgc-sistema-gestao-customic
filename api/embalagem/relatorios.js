@@ -251,6 +251,7 @@ async function gerarRelatorioConsumo(req, res) {
                     ROW_NUMBER() OVER (PARTITION BY np.PROD_COD_PROD ORDER BY nc.CAB_DT_EMISSAO DESC) AS RN
                 FROM [dbo].[NF_PRODUTOS] np
                 INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
+                INNER JOIN SaldoAtual sa ON sa.CODIGO = np.PROD_COD_PROD
                 WHERE np.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
                     AND np.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
             ),
