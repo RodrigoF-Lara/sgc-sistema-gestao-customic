@@ -87,10 +87,25 @@ document.addEventListener('DOMContentLoaded', function () {
             console.groupEnd();
             // ── FIM DEBUG ──────────────────────────────────────────────
 
+            // Garante CUSTO_UNITARIO preenchido (blocos 3/5 usavam só PRECO_UNITARIO)
+            const itensNormalizados = (data.itens || []).map(item => {
+                const custo = Number(item.CUSTO_UNITARIO) || Number(item.PRECO_UNITARIO) || 0;
+                const saldo = Number(item.SALDO_ATUAL) || 0;
+                const valorTotal = Number(item.VALOR_TOTAL_ESTOQUE) || 0;
+                const custoFinal = custo > 0
+                    ? custo
+                    : (saldo > 0 && valorTotal > 0 ? valorTotal / saldo : 0);
+                return {
+                    ...item,
+                    CUSTO_UNITARIO: custoFinal,
+                    PRECO_UNITARIO: custoFinal
+                };
+            });
+
             inventarioAtual = {
                 id: null,
                 status: 'NOVO',
-                itens: data.itens,
+                itens: itensNormalizados,
                 dataGeracao: data.dataGeracao,
                 criterio: data.criterio,
                 blocos: data.blocos,
@@ -456,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const usuarioContagem = item.USUARIO_CONTAGEM || '-';
                     const dataContagem = item.DT_CONTAGEM ? formatarDataHora(item.DT_CONTAGEM) : '-';
                     
-                    const custoUnitario = item.CUSTO_UNITARIO || 0;
+                    const custoUnitario = obterCustoUnitario(item);
                     const valorTotal = item.VALOR_TOTAL_ESTOQUE || 0;
                     
                     // Define a badge do bloco
@@ -936,7 +951,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <tbody>
             ${itens.map((item, index) => {
                 const saldoSistema = item.SALDO_ATUAL || 0;
-                const custoUnitario = item.CUSTO_UNITARIO || 0;
+                const custoUnitario = obterCustoUnitario(item);
                 const valorTotal = item.VALOR_TOTAL_ESTOQUE || 0;
                 let blocoTexto = '', blocoClass = '';
                 if (item.BLOCO === 'MOVIMENTACAO') { blocoTexto = 'Movimentação'; blocoClass = 'bloco-movimentacao'; }
@@ -1001,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Descrição': item.DESCRICAO || 'N/A',
                 'Localização': item.LOCALIZACAO || '',
                 'Saldo Sistema': saldoSistema,
-                'Custo Unitário': item.CUSTO_UNITARIO || 0,
+                'Custo Unitário': obterCustoUnitario(item),
                 'Valor Total': item.VALOR_TOTAL_ESTOQUE || 0,
                 'Contagem Física': contagemFisica,
                 'Diferença': diferenca,
@@ -1093,5 +1108,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!dataString) return 'N/A';
         const data = new Date(dataString);
         return data.toLocaleString('pt-BR');
+    }
+
+    /**
+     * Resolve o custo unitário do item.
+     * Prioridade: CUSTO_UNITARIO → PRECO_UNITARIO → VALOR_TOTAL / SALDO
+     * (fallback para inventários salvos com bug dos blocos 3 e 5)
+     */
+    function obterCustoUnitario(item) {
+        let custo = Number(item.CUSTO_UNITARIO) || Number(item.PRECO_UNITARIO) || 0;
+        if (custo > 0) return custo;
+
+        const saldo = Number(item.SALDO_ATUAL) || Number(item.SALDO_SISTEMA) || 0;
+        const valorTotal = Number(item.VALOR_TOTAL_ESTOQUE) || 0;
+        if (saldo > 0 && valorTotal > 0) {
+            return valorTotal / saldo;
+        }
+        return 0;
     }
 });

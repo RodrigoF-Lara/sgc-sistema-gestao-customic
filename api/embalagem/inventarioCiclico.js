@@ -358,6 +358,7 @@ async function gerarListaInventario(req, res) {
                     sv.CODIGO,
                     ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
                     sv.SALDO_ATUAL,
+                    sv.CUSTO_UNITARIO AS CUSTO_UNITARIO,
                     sv.CUSTO_UNITARIO AS PRECO_UNITARIO,
                     sv.VALOR_TOTAL_ESTOQUE,
                     'MAIOR_VALOR' AS BLOCO
@@ -470,6 +471,7 @@ async function gerarListaInventario(req, res) {
                     s.CODIGO,
                     ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
                     s.SALDO_ATUAL,
+                    ISNULL(cu.CUSTO_UNIT, 0) AS CUSTO_UNITARIO,
                     ISNULL(cu.CUSTO_UNIT, 0) AS PRECO_UNITARIO,
                     s.SALDO_ATUAL * ISNULL(cu.CUSTO_UNIT, 0) AS VALOR_TOTAL_ESTOQUE,
                     'NAO_CONTADO' AS BLOCO,
@@ -605,17 +607,26 @@ async function salvarInventario(req, res) {
         const idInventario = headerResult.recordset[0].ID_INVENTARIO;
 
         // Insere os itens do inventário
+        // Aceita CUSTO_UNITARIO ou PRECO_UNITARIO (alias usado em alguns blocos no passado)
+        // e, se ainda faltar, deriva do valor total / saldo.
         for (const item of inventario.itens) {
+            const saldo = item.SALDO_ATUAL || 0;
+            const valorTotal = item.VALOR_TOTAL_ESTOQUE || 0;
+            let custoUnitario = item.CUSTO_UNITARIO || item.PRECO_UNITARIO || 0;
+            if ((!custoUnitario || custoUnitario === 0) && saldo > 0 && valorTotal > 0) {
+                custoUnitario = valorTotal / saldo;
+            }
+
             await transaction.request()
                 .input('ID_INVENTARIO', sql.Int, idInventario)
                 .input('CODIGO', sql.NVarChar, item.CODIGO)
                 .input('DESCRICAO', sql.NVarChar, item.DESCRICAO)
-                .input('SALDO_SISTEMA', sql.Float, item.SALDO_ATUAL || 0)
+                .input('SALDO_SISTEMA', sql.Float, saldo)
                 .input('CONTAGEM_FISICA', sql.Float, item.CONTAGEM_FISICA || 0)
                 .input('TOTAL_MOVIMENTACOES', sql.Int, item.TOTAL_MOVIMENTACOES || 0)
                 .input('BLOCO', sql.NVarChar, item.BLOCO || 'MOVIMENTACAO')
-                .input('CUSTO_UNITARIO', sql.Float, item.CUSTO_UNITARIO || 0)
-                .input('VALOR_TOTAL_ESTOQUE', sql.Float, item.VALOR_TOTAL_ESTOQUE || 0)
+                .input('CUSTO_UNITARIO', sql.Float, custoUnitario)
+                .input('VALOR_TOTAL_ESTOQUE', sql.Float, valorTotal)
                 .query(`
                     INSERT INTO [dbo].[TB_INVENTARIO_CICLICO_ITEM]
                     (ID_INVENTARIO, CODIGO, DESCRICAO, SALDO_SISTEMA, CONTAGEM_FISICA, TOTAL_MOVIMENTACOES, BLOCO, CUSTO_UNITARIO, VALOR_TOTAL_ESTOQUE)
@@ -740,7 +751,9 @@ async function abrirInventario(req, res) {
             }
         }
 
-        // Monta o objeto inventário
+        // Monta o objeto inventário.
+        // Se CUSTO_UNITARIO estiver zerado no banco (bug antigo dos blocos 3/5) mas
+        // houver VALOR_TOTAL_ESTOQUE e saldo, deriva o unitário para exibição correta.
         const inventario = {
             id: header.ID_INVENTARIO,
             status: header.STATUS,
@@ -748,19 +761,27 @@ async function abrirInventario(req, res) {
             criterio: header.CRITERIO,
             acuracidade: header.ACURACIDADE,
             valorTotalGeral: valorTotalGeralCalculado,
-            itens: itemsResult.recordset.map(item => ({
-                CODIGO: item.CODIGO,
-                DESCRICAO: item.DESCRICAO,
-                SALDO_ATUAL: item.SALDO_SISTEMA,
-                CONTAGEM_FISICA: item.CONTAGEM_FISICA,
-                TOTAL_MOVIMENTACOES: item.TOTAL_MOVIMENTACOES,
-                USUARIO_CONTAGEM: item.USUARIO_CONTAGEM,
-                DT_CONTAGEM: item.DT_CONTAGEM,
-                BLOCO: item.BLOCO,
-                CUSTO_UNITARIO: item.CUSTO_UNITARIO || 0,
-                VALOR_TOTAL_ESTOQUE: item.VALOR_TOTAL_ESTOQUE || 0,
-                LOCALIZACAO: localizacoesPorCodigo[item.CODIGO] || ''
-            }))
+            itens: itemsResult.recordset.map(item => {
+                const saldo = item.SALDO_SISTEMA || 0;
+                const valorTotal = item.VALOR_TOTAL_ESTOQUE || 0;
+                let custoUnitario = item.CUSTO_UNITARIO || 0;
+                if ((!custoUnitario || custoUnitario === 0) && saldo > 0 && valorTotal > 0) {
+                    custoUnitario = valorTotal / saldo;
+                }
+                return {
+                    CODIGO: item.CODIGO,
+                    DESCRICAO: item.DESCRICAO,
+                    SALDO_ATUAL: saldo,
+                    CONTAGEM_FISICA: item.CONTAGEM_FISICA,
+                    TOTAL_MOVIMENTACOES: item.TOTAL_MOVIMENTACOES,
+                    USUARIO_CONTAGEM: item.USUARIO_CONTAGEM,
+                    DT_CONTAGEM: item.DT_CONTAGEM,
+                    BLOCO: item.BLOCO,
+                    CUSTO_UNITARIO: custoUnitario,
+                    VALOR_TOTAL_ESTOQUE: valorTotal,
+                    LOCALIZACAO: localizacoesPorCodigo[item.CODIGO] || ''
+                };
+            })
         };
 
         return res.status(200).json({ inventario });
