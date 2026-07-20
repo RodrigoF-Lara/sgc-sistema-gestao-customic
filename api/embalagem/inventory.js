@@ -95,10 +95,45 @@ export default async function handler(req, res) {
         .input("CODIGO", sql.VarChar(10), codigoQuery)
         .query("SELECT ISNULL(SUM(SALDO),0) AS SALDO FROM [dbo].[KARDEX_2026_EMBALAGEM] WHERE CODIGO = @CODIGO AND D_E_L_E_T_ <> '*' AND KARDEX = 2026");
 
+      // Totais reais no kardex do ano (não limitados ao TOP do histórico).
+      // Aceita SAÍDA / SAIDA (com ou sem acento) e usa QNT < 0 como fallback.
+      const statsRes = await pool.request()
+        .input("CODIGO", sql.VarChar(10), codigoQuery)
+        .query(`
+          SELECT
+            SUM(CASE
+                  WHEN UPPER(LTRIM(RTRIM(OPERACAO))) COLLATE Latin1_General_CI_AI = 'ENTRADA'
+                    OR (OPERACAO IS NULL AND QNT > 0)
+                  THEN 1 ELSE 0
+                END) AS TOTAL_ENTRADAS,
+            SUM(CASE
+                  WHEN UPPER(LTRIM(RTRIM(OPERACAO))) COLLATE Latin1_General_CI_AI = 'SAIDA'
+                    OR (OPERACAO IS NULL AND QNT < 0)
+                  THEN 1 ELSE 0
+                END) AS TOTAL_SAIDAS,
+            ISNULL(SUM(CASE
+                  WHEN UPPER(LTRIM(RTRIM(OPERACAO))) COLLATE Latin1_General_CI_AI = 'ENTRADA'
+                    OR (OPERACAO IS NULL AND QNT > 0)
+                  THEN ABS(QNT) ELSE 0
+                END), 0) AS QTD_ENTRADAS,
+            ISNULL(SUM(CASE
+                  WHEN UPPER(LTRIM(RTRIM(OPERACAO))) COLLATE Latin1_General_CI_AI = 'SAIDA'
+                    OR (OPERACAO IS NULL AND QNT < 0)
+                  THEN ABS(QNT) ELSE 0
+                END), 0) AS QTD_SAIDAS,
+            convert(varchar, MAX(DT), 23) AS ULTIMA_DT
+          FROM [dbo].[KARDEX_2026]
+          WHERE CODIGO = @CODIGO
+            AND D_E_L_E_T_ <> '*'
+            AND USUARIO <> 'BJULHAO'
+            AND KARDEX = 2026
+        `);
+
+      // Histórico recente (limite maior para não “esconder” saídas entre muitas entradas)
       const mov = await pool.request()
         .input("CODIGO", sql.VarChar(10), codigoQuery)
         .query(`
-          SELECT TOP 50 
+          SELECT TOP 200
             ID, 
             CODIGO, 
             OPERACAO, 
@@ -115,8 +150,10 @@ export default async function handler(req, res) {
             AND D_E_L_E_T_ <> '*' 
             AND USUARIO <> 'BJULHAO'
             AND KARDEX = 2026
-          ORDER BY DT DESC, HR DESC
+          ORDER BY DT DESC, HR DESC, ID DESC
         `);
+
+      const stats = statsRes.recordset[0] || {};
 
       return res.status(200).json({
         codigo: codigoQuery,
@@ -126,6 +163,11 @@ export default async function handler(req, res) {
         estoqueMaximo: (prod.recordset[0] && prod.recordset[0].ESTOQUE_MAXIMO) || null,
         saldo: (saldoRes.recordset[0] && saldoRes.recordset[0].SALDO) || 0,
         movimentos: mov.recordset,
+        totalEntradas: stats.TOTAL_ENTRADAS || 0,
+        totalSaidas: stats.TOTAL_SAIDAS || 0,
+        qtdEntradas: stats.QTD_ENTRADAS || 0,
+        qtdSaidas: stats.QTD_SAIDAS || 0,
+        ultimaMovimentacao: stats.ULTIMA_DT || null,
       });
     }
 

@@ -125,12 +125,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  /** Normaliza OPERACAO: SAÍDA/SAIDA/saida etc. */
+  function normalizarOperacao(op) {
+    return String(op || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function isEntrada(mov) {
+    const op = normalizarOperacao(mov && mov.OPERACAO);
+    if (op === 'ENTRADA') return true;
+    if (op === 'SAIDA') return false;
+    // fallback pelo sinal da quantidade
+    return Number(mov && mov.QNT) > 0;
+  }
+
+  function isSaida(mov) {
+    const op = normalizarOperacao(mov && mov.OPERACAO);
+    if (op === 'SAIDA') return true;
+    if (op === 'ENTRADA') return false;
+    return Number(mov && mov.QNT) < 0;
+  }
+
   function renderEstatisticas(data) {
     if (!estatisticasContainer) return;
     
     const movimentos = data.movimentos || [];
-    const entradas = movimentos.filter(m => m.OPERACAO === 'ENTRADA');
-    const saidas = movimentos.filter(m => m.OPERACAO === 'SAÍDA');
+    // Preferir totais da API (kardex completo); fallback no histórico carregado
+    const totalEntradas = data.totalEntradas != null
+      ? Number(data.totalEntradas)
+      : movimentos.filter(isEntrada).length;
+    const totalSaidas = data.totalSaidas != null
+      ? Number(data.totalSaidas)
+      : movimentos.filter(isSaida).length;
+    const ultimaDt = data.ultimaMovimentacao || movimentos[0]?.DT || null;
     const saldoTotal = data.saldo || 0;
     const estoqueMinimo = data.estoqueMinimo;
     const estoqueIdeal = data.estoqueIdeal;
@@ -148,17 +178,17 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="stat-card">
           <i class="fa-solid fa-arrow-up"></i>
           <span class="stat-label">Total Entradas</span>
-          <span class="stat-value">${entradas.length}</span>
+          <span class="stat-value">${totalEntradas.toLocaleString('pt-BR')}</span>
         </div>
         <div class="stat-card">
           <i class="fa-solid fa-arrow-down" style="color: #f44336;"></i>
           <span class="stat-label">Total Saídas</span>
-          <span class="stat-value">${saidas.length}</span>
+          <span class="stat-value">${totalSaidas.toLocaleString('pt-BR')}</span>
         </div>
         <div class="stat-card">
           <i class="fa-solid fa-calendar-days"></i>
           <span class="stat-label">Última Movimentação</span>
-          <span class="stat-value">${movimentos[0]?.DT ? movimentos[0].DT.split('-').reverse().join('/') : '-'}</span>
+          <span class="stat-value">${ultimaDt ? String(ultimaDt).split('-').reverse().join('/') : '-'}</span>
         </div>
       </div>
       <div style="margin-top: 18px; background: #fff; border: 1px solid #d0d5dd; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(16,24,40,0.04);">
@@ -268,23 +298,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     rows.forEach((row) => {
+      const entrada = isEntrada(row);
+      const opLabel = entrada ? 'ENTRADA' : (isSaida(row) ? 'SAÍDA' : (row.OPERACAO || '-'));
       historicoBody.innerHTML += `
         <tr data-id-movimento="${row.ID_TB_RESUMO}">
           <td>${row.ID_TB_RESUMO || "-"}</td>
           <td><span class="badge ${
-            row.OPERACAO === "ENTRADA" ? "badge-entrada" : "badge-saida"
-          }">${row.OPERACAO === "ENTRADA" ? "📥" : "📤"} ${
-        row.OPERACAO || "-"
-      }</span></td>
+            entrada ? "badge-entrada" : "badge-saida"
+          }">${entrada ? "📥" : "📤"} ${opLabel}</span></td>
           <td>${row.ENDERECO || "-"}</td>
           <td>${row.ARMAZEM ? String(row.ARMAZEM).padStart(2, "0") : "-"}</td>
-          <td class="text-right"><strong>${row.QNT || 0}</strong></td>
+          <td class="text-right"><strong style="color:${Number(row.QNT) < 0 ? '#c62828' : 'inherit'}">${row.QNT ?? 0}</strong></td>
           <td>${row.USUARIO || "-"}</td>
           <td>${row.DT ? row.DT.split('-').reverse().join('/') : '-'}</td>
           <td>${row.HR || "-"}</td>
           <td class="actions-cell">
             ${
-              row.OPERACAO === "ENTRADA"
+              entrada
                 ? `<button class="btn-reimprimir" title="Reimprimir Etiqueta">
                 <i class="fa-solid fa-print"></i>
               </button>`
