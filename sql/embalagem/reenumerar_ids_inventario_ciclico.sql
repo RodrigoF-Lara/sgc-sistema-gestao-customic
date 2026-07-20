@@ -185,7 +185,9 @@ BEGIN TRY
             INNER JOIN #MapInv m ON m.OLD_ID = h.ID_INVENTARIO;
         END
 
-        PRINT CONCAT('Snapshot de cabeçalhos: ', (SELECT COUNT(*) FROM #HeaderNew), ' linhas.');
+        DECLARE @QtdHeader INT;
+        SELECT @QtdHeader = COUNT(*) FROM #HeaderNew;
+        PRINT 'Snapshot de cabeçalhos: ' + CAST(@QtdHeader AS VARCHAR(20)) + ' linhas.';
 
         ------------------------------------------------------------
         -- 2.4 Itens → IDs temporários negativos
@@ -266,9 +268,11 @@ BEGIN TRY
         ------------------------------------------------------------
         -- 2.8 IDENTITY seed = MAX(ID)
         ------------------------------------------------------------
-        DECLARE @MaxId INT = (SELECT ISNULL(MAX(ID_INVENTARIO), 0) FROM [dbo].[TB_INVENTARIO_CICLICO]);
+        DECLARE @MaxId INT;
+        SELECT @MaxId = ISNULL(MAX(ID_INVENTARIO), 0) FROM [dbo].[TB_INVENTARIO_CICLICO];
         DBCC CHECKIDENT ('[dbo].[TB_INVENTARIO_CICLICO]', RESEED, @MaxId);
-        PRINT CONCAT('IDENTITY reseed para ', @MaxId, '. Próximo ID será ', @MaxId + 1, '.');
+        PRINT 'IDENTITY reseed para ' + CAST(@MaxId AS VARCHAR(20))
+            + '. Próximo ID será ' + CAST(@MaxId + 1 AS VARCHAR(20)) + '.';
 
         COMMIT TRANSACTION;
         PRINT '=== Renumeração concluída com sucesso ===';
