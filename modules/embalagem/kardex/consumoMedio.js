@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const dataPeriodo = document.getElementById('dataPeriodo');
+    const filtroTipoProduto = document.getElementById('filtroTipoProduto');
     const filtroFornecedor = document.getElementById('filtroFornecedor');
     const filtroCodigo = document.getElementById('filtroCodigo');
     const filtroContagem = document.getElementById('filtroContagem');
@@ -27,6 +28,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
     dataPeriodo.value = mesAtual;
 
+    carregarTiposProduto();
+
     gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
     imprimirBtn.addEventListener('click', imprimirRelatorio);
     exportarExcelBtn.addEventListener('click', exportarParaExcel);
@@ -36,8 +39,36 @@ document.addEventListener('DOMContentLoaded', function() {
         renderizarTabela();
     });
 
+    async function carregarTiposProduto() {
+        try {
+            const response = await fetch('/api/embalagem/relatorios?acao=tiposProduto');
+            if (!response.ok) throw new Error('Erro ao carregar tipos');
+
+            const data = await response.json();
+            const tipos = data.tipos || [];
+
+            tipos.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo;
+                filtroTipoProduto.appendChild(option);
+            });
+
+            // Padrão do módulo embalagem: pré-seleciona EMBALAGEM se existir
+            const temEmbalagem = tipos.some(t => String(t).toUpperCase() === 'EMBALAGEM');
+            if (temEmbalagem) {
+                filtroTipoProduto.value = tipos.find(t => String(t).toUpperCase() === 'EMBALAGEM');
+            }
+
+            console.log('✅ Tipos de produto carregados:', tipos.length);
+        } catch (error) {
+            console.error('❌ Erro ao carregar tipos de produto:', error);
+        }
+    }
+
     async function gerarRelatorio() {
         const periodo = dataPeriodo.value;
+        const tipoProduto = filtroTipoProduto.value;
         const fornecedor = filtroFornecedor.value.trim();
 
         if (!periodo) {
@@ -50,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             let url = `/api/embalagem/relatorios?acao=consumoMedio&periodo=${periodo}`;
+            if (tipoProduto) {
+                url += `&tipoProduto=${encodeURIComponent(tipoProduto)}`;
+            }
             if (fornecedor) {
                 url += `&fornecedor=${encodeURIComponent(fornecedor)}`;
             }

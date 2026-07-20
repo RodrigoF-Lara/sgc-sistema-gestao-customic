@@ -195,7 +195,7 @@ async function relatorioBaixaPorPeriodo(req, res) {
 
 async function gerarRelatorioConsumo(req, res) {
     try {
-        const { periodo, fornecedor } = req.query;
+        const { periodo, fornecedor, tipoProduto } = req.query;
 
         if (!periodo) {
             return res.status(400).json({ 
@@ -212,7 +212,12 @@ async function gerarRelatorioConsumo(req, res) {
             });
         }
 
-        console.log('?? Gerando relatório de consumo para:', { ano, mes });
+        console.log('?? Gerando relatório de consumo para:', {
+            ano,
+            mes,
+            tipoProduto: tipoProduto || 'Todos',
+            fornecedor: fornecedor || 'Todos'
+        });
 
         const pool = await getConnection();
         
@@ -276,6 +281,7 @@ async function gerarRelatorioConsumo(req, res) {
                 sa.CODIGO,
                 sa.SALDO_ATUAL,
                 ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
+                ISNULL(cp.TIPO, 'NÃO INFORMADO') AS TIPO,
                 ISNULL(uf.PRECO_UNITARIO, 0) AS PRECO_UNITARIO,
                 ISNULL(sa.SALDO_ATUAL, 0) * ISNULL(uf.PRECO_UNITARIO, 0) AS VALOR_TOTAL_ESTOQUE,
                 ISNULL(uf.FORNECEDOR, 'NÃO INFORMADO') AS FORNECEDOR,
@@ -291,6 +297,11 @@ async function gerarRelatorioConsumo(req, res) {
             WHERE ISNULL(uf.PRECO_UNITARIO, 0) > 0
         `;
 
+        // Filtro por tipo de produto (CAD_PROD.TIPO)
+        if (tipoProduto && tipoProduto.trim()) {
+            query += ` AND cp.TIPO = @TIPO_PRODUTO`;
+        }
+
         // Adiciona filtro de fornecedor se especificado
         if (fornecedor && fornecedor.trim()) {
             query += ` AND uf.FORNECEDOR LIKE '%' + @FORNECEDOR + '%'`;
@@ -299,6 +310,10 @@ async function gerarRelatorioConsumo(req, res) {
         query += ` ORDER BY VALOR_TOTAL_ESTOQUE DESC`;
 
         const request = pool.request();
+
+        if (tipoProduto && tipoProduto.trim()) {
+            request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
+        }
         
         if (fornecedor && fornecedor.trim()) {
             request.input('FORNECEDOR', sql.NVarChar, fornecedor);
