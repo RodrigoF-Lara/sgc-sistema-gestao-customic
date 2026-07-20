@@ -80,9 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
         gerarRelatorioBtn.disabled = true;
         gerarRelatorioBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
 
-        // Timeout no browser: se a API/Vercel travar, libera a tela em ~50s
+        // Timeout no browser (alinhado ao maxDuration da API no Vercel)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 50000);
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
         try {
             let url = `/api/embalagem/relatorios?acao=consumoMedio&periodo=${periodo}`;
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('❌ Erro ao gerar relatório:', error);
             if (error.name === 'AbortError') {
                 mostrarMensagem(
-                    'A consulta demorou demais e foi cancelada. Tente filtrar por tipo de produto (ex.: EMBALAGEM) ou fornecedor e gere novamente.',
+                    'A consulta demorou demais e foi cancelada. Aguarde o deploy atualizar e tente novamente.',
                     'error'
                 );
             } else {
