@@ -110,7 +110,27 @@ async function listarStatus(req, res) {
                 FROM RankedLogs rl
                 INNER JOIN [dbo].[CAD_PROD] cp ON rl.CODIGO = cp.CODIGO
                 LEFT JOIN LeadTimePorItem lt ON lt.NF = rl.NF AND lt.CODIGO = rl.CODIGO
-                WHERE rl.rn = 1 AND (${tipoWhereCondition})
+                WHERE rl.rn = 1
+                  AND (${tipoWhereCondition})
+                  -- Esconde NF cancelada/excluída (sem cabeçalho em NF_CABECALHO)
+                  AND (
+                        (
+                            rl.ID_NF IS NOT NULL
+                            AND EXISTS (
+                                SELECT 1 FROM [dbo].[NF_CABECALHO] cab
+                                WHERE cab.CAB_ID_NF = rl.ID_NF
+                            )
+                        )
+                        OR (
+                            rl.ID_NF IS NULL
+                            AND rl.NF IS NOT NULL
+                            AND EXISTS (
+                                SELECT 1 FROM [dbo].[NF_CABECALHO] cab
+                                WHERE LTRIM(RTRIM(CAST(cab.CAB_NUM_NF AS NVARCHAR(50))))
+                                    = LTRIM(RTRIM(CAST(rl.NF AS NVARCHAR(50))))
+                            )
+                        )
+                  )
                 ORDER BY rl.DT DESC, rl.HH DESC;
             `);
         

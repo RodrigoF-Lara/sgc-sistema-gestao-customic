@@ -617,7 +617,7 @@ export default async function handler(req, res) {
                 });
             }
 
-            // Exclui NF e todos os produtos
+            // Exclui NF, produtos e logs de status (fila de processamento)
             if (action === "excluir_nf") {
                 const { id_nf, num_nf } = req.body;
                 if (!id_nf) return res.status(400).json({ message: "Campo 'id_nf' obrigatÃ³rio." });
@@ -625,12 +625,33 @@ export default async function handler(req, res) {
                 const transaction = pool.transaction();
                 await transaction.begin();
                 try {
+                    const idNfNum = Number(id_nf);
+
+                    // Remove da fila de status (TB_LOG_NF) antes de apagar produtos/cabeçalho
                     await transaction.request()
-                        .input("ID_NF", sql.Int, Number(id_nf))
+                        .input("ID_NF", sql.Int, idNfNum)
+                        .input("NUM_NF", sql.VarChar, num_nf != null ? String(num_nf) : null)
+                        .query(`
+                            DELETE FROM [dbo].[TB_LOG_NF]
+                            WHERE ID_NF = @ID_NF
+                               OR ID_NF_PROD IN (
+                                    SELECT PROD_ID_PROD
+                                    FROM [dbo].[NF_PRODUTOS]
+                                    WHERE PROD_ID_NF = @ID_NF
+                               )
+                               OR (
+                                    @NUM_NF IS NOT NULL
+                                    AND LTRIM(RTRIM(CAST(NF AS NVARCHAR(50)))) = LTRIM(RTRIM(@NUM_NF))
+                                    AND (ID_NF IS NULL OR ID_NF = @ID_NF)
+                               );
+                        `);
+
+                    await transaction.request()
+                        .input("ID_NF", sql.Int, idNfNum)
                         .query("DELETE FROM [dbo].[NF_PRODUTOS] WHERE PROD_ID_NF = @ID_NF");
 
                     await transaction.request()
-                        .input("ID_NF", sql.Int, Number(id_nf))
+                        .input("ID_NF", sql.Int, idNfNum)
                         .query("DELETE FROM [dbo].[NF_CABECALHO] WHERE CAB_ID_NF = @ID_NF");
 
                     await transaction.commit();
