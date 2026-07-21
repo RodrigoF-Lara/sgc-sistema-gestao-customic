@@ -1,6 +1,29 @@
 // filepath: api/statusNF.js
 import { getConnection, sql } from "../../db.js";
 
+/** Data/hora de São Paulo como strings (evita bug de fuso no Vercel UTC). */
+function obterDataHoraSaoPaulo() {
+    const agora = new Date();
+    const partes = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    }).formatToParts(agora);
+
+    const map = Object.fromEntries(partes.map(p => [p.type, p.value]));
+    // sv-SE pode retornar hour "24" em edge cases — normaliza
+    let hora = map.hour === '24' ? '00' : map.hour;
+    return {
+        dataISO: `${map.year}-${map.month}-${map.day}`,
+        horaLocal: `${hora}:${map.minute}:${map.second}`
+    };
+}
+
 export default async function handler(req, res) {
     const { method } = req;
     
@@ -143,11 +166,8 @@ async function atualizarStatus(req, res) {
 
     try {
         const pool = await getConnection();
-        const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-
-        // Formata data e hora em BRT
-        const dt = nowBRT.toISOString().split("T")[0]; // YYYY-MM-DD
-        const hh = nowBRT.toTimeString().split(" ")[0]; // HH:MM:SS
+        // NÃO usar new Date(toLocaleString(...)) — no Vercel (UTC) grava 3h a menos
+        const agoraSP = obterDataHoraSaoPaulo();
 
         await pool.request()
             .input("ID_NF", sql.Int, id_nf ? Number(id_nf) : null)
@@ -155,8 +175,8 @@ async function atualizarStatus(req, res) {
             .input("NF", sql.NVarChar, nf.toString())
             .input("CODIGO", sql.NVarChar, codigo.toString())
             .input("USUARIO", sql.NVarChar, usuario.toString())
-            .input("DT", sql.Date, dt)
-            .input("HH", sql.NVarChar, hh)
+            .input("DT", sql.Date, agoraSP.dataISO)
+            .input("HH", sql.NVarChar, agoraSP.horaLocal)
             .input("PROCESSO", sql.NVarChar, processo.toString())
             .input("APP", sql.NVarChar, "KARDEX WEB")
             .input("QNT", sql.Int, qnt !== undefined && qnt !== null ? Number(qnt) : 0)

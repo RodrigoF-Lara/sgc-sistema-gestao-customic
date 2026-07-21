@@ -1,5 +1,27 @@
 import { getConnection, sql } from "../../db.js";
 
+/** Data/hora de São Paulo como strings (evita bug de fuso no Vercel UTC). */
+function obterDataHoraSaoPaulo() {
+    const agora = new Date();
+    const partes = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    }).formatToParts(agora);
+
+    const map = Object.fromEntries(partes.map(p => [p.type, p.value]));
+    let hora = map.hour === '24' ? '00' : map.hour;
+    return {
+        dataISO: `${map.year}-${map.month}-${map.day}`,
+        horaLocal: `${hora}:${map.minute}:${map.second}`
+    };
+}
+
 // ============================================================
 // API de LanÃ§amento de NF
 // Rotas:
@@ -243,7 +265,7 @@ export default async function handler(req, res) {
                 if (dup.recordset.length > 0)
                     return res.status(409).json({ message: "NF jÃ¡ cadastrada para este fornecedor.", id_nf: dup.recordset[0].CAB_ID_NF });
 
-                const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+                const agoraSP = obterDataHoraSaoPaulo();
 
                 const result = await pool.request()
                     .input("COD_FORN",   sql.VarChar,    cod_forn)
@@ -253,8 +275,8 @@ export default async function handler(req, res) {
                     .input("RAZAO",      sql.VarChar,   razao || "")
                     .input("DT_EMISSAO", sql.Date,           dt_emissao ? new Date(dt_emissao + "T12:00:00") : null)
                     .input("DT_RECEB",   sql.Date,           dt_receb ? new Date(dt_receb + "T12:00:00") : null)
-                    .input("DT_DIG",     sql.Date,           nowBRT)
-                    .input("HR_DIG",     sql.VarChar,     nowBRT.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
+                    .input("DT_DIG",     sql.Date,           agoraSP.dataISO)
+                    .input("HR_DIG",     sql.VarChar,     agoraSP.horaLocal)
                     .input("ICMS",       sql.Float,          Number(icms) || 0)
                     .input("ST",         sql.Float,          Number(st) || 0)
                     .input("FRETE",      sql.Float,          Number(frete) || 0)
@@ -391,16 +413,16 @@ export default async function handler(req, res) {
 
                 const id_prod = result.recordset[0].PROD_ID_PROD;
 
-                // Grava log
-                const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+                // Grava log (horário SP — não usar new Date(toLocaleString) no Vercel)
+                const agoraSPLog = obterDataHoraSaoPaulo();
                 await pool.request()
                     .input("ID_NF",    sql.Int,        Number(id_nf))
                     .input("ID_PROD",  sql.Int,        id_prod)
                     .input("NF",       sql.VarChar, num_nf || "")
                     .input("CODIGO",   sql.VarChar, codigo)
                     .input("USUARIO",  sql.VarChar, usuario || "WEB")
-                    .input("DT",       sql.Date,        nowBRT)
-                    .input("HH",       sql.VarChar,  nowBRT.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
+                    .input("DT",       sql.Date,        agoraSPLog.dataISO)
+                    .input("HH",       sql.VarChar,  agoraSPLog.horaLocal)
                     .input("QNT",      sql.Float,       Number(qnt) || 0)
                     .query(`
                         INSERT INTO [dbo].[TB_LOG_NF]
@@ -496,14 +518,14 @@ export default async function handler(req, res) {
                         WHERE [PROD_ID_PROD] = @ID_PROD
                     `);
 
-                // Atualiza log
-                const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+                // Atualiza log (horário SP — não usar new Date(toLocaleString) no Vercel)
+                const agoraSPUpd = obterDataHoraSaoPaulo();
                 await pool.request()
                     .input("ID_PROD",  sql.Int,         Number(id_prod))
                     .input("CODIGO",   sql.VarChar,  codigo)
                     .input("USUARIO",  sql.VarChar, usuario || "WEB")
-                    .input("DT",       sql.Date,         nowBRT)
-                    .input("HH",       sql.VarChar,   nowBRT.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
+                    .input("DT",       sql.Date,         agoraSPUpd.dataISO)
+                    .input("HH",       sql.VarChar,   agoraSPUpd.horaLocal)
                     .input("QNT",      sql.Float,        Number(qnt) || 0)
                     .query(`
                         UPDATE [dbo].[TB_LOG_NF]
