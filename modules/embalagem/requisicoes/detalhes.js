@@ -61,11 +61,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         return dataBase;
     }
 
-    // --- NOVA FUNÇÃO PARA FORMATAR DATA E HORA LOCAL ---
+    // Formata instante UTC (vindo do servidor/Vercel) em horário de São Paulo.
+    // Usado no histórico e em DT_CONCLUSAO (gravados com new Date() = UTC no Vercel).
     function formatarDataHoraLocal(dataStringUTC) {
         if (!dataStringUTC) return 'N/A';
-        const data = new Date(dataStringUTC); 
+        const data = new Date(dataStringUTC);
+        if (Number.isNaN(data.getTime())) return 'N/A';
         return data.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit', second: '2-digit'
         });
@@ -79,6 +82,45 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
+    /**
+     * Converte instante UTC (Date/ISO) para Date "local" com o relógio de São Paulo.
+     * Necessário para lead time: início da requisição já é BRT (DT+HR);
+     * DT_CONCLUSAO no banco vem como UTC do Vercel — se usarmos parseDataHoraSemFuso
+     * (que trata 11:55 UTC como 11:55 local) o lead time ganha +3h.
+     */
+    function utcParaDataLocalSaoPaulo(valor) {
+        if (!valor) return null;
+        const d = valor instanceof Date ? valor : new Date(valor);
+        if (Number.isNaN(d.getTime())) return null;
+
+        const partes = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).formatToParts(d);
+
+        const get = (tipo) => {
+            const p = partes.find(x => x.type === tipo);
+            return p ? Number(p.value) : 0;
+        };
+
+        return new Date(
+            get('year'),
+            get('month') - 1,
+            get('day'),
+            get('hour'),
+            get('minute'),
+            get('second'),
+            0
+        );
+    }
+
+    // Mantido para campos gravados como "relógio local" (ex.: montagens sem fuso).
     function parseDataHoraSemFuso(valor) {
         if (!valor) return null;
 
@@ -143,7 +185,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     function calcularLeadTimeMs(header) {
         const inicio = montarDataHoraRequisicao(header);
-        const fim = header?.DT_CONCLUSAO ? parseDataHoraSemFuso(header.DT_CONCLUSAO) : new Date();
+        // DT_CONCLUSAO é instante UTC (Vercel). Converter para relógio SP, igual à solicitação.
+        const fim = header?.DT_CONCLUSAO
+            ? utcParaDataLocalSaoPaulo(header.DT_CONCLUSAO)
+            : utcParaDataLocalSaoPaulo(new Date());
 
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
@@ -193,7 +238,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     function renderHeader(header) {
         const dataRequisicao = formatarDataHora(montarDataHoraRequisicao(header));
         const dataNecessidade = formatarData(header.DT_NECESSIDADE);
-        const dataConclusao = header.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(header.DT_CONCLUSAO)) : 'Em aberto';
+        // Conclusão: mesmo critério do histórico (UTC → horário de São Paulo)
+        const dataConclusao = header.DT_CONCLUSAO ? formatarDataHoraLocal(header.DT_CONCLUSAO) : 'Em aberto';
         const leadTime = formatarLeadTime(calcularLeadTimeMs(header));
         const prioridade = (header.PRIORIDADE || 'NORMAL').trim();
         const status = (header.STATUS || 'PENDENTE').trim();
@@ -437,7 +483,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ['Solicitante', data.header.SOLICITANTE || 'N/A'],
                 ['Data/Hora Solicitação', formatarDataHora(montarDataHoraRequisicao(data.header))],
                 ['Data Necessidade', formatarData(data.header.DT_NECESSIDADE)],
-                ['Data/Hora Conclusão', data.header.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(data.header.DT_CONCLUSAO)) : 'Em aberto'],
+                ['Data/Hora Conclusão', data.header.DT_CONCLUSAO ? formatarDataHoraLocal(data.header.DT_CONCLUSAO) : 'Em aberto'],
                 ['Lead Time', data.header.DT_CONCLUSAO ? formatarLeadTime(calcularLeadTimeMs(data.header)) : `Em aberto: ${formatarLeadTime(calcularLeadTimeMs(data.header))}`],
                 ['Prioridade', (data.header.PRIORIDADE || 'NORMAL').trim()],
                 ['Status', (data.header.STATUS || 'PENDENTE').trim()],

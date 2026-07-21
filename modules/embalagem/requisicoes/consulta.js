@@ -44,6 +44,58 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Formata instante UTC (DT_CONCLUSAO do Vercel) em horário de São Paulo
+    function formatarDataHoraLocal(dataStringUTC) {
+        if (!dataStringUTC) return 'N/A';
+        const data = new Date(dataStringUTC);
+        if (Number.isNaN(data.getTime())) return 'N/A';
+        return data.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    /**
+     * Converte instante UTC para Date local com o relógio de São Paulo.
+     * Evita lead time +3h (DT_CONCLUSAO gravado em UTC no Vercel).
+     */
+    function utcParaDataLocalSaoPaulo(valor) {
+        if (!valor) return null;
+        const d = valor instanceof Date ? valor : new Date(valor);
+        if (Number.isNaN(d.getTime())) return null;
+
+        const partes = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).formatToParts(d);
+
+        const get = (tipo) => {
+            const p = partes.find(x => x.type === tipo);
+            return p ? Number(p.value) : 0;
+        };
+
+        return new Date(
+            get('year'),
+            get('month') - 1,
+            get('day'),
+            get('hour'),
+            get('minute'),
+            get('second'),
+            0
+        );
+    }
+
     function parseDataHoraSemFuso(valor) {
         if (!valor) return null;
 
@@ -145,7 +197,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calcularLeadTimeMs(req) {
         const inicio = montarDataHoraRequisicao(req);
-        const fim = req.DT_CONCLUSAO ? parseDataHoraSemFuso(req.DT_CONCLUSAO) : new Date();
+        // DT_CONCLUSAO é UTC do Vercel → converter para relógio SP (igual à solicitação BRT)
+        const fim = req.DT_CONCLUSAO
+            ? utcParaDataLocalSaoPaulo(req.DT_CONCLUSAO)
+            : utcParaDataLocalSaoPaulo(new Date());
 
         if (!inicio || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return null;
 
@@ -180,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function obterTooltipLeadTime(req) {
         const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
-        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(req.DT_CONCLUSAO)) : 'Em aberto';
+        const conclusao = req.DT_CONCLUSAO ? formatarDataHoraLocal(req.DT_CONCLUSAO) : 'Em aberto';
 
         return `Solicitação: ${solicitacao}\nConclusão: ${conclusao}`;
     }
@@ -193,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function exibirDetalhesLeadTime(req, anchorEl) {
         const solicitacao = formatarDataHora(montarDataHoraRequisicao(req));
-        const conclusao = req.DT_CONCLUSAO ? formatarDataHora(parseDataHoraSemFuso(req.DT_CONCLUSAO)) : 'Em aberto';
+        const conclusao = req.DT_CONCLUSAO ? formatarDataHoraLocal(req.DT_CONCLUSAO) : 'Em aberto';
 
         const idReqAtual = String(req.ID_REQ || '');
         if (leadTimePopover && leadTimePopover.dataset.idReq === idReqAtual) {
