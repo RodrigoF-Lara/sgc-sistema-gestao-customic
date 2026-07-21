@@ -160,45 +160,55 @@ COMMIT TRANSACTION;
 GO
 
 /* =====================================================
-   PARTE 5 (OPCIONAL) — HR_DIG do cabeçalho da NF
-   Se DT_DIG/HR_DIG também tiverem o mesmo bug no lançamento
+   PARTE 5 (OPCIONAL) — digitação no cabeçalho da NF
+   Colunas reais: CAB_DT_DIGITACAO / CAB_HR_DIGITACAO
    ===================================================== */
 
-PRINT '=== Cabeçalhos com possível HR_DIG 3h atrasada (amostra) ===';
+PRINT '=== Cabeçalhos (amostra) CAB_DT_DIGITACAO / CAB_HR_DIGITACAO ===';
 SELECT TOP 50
     CAB_ID_NF,
     CAB_NUM_NF,
-    CAB_DT_DIG,
-    CAB_HR_DIG,
+    CAB_DT_DIGITACAO,
+    CAB_HR_DIGITACAO,
     CONVERT(varchar(8),
-        DATEADD(HOUR, 3, CAST(CAST(CAB_DT_DIG AS datetime) + CAST(CAST(CAB_HR_DIG AS time) AS datetime) AS datetime)),
+        DATEADD(HOUR, 3,
+            DATEADD(SECOND,
+                DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(CAB_HR_DIGITACAO AS time)),
+                CAST(CAB_DT_DIGITACAO AS datetime2)
+            )
+        ),
         108
     ) AS HR_DIG_SE_SOMAR_3H
 FROM [dbo].[NF_CABECALHO]
-WHERE CAB_HR_DIG IS NOT NULL
-  AND TRY_CAST(CAB_HR_DIG AS time) IS NOT NULL
+WHERE CAB_HR_DIGITACAO IS NOT NULL
+  AND TRY_CAST(CAB_HR_DIGITACAO AS time) IS NOT NULL
+  AND CAB_DT_DIGITACAO IS NOT NULL
 ORDER BY CAB_ID_NF DESC;
 
 /*
--- Só rode se confirmar que CAB_HR_DIG também está 3h atrás:
+-- Só rode se confirmar que CAB_HR_DIGITACAO também está 3h atrás:
 BEGIN TRANSACTION;
 
-UPDATE [dbo].[NF_CABECALHO]
+UPDATE cab
 SET
-    CAB_DT_DIG = CAST(DATEADD(HOUR, 3,
-                    CAST(CAST(CAB_DT_DIG AS datetime) + CAST(CAST(CAB_HR_DIG AS time) AS datetime) AS datetime)
-                 ) AS date),
-    CAB_HR_DIG = CONVERT(varchar(8), DATEADD(HOUR, 3,
-                    CAST(CAST(CAB_DT_DIG AS datetime) + CAST(CAST(CAB_HR_DIG AS time) AS datetime) AS datetime)
-                 ), 108)
-WHERE CAB_HR_DIG IS NOT NULL
-  AND TRY_CAST(CAB_HR_DIG AS time) IS NOT NULL
-  -- restrinja o período do bug se souber, ex.:
-  -- AND CAB_DT_DIG >= '2025-01-01'
-;
+    CAB_DT_DIGITACAO = CAST(DATEADD(HOUR, 3, x.dt_hr) AS date),
+    CAB_HR_DIGITACAO = CONVERT(varchar(8), DATEADD(HOUR, 3, x.dt_hr), 108)
+FROM [dbo].[NF_CABECALHO] cab
+CROSS APPLY (
+    SELECT DATEADD(
+        SECOND,
+        DATEDIFF(SECOND, CAST('00:00:00' AS time), CAST(cab.CAB_HR_DIGITACAO AS time)),
+        CAST(cab.CAB_DT_DIGITACAO AS datetime2)
+    ) AS dt_hr
+) x
+WHERE cab.CAB_HR_DIGITACAO IS NOT NULL
+  AND TRY_CAST(cab.CAB_HR_DIGITACAO AS time) IS NOT NULL
+  AND cab.CAB_DT_DIGITACAO IS NOT NULL;
 
-COMMIT TRANSACTION;
+-- COMMIT TRANSACTION;
+ROLLBACK TRANSACTION;
+
 */
 
-PRINT 'Script carregado. Rode parte a parte e valide o preview antes do COMMIT.';
+PRINT 'Fim do script. PARTE 3: troque ROLLBACK por COMMIT se o preview do log estiver ok.';
 GO
