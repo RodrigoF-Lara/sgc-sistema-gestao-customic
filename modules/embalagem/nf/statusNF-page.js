@@ -105,21 +105,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Corte do indicador de lead time das NFs: início de "ontem" (America/Sao_Paulo).
-     * Histórico antigo (status inconsistente) permanece no sistema, mas não entra na média.
+     * Corte fixo do indicador de lead time das NFs.
+     * Histórico anterior a esta data permanece no sistema, mas não entra na média
+     * (status inconsistente no passado).
      */
-    function obterInicioOntemSaoPaulo() {
-        const partes = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/Sao_Paulo',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).formatToParts(new Date());
+    const DATA_CORTE_LEAD_TIME_NF = new Date(2026, 6, 20, 0, 0, 0, 0); // 20/07/2026 00:00
 
-        const get = (tipo) => Number(partes.find(p => p.type === tipo)?.value || 0);
-        const hojeSp = new Date(get('year'), get('month') - 1, get('day'), 0, 0, 0, 0);
-        hojeSp.setDate(hojeSp.getDate() - 1);
-        return hojeSp;
+    function obterDataCorteLeadTimeNF() {
+        return DATA_CORTE_LEAD_TIME_NF;
     }
 
     function formatarDataCurta(data) {
@@ -131,11 +124,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    /** Só entra no indicador se o fluxo começou a partir de ontem (DT_HR_INICIO). */
+    /** Só entra no indicador se o fluxo começou a partir de 20/07/2026 (DT_HR_INICIO). */
     function itemElegivelLeadTimeIndicador(item) {
         const inicio = parseDataHoraSemFuso(item.DT_HR_INICIO);
         if (!inicio) return false;
-        return inicio.getTime() >= obterInicioOntemSaoPaulo().getTime();
+        return inicio.getTime() >= obterDataCorteLeadTimeNF().getTime();
     }
 
     function filtrarItensLeadTimeIndicador(data) {
@@ -160,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function calcularLeadTimeMedioMinutos(data) {
-        // Indicador: apenas itens com início do fluxo a partir de ontem
+        // Indicador: apenas itens com início do fluxo a partir de 20/07/2026
         const temposValidos = filtrarItensLeadTimeIndicador(data)
             .map(item => calcularLeadTimeTotalItemMinutos(item))
             .filter(valor => Number.isFinite(valor) && valor >= 0);
@@ -196,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, {});
 
         const leadTimeMedioMin = calcularLeadTimeMedioMinutos(data);
-        const dataCorte = obterInicioOntemSaoPaulo();
+        const dataCorte = obterDataCorteLeadTimeNF();
         const qtdLeadTime = filtrarItensLeadTimeIndicador(data).length;
 
         summaryContainer.innerHTML = '';
@@ -204,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const leadTimeCard = document.createElement('div');
         leadTimeCard.className = 'summary-card leadtime-clickable';
         leadTimeCard.id = 'leadTimeMedioCard';
-        leadTimeCard.title = `Indicador considera apenas fluxos iniciados a partir de ${formatarDataCurta(dataCorte)} (ontem). Dados anteriores permanecem no histórico, mas não entram na média.`;
+        leadTimeCard.title = `Indicador considera apenas fluxos iniciados a partir de ${formatarDataCurta(dataCorte)}. Dados anteriores permanecem no histórico, mas não entram na média.`;
         leadTimeCard.innerHTML = `
             <h3>Lead Time Médio</h3>
             <p>${formatarDuracaoMinutos(leadTimeMedioMin)}</p>
@@ -224,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderLeadTimePorStatusModal(data) {
-        const dataCorte = obterInicioOntemSaoPaulo();
+        const dataCorte = obterDataCorteLeadTimeNF();
         const dataIndicador = filtrarItensLeadTimeIndicador(data);
 
         const agregados = dataIndicador.reduce((acc, item) => {
@@ -254,8 +247,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="info-message">
                     Sem dados suficientes para o indicador com os filtros atuais.
                     <br><br>
-                    O lead time médio considera apenas fluxos <strong>iniciados a partir de ${formatarDataCurta(dataCorte)}</strong>
-                    (ontem em diante), para não distorcer o indicador com histórico antigo de troca de status.
+                    O lead time médio considera apenas fluxos <strong>iniciados a partir de ${formatarDataCurta(dataCorte)}</strong>,
+                    para não distorcer o indicador com histórico antigo de troca de status.
                 </p>`;
             return;
         }
@@ -268,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <br>
                 <strong>Itens considerados:</strong> ${linhas.reduce((acc, item) => acc + item.quantidade, 0)}
                 <br>
-                <strong>Período do indicador:</strong> a partir de ${formatarDataCurta(dataCorte)} (ontem em diante)
+                <strong>Período do indicador:</strong> a partir de ${formatarDataCurta(dataCorte)}
                 <br>
                 <span style="opacity:.85;">Registros anteriores permanecem no sistema e no histórico da NF, mas não entram nesta média.</span>
             </div>
