@@ -439,7 +439,11 @@ document.addEventListener('DOMContentLoaded', function () {
             ${valorInfo}
         `;
 
-        const podeEditar = status !== 'FINALIZADO';
+        // Contagem pode ser ajustada mesmo após finalização (recalcula diferença/acuracidade/totais).
+        // Inclusão/exclusão de itens só em inventário não finalizado.
+        const podeEditarContagem = true;
+        const podeGerenciarItens = status !== 'FINALIZADO';
+        const isFinalizado = status === 'FINALIZADO';
 
         const table = document.createElement('table');
         table.className = 'consulta-table inventario-table';
@@ -454,11 +458,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     <th>Saldo Sistema</th>
                     <th>Valor Unit.</th>
                     <th>Valor Total</th>
-                    <th>Contagem Física</th>
+                    <th>Contagem Física${isFinalizado ? ' <i class="fa-solid fa-pen-to-square" title="Ajustável mesmo finalizado" style="opacity:0.6;font-size:0.85em;"></i>' : ''}</th>
                     <th>Diferença</th>
                     <th>Acuracidade</th>
                     <th>Contado Por</th>
-                    ${podeEditar ? '<th>Ações</th>' : ''}
+                    ${podeGerenciarItens ? '<th>Ações</th>' : ''}
                 </tr>
             </thead>
             <tbody>
@@ -466,7 +470,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     const contagemFisica = item.CONTAGEM_FISICA || 0;
                     const saldoSistema = item.SALDO_ATUAL || 0;
                     const diferenca = contagemFisica - saldoSistema;
-                    const acuracidade = saldoSistema > 0 ? ((Math.min(contagemFisica, saldoSistema) / Math.max(contagemFisica, saldoSistema)) * 100) : 0;
+                    const acuracidade = (item.ACURACIDADE != null && !isNaN(item.ACURACIDADE))
+                        ? Number(item.ACURACIDADE)
+                        : (saldoSistema === 0 && contagemFisica === 0
+                            ? 100
+                            : (saldoSistema === 0 || contagemFisica === 0
+                                ? 0
+                                : (Math.min(contagemFisica, saldoSistema) / Math.max(contagemFisica, saldoSistema)) * 100));
                     
                     const usuarioContagem = item.USUARIO_CONTAGEM || '-';
                     const dataContagem = item.DT_CONTAGEM ? formatarDataHora(item.DT_CONTAGEM) : '-';
@@ -505,13 +515,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>R$ ${custoUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         <td><strong>R$ ${valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
                         <td>
-                            ${podeEditar ? 
+                            ${podeEditarContagem ? 
                                 `<input type="number" 
-                                        class="contagem-input" 
+                                        class="contagem-input${isFinalizado ? ' contagem-ajuste' : ''}" 
                                         data-codigo="${item.CODIGO}" 
+                                        data-valor-original="${contagemFisica}"
                                         value="${contagemFisica}" 
                                         min="0" 
-                                        step="1" />` 
+                                        step="1"
+                                        title="${isFinalizado ? 'Ajuste em inventário finalizado — ao sair do campo será solicitado confirmação' : 'Altere e saia do campo para salvar'}" />` 
                                 : contagemFisica}
                         </td>
                         <td class="${diferenca === 0 ? 'diferenca-zero' : diferenca > 0 ? 'diferenca-positiva' : 'diferenca-negativa'}">
@@ -525,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td class="info-contagem">
                             ${usuarioContagem !== '-' ? `<small><strong>${usuarioContagem}</strong><br>${dataContagem}</small>` : '-'}
                         </td>
-                        ${podeEditar ? `
+                        ${podeGerenciarItens ? `
                         <td>
                             <button class="btn-excluir-item" data-codigo="${item.CODIGO}" title="Excluir item">
                                 <i class="fa-solid fa-trash"></i>
@@ -538,9 +550,9 @@ document.addEventListener('DOMContentLoaded', function () {
             ${valorTotalGeral !== undefined ? `
             <tfoot>
                 <tr class="total-row">
-                    <td colspan="${podeEditar ? '7' : '7'}" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
+                    <td colspan="7" style="text-align: right;"><strong>TOTAL GERAL:</strong></td>
                     <td><strong>R$ ${valorTotalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
-                    <td colspan="${podeEditar ? '5' : '4'}"></td>
+                    <td colspan="${podeGerenciarItens ? '5' : '4'}"></td>
                 </tr>
             </tfoot>
             ` : ''}
@@ -550,16 +562,64 @@ document.addEventListener('DOMContentLoaded', function () {
         tabelaInventario.appendChild(table);
         listaInventarioContainer.style.display = 'block';
 
-        // Event listener para atualizar contagens em tempo real
-        if (podeEditar) {
+        if (isFinalizado) {
+            const aviso = document.createElement('p');
+            aviso.className = 'info-message';
+            aviso.style.marginTop = '10px';
+            aviso.innerHTML = '<i class="fa-solid fa-info-circle"></i> Inventário finalizado: você ainda pode <strong>ajustar a contagem física</strong> de um item. Ao alterar e sair do campo, o sistema recalcula diferença, acuracidade do item e totais do inventário.';
+            tabelaInventario.appendChild(aviso);
+        }
+
+        // Event listener para atualizar/ajustar contagens
+        if (podeEditarContagem) {
             table.querySelectorAll('.contagem-input').forEach(input => {
-                input.addEventListener('blur', function() {
-                    const novaContagem = parseFloat(this.value) || 0;
-                    atualizarContagemLocal(this.dataset.codigo, novaContagem);
-                    
-                    // Salva automaticamente no banco se o inventário já foi salvo
-                    if (inventarioAtual.id) {
-                        salvarContagemIndividual(inventarioAtual.id, this.dataset.codigo, novaContagem);
+                input.addEventListener('focus', function() {
+                    this.dataset.valorOriginal = this.value;
+                });
+
+                input.addEventListener('blur', async function() {
+                    const codigo = this.dataset.codigo;
+                    const novaContagem = parseFloat(this.value);
+                    const contagemNormalizada = isNaN(novaContagem) || novaContagem < 0 ? 0 : novaContagem;
+                    this.value = contagemNormalizada;
+
+                    const valorOriginal = parseFloat(this.dataset.valorOriginal);
+                    const originalNormalizado = isNaN(valorOriginal) ? 0 : valorOriginal;
+
+                    // Sem alteração: não grava de novo
+                    if (contagemNormalizada === originalNormalizado) {
+                        return;
+                    }
+
+                    // Inventário ainda não salvo: só memória local
+                    if (!inventarioAtual.id) {
+                        atualizarContagemLocal(codigo, contagemNormalizada);
+                        this.dataset.valorOriginal = String(contagemNormalizada);
+                        return;
+                    }
+
+                    // Em inventário finalizado, exige confirmação explícita
+                    if (inventarioAtual.status === 'FINALIZADO') {
+                        const ok = confirm(
+                            `Ajustar contagem do item ${codigo}?\n\n` +
+                            `De: ${originalNormalizado}\n` +
+                            `Para: ${contagemNormalizada}\n\n` +
+                            `Isso irá recalcular diferença, acuracidade do item e os totais do inventário #${inventarioAtual.id}.`
+                        );
+                        if (!ok) {
+                            this.value = originalNormalizado;
+                            return;
+                        }
+                    }
+
+                    this.disabled = true;
+                    const sucesso = await salvarContagemIndividual(inventarioAtual.id, codigo, contagemNormalizada);
+                    this.disabled = false;
+
+                    if (!sucesso) {
+                        this.value = originalNormalizado;
+                    } else {
+                        this.dataset.valorOriginal = String(contagemNormalizada);
                     }
                 });
             });
@@ -578,6 +638,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const usuario = localStorage.getItem('userName') || 'Sistema';
 
         try {
+            statusMessage.style.color = '#222';
+            statusMessage.textContent = `Salvando contagem do item ${codigo}...`;
+
             const response = await fetch('/api/embalagem/inventarioCiclico', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -594,18 +657,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!response.ok) {
                 console.error('Erro ao salvar contagem:', data.message);
-            } else {
-                // Atualiza o item com os dados de quem contou
-                const item = inventarioAtual.itens.find(i => i.CODIGO === codigo);
-                if (item) {
+                statusMessage.style.color = '#c00';
+                statusMessage.textContent = `Erro ao salvar contagem: ${data.message || 'falha desconhecida'}`;
+                return false;
+            }
+
+            const item = inventarioAtual.itens.find(i => i.CODIGO === codigo);
+            if (item) {
+                if (data.item) {
+                    item.CONTAGEM_FISICA = data.item.CONTAGEM_FISICA;
+                    item.ACURACIDADE = data.item.ACURACIDADE;
+                    item.USUARIO_CONTAGEM = data.item.USUARIO_CONTAGEM;
+                    item.DT_CONTAGEM = data.item.DT_CONTAGEM;
+                    if (data.item.SALDO_SISTEMA != null) {
+                        item.SALDO_ATUAL = data.item.SALDO_SISTEMA;
+                    }
+                } else {
+                    item.CONTAGEM_FISICA = contagem;
                     item.USUARIO_CONTAGEM = usuario;
                     item.DT_CONTAGEM = new Date().toISOString();
-                    renderizarInventario(inventarioAtual);
                 }
             }
 
+            if (data.resumo) {
+                inventarioAtual.acuracidade = data.resumo.acuracidadeGeral;
+                inventarioAtual.valorTotalGeral = data.resumo.valorTotalGeral;
+            }
+
+            renderizarInventario(inventarioAtual);
+
+            const resumoTxt = data.resumo
+                ? ` | Acuracidade: ${(data.resumo.acuracidadeGeral ?? 0).toFixed(2)}% | Divergências: ${data.resumo.itensDivergentes}`
+                : '';
+            statusMessage.style.color = 'green';
+            statusMessage.textContent = `${data.message || 'Contagem salva'}${resumoTxt}`;
+            setTimeout(() => { statusMessage.textContent = ''; }, 5000);
+            return true;
+
         } catch (error) {
             console.error('Erro ao salvar contagem individual:', error);
+            statusMessage.style.color = '#c00';
+            statusMessage.textContent = `Erro ao salvar contagem: ${error.message}`;
+            return false;
         }
     }
 

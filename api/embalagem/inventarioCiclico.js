@@ -712,7 +712,8 @@ async function abrirInventario(req, res) {
         const itemsResult = await pool.request()
             .input('ID_INVENTARIO', sql.Int, id)
             .query(`
-                SELECT CODIGO, DESCRICAO, SALDO_SISTEMA, CONTAGEM_FISICA, TOTAL_MOVIMENTACOES, BLOCO, USUARIO_CONTAGEM, DT_CONTAGEM, CUSTO_UNITARIO, VALOR_TOTAL_ESTOQUE
+                SELECT CODIGO, DESCRICAO, SALDO_SISTEMA, CONTAGEM_FISICA, DIFERENCA, ACURACIDADE,
+                       TOTAL_MOVIMENTACOES, BLOCO, USUARIO_CONTAGEM, DT_CONTAGEM, CUSTO_UNITARIO, VALOR_TOTAL_ESTOQUE
                 FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM]
                 WHERE ID_INVENTARIO = @ID_INVENTARIO
                 ORDER BY CODIGO;
@@ -773,6 +774,8 @@ async function abrirInventario(req, res) {
                     DESCRICAO: item.DESCRICAO,
                     SALDO_ATUAL: saldo,
                     CONTAGEM_FISICA: item.CONTAGEM_FISICA,
+                    DIFERENCA: item.DIFERENCA,
+                    ACURACIDADE: item.ACURACIDADE,
                     TOTAL_MOVIMENTACOES: item.TOTAL_MOVIMENTACOES,
                     USUARIO_CONTAGEM: item.USUARIO_CONTAGEM,
                     DT_CONTAGEM: item.DT_CONTAGEM,
@@ -874,38 +877,154 @@ async function finalizarInventario(req, res) {
     }
 }
 
-// Salva contagem individual com usuário e data/hora
+// Salva/ajusta contagem individual e recalcula todos os campos derivados.
+// Funciona tanto em inventário EM_ANDAMENTO quanto FINALIZADO:
+// - Item: CONTAGEM_FISICA, DIFERENCA, ACURACIDADE, USUARIO_CONTAGEM, DT_CONTAGEM
+// - Cabeçalho: ACURACIDADE geral, TOTAL_ITENS, VALOR_TOTAL_GERAL
 async function salvarContagemIndividual(req, res) {
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { idInventario, codigo, contagemFisica, usuario } = body;
+
+        if (!idInventario || !codigo) {
+            return res.status(400).json({ message: "ID do inventário e código do item são obrigatórios" });
+        }
+
+        if (contagemFisica === undefined || contagemFisica === null || isNaN(Number(contagemFisica))) {
+            return res.status(400).json({ message: "Contagem física inválida" });
+        }
+
+        if (Number(contagemFisica) < 0) {
+            return res.status(400).json({ message: "Contagem física não pode ser negativa" });
+        }
+
         const pool = await getConnection();
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
 
-        await pool.request()
-            .input('ID_INVENTARIO', sql.Int, idInventario)
-            .input('CODIGO', sql.NVarChar, codigo)
-            .input('CONTAGEM_FISICA', sql.Float, contagemFisica)
-            .input('USUARIO_CONTAGEM', sql.NVarChar, usuario)
-            .input('DT_CONTAGEM', sql.DateTime, new Date())
-            .query(`
-                UPDATE [dbo].[TB_INVENTARIO_CICLICO_ITEM]
-                SET CONTAGEM_FISICA = @CONTAGEM_FISICA,
-                    USUARIO_CONTAGEM = @USUARIO_CONTAGEM,
-                    DT_CONTAGEM = @DT_CONTAGEM
-                WHERE ID_INVENTARIO = @ID_INVENTARIO AND CODIGO = @CODIGO;
-            `);
+        try {
+            // Confirma que o inventário e o item existem
+            const existeResult = await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .input('CODIGO', sql.NVarChar, codigo)
+                .query(`
+                    SELECT
+                        h.STATUS,
+                        i.CONTAGEM_FISICA AS CONTAGEM_ANTERIOR,
+                        i.SALDO_SISTEMA
+                    FROM [dbo].[TB_INVENTARIO_CICLICO] h
+                    INNER JOIN [dbo].[TB_INVENTARIO_CICLICO_ITEM] i
+                        ON i.ID_INVENTARIO = h.ID_INVENTARIO
+                    WHERE h.ID_INVENTARIO = @ID_INVENTARIO
+                      AND i.CODIGO = @CODIGO;
+                `);
 
-        return res.status(200).json({ 
-            message: "Contagem salva com sucesso",
-            usuario: usuario,
-            dataContagem: new Date().toISOString()
-        });
+            if (existeResult.recordset.length === 0) {
+                await transaction.rollback();
+                return res.status(404).json({ message: "Inventário ou item não encontrado" });
+            }
 
+            const { STATUS, CONTAGEM_ANTERIOR, SALDO_SISTEMA } = existeResult.recordset[0];
+            const novaContagem = Number(contagemFisica);
+            const dtContagem = new Date();
+            const usuarioContagem = usuario || 'Sistema';
+
+            // 1) Atualiza o item com contagem + campos derivados
+            const itemUpdate = await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .input('CODIGO', sql.NVarChar, codigo)
+                .input('CONTAGEM_FISICA', sql.Float, novaContagem)
+                .input('USUARIO_CONTAGEM', sql.NVarChar, usuarioContagem)
+                .input('DT_CONTAGEM', sql.DateTime, dtContagem)
+                .query(`
+                    UPDATE [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                    SET CONTAGEM_FISICA = @CONTAGEM_FISICA,
+                        DIFERENCA = @CONTAGEM_FISICA - ISNULL(SALDO_SISTEMA, 0),
+                        ACURACIDADE = CASE
+                            WHEN ISNULL(SALDO_SISTEMA, 0) = 0 AND @CONTAGEM_FISICA = 0 THEN 100
+                            WHEN ISNULL(SALDO_SISTEMA, 0) = 0 OR @CONTAGEM_FISICA = 0 THEN 0
+                            ELSE (CAST(CASE WHEN @CONTAGEM_FISICA < SALDO_SISTEMA THEN @CONTAGEM_FISICA ELSE SALDO_SISTEMA END AS FLOAT) /
+                                  CAST(CASE WHEN @CONTAGEM_FISICA > SALDO_SISTEMA THEN @CONTAGEM_FISICA ELSE SALDO_SISTEMA END AS FLOAT)) * 100
+                        END,
+                        USUARIO_CONTAGEM = @USUARIO_CONTAGEM,
+                        DT_CONTAGEM = @DT_CONTAGEM
+                    OUTPUT
+                        INSERTED.CONTAGEM_FISICA,
+                        INSERTED.SALDO_SISTEMA,
+                        INSERTED.DIFERENCA,
+                        INSERTED.ACURACIDADE,
+                        INSERTED.USUARIO_CONTAGEM,
+                        INSERTED.DT_CONTAGEM
+                    WHERE ID_INVENTARIO = @ID_INVENTARIO AND CODIGO = @CODIGO;
+                `);
+
+            const itemAtualizado = itemUpdate.recordset[0];
+
+            // 2) Recalcula estatísticas do cabeçalho
+            const statsResult = await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .query(`
+                    SELECT
+                        AVG(ACURACIDADE) AS ACURACIDADE_GERAL,
+                        COUNT(*) AS TOTAL_ITENS,
+                        SUM(CASE WHEN ISNULL(DIFERENCA, 0) = 0 THEN 1 ELSE 0 END) AS ITENS_CORRETOS,
+                        SUM(CASE WHEN ISNULL(DIFERENCA, 0) <> 0 THEN 1 ELSE 0 END) AS ITENS_DIVERGENTES,
+                        ISNULL(SUM(VALOR_TOTAL_ESTOQUE), 0) AS VALOR_TOTAL_GERAL
+                    FROM [dbo].[TB_INVENTARIO_CICLICO_ITEM]
+                    WHERE ID_INVENTARIO = @ID_INVENTARIO;
+                `);
+
+            const stats = statsResult.recordset[0];
+
+            await transaction.request()
+                .input('ID_INVENTARIO', sql.Int, idInventario)
+                .input('ACURACIDADE', sql.Float, stats.ACURACIDADE_GERAL)
+                .input('TOTAL_ITENS', sql.Int, stats.TOTAL_ITENS)
+                .input('VALOR_TOTAL_GERAL', sql.Decimal(18, 2), stats.VALOR_TOTAL_GERAL)
+                .query(`
+                    UPDATE [dbo].[TB_INVENTARIO_CICLICO]
+                    SET ACURACIDADE = @ACURACIDADE,
+                        TOTAL_ITENS = @TOTAL_ITENS,
+                        VALOR_TOTAL_GERAL = @VALOR_TOTAL_GERAL
+                    WHERE ID_INVENTARIO = @ID_INVENTARIO;
+                `);
+
+            await transaction.commit();
+
+            const foiAjusteFinalizado = STATUS === 'FINALIZADO';
+
+            return res.status(200).json({
+                message: foiAjusteFinalizado
+                    ? "Contagem ajustada com sucesso (inventário finalizado)"
+                    : "Contagem salva com sucesso",
+                statusInventario: STATUS,
+                contagemAnterior: CONTAGEM_ANTERIOR,
+                item: {
+                    CODIGO: codigo,
+                    CONTAGEM_FISICA: itemAtualizado.CONTAGEM_FISICA,
+                    SALDO_SISTEMA: itemAtualizado.SALDO_SISTEMA ?? SALDO_SISTEMA,
+                    DIFERENCA: itemAtualizado.DIFERENCA,
+                    ACURACIDADE: itemAtualizado.ACURACIDADE,
+                    USUARIO_CONTAGEM: itemAtualizado.USUARIO_CONTAGEM,
+                    DT_CONTAGEM: itemAtualizado.DT_CONTAGEM
+                },
+                resumo: {
+                    acuracidadeGeral: stats.ACURACIDADE_GERAL,
+                    totalItens: stats.TOTAL_ITENS,
+                    itensCorretos: stats.ITENS_CORRETOS,
+                    itensDivergentes: stats.ITENS_DIVERGENTES,
+                    valorTotalGeral: stats.VALOR_TOTAL_GERAL
+                }
+            });
+        } catch (innerErr) {
+            await transaction.rollback();
+            throw innerErr;
+        }
     } catch (err) {
         console.error("ERRO ao salvar contagem individual:", err);
-        return res.status(500).json({ 
-            message: "Erro ao salvar contagem", 
-            error: err.message 
+        return res.status(500).json({
+            message: "Erro ao salvar contagem",
+            error: err.message
         });
     }
 }

@@ -706,6 +706,18 @@ tbody tr:hover {
     text-align: center;
 }
 
+/* Contagem editável em inventário já finalizado */
+.inventario-table .contagem-input.contagem-ajuste {
+    border-color: #f0ad4e;
+    background-color: #fffbf0;
+}
+
+.inventario-table .contagem-input.contagem-ajuste:focus {
+    outline: none;
+    border-color: #ec971f;
+    box-shadow: 0 0 0 2px rgba(240, 173, 78, 0.25);
+}
+
 .diferenca-zero {
     color: green;
     font-weight: bold;
