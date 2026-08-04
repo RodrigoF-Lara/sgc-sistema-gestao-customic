@@ -1,4 +1,5 @@
 import { getConnection, sql } from "../../db.js";
+import { exigirPermissao } from "../../lib/permissoesHelper.js";
 
 export default async function handler(req, res) {
     const { acao } = req.query;
@@ -6,6 +7,10 @@ export default async function handler(req, res) {
     // GET: Gerar, Listar ou Abrir inventário
     if (req.method === "GET") {
         if (acao === 'gerarLista') {
+            // Só quem tem a ação "inventario-gerar" (ADM bypass no helper)
+            if (!(await exigirPermissao(req, res, 'inventario-gerar', 'Sem permissão para gerar novo inventário.'))) {
+                return;
+            }
             return await gerarListaInventario(req, res);
         } else if (acao === 'listar') {
             return await listarInventarios(req, res);

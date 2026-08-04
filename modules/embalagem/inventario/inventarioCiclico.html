@@ -40,10 +40,10 @@
           <div id="listaInventariosSalvos" style="margin-top: 15px"></div>
         </div>
 
-        <!-- Seção de Gerar Novo Inventário -->
-        <div class="card">
+        <!-- Seção de Gerar Novo Inventário (visível só com permissão inventario-gerar) -->
+        <div class="card" id="secaoGerarInventario" data-perm="inventario-gerar">
           <h2>Gerar Nova Lista de Inventário</h2>
-          <button id="gerarListaBtn" class="btn-destaque">
+          <button id="gerarListaBtn" class="btn-destaque" data-perm="inventario-gerar">
             <i class="fa-solid fa-clipboard-list"></i> Gerar Nova Lista
           </button>
         </div>
@@ -117,6 +117,7 @@
     <!-- Biblioteca para exportar Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="inventarioCiclico.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>

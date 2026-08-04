@@ -1,5 +1,6 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     const gerarListaBtn = document.getElementById('gerarListaBtn');
+    const secaoGerarInventario = document.getElementById('secaoGerarInventario');
     const carregarInventariosBtn = document.getElementById('carregarInventariosBtn');
     const adicionarItemBtn = document.getElementById('adicionarItemBtn');
     const salvarInventarioBtn = document.getElementById('salvarInventarioBtn');
@@ -19,8 +20,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let inventarioAtual = null;
     let todosInventarios = [];
+    let podeGerarInventario = false;
 
-    gerarListaBtn.addEventListener('click', gerarNovaLista);
+    function authHeaders(extra) {
+        const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+        if (window.SGCPermissoes) {
+            Object.assign(h, window.SGCPermissoes.authHeaders());
+        } else {
+            const nivel = localStorage.getItem('userLevel');
+            const code = localStorage.getItem('userCode');
+            if (nivel) h['x-user-level'] = nivel;
+            if (code) h['x-user-code'] = code;
+        }
+        return h;
+    }
+
+    function podeAcao(linkId) {
+        if (window.SGCPermissoes && typeof window.SGCPermissoes.podeAcessar === 'function') {
+            return window.SGCPermissoes.podeAcessar(linkId);
+        }
+        const n = String(localStorage.getItem('userLevel') || '').toLowerCase();
+        return n === 'adm' || n === '1' || n === 'administrador' || n === 'admin';
+    }
+
+    // Permissões: página + botão "Gerar Nova Lista"
+    if (window.SGCPermissoes) {
+        try {
+            await window.SGCPermissoes.carregar();
+            if (!window.SGCPermissoes.podeAcessar('inventario-ciclico')) {
+                alert('Acesso negado. Você não tem permissão para Inventário Cíclico.');
+                window.location.href = '/menu.html';
+                return;
+            }
+        } catch (e) {
+            console.warn('Falha ao carregar permissões:', e);
+        }
+    }
+
+    podeGerarInventario = podeAcao('inventario-gerar');
+    if (!podeGerarInventario) {
+        if (secaoGerarInventario) secaoGerarInventario.style.display = 'none';
+        if (gerarListaBtn) {
+            gerarListaBtn.style.display = 'none';
+            gerarListaBtn.disabled = true;
+        }
+    }
+
+    if (gerarListaBtn) gerarListaBtn.addEventListener('click', gerarNovaLista);
     carregarInventariosBtn.addEventListener('click', carregarInventariosSalvos);
     salvarInventarioBtn.addEventListener('click', salvarInventario);
     imprimirInventarioBtn.addEventListener('click', imprimirInventario);
@@ -43,17 +89,23 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     async function gerarNovaLista() {
+        if (!podeGerarInventario) {
+            alert('Sem permissão para gerar novo inventário.');
+            return;
+        }
         try {
             statusMessage.style.color = '#222';
             statusMessage.textContent = 'Gerando lista de inventário...';
             gerarListaBtn.disabled = true;
             gerarListaBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
 
-            const response = await fetch('/api/embalagem/inventarioCiclico?acao=gerarLista');
+            const response = await fetch('/api/embalagem/inventarioCiclico?acao=gerarLista', {
+                headers: authHeaders()
+            });
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Erro ao gerar lista');
+                throw new Error(data.error || data.message || 'Erro ao gerar lista');
             }
 
             // ── DEBUG BLOCO 2 ──────────────────────────────────────────
