@@ -196,9 +196,19 @@ async function criarUsuario(req, res, pool) {
     });
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
+    const msg = error.message || "";
+    if (/converting the varchar value .* to data type int/i.test(msg) ||
+        /conversão.*int/i.test(msg)) {
+      return res.status(500).json({
+        error: "Coluna NIVEL ainda é numérica no banco",
+        message:
+          "Execute o script sql/shared/migrate_cad_usuario_nivel_to_varchar.sql no SQL Server " +
+          "para permitir cargos em texto (ex: coordenador_estoque). Detalhe: " + msg,
+      });
+    }
     return res.status(500).json({ 
       error: "Erro ao criar usuário", 
-      message: error.message 
+      message: msg 
     });
   }
 }
@@ -301,9 +311,20 @@ async function atualizarUsuario(req, res, pool) {
     });
   } catch (error) {
     console.error("Erro ao atualizar usuário:", error);
+    const msg = error.message || "";
+    // Coluna NIVEL ainda INT no banco (migração SQL não rodou)
+    if (/converting the varchar value .* to data type int/i.test(msg) ||
+        /conversão.*int/i.test(msg)) {
+      return res.status(500).json({
+        error: "Coluna NIVEL ainda é numérica no banco",
+        message:
+          "Execute o script sql/shared/migrate_cad_usuario_nivel_to_varchar.sql no SQL Server " +
+          "para permitir cargos em texto (ex: coordenador_estoque). Detalhe: " + msg,
+      });
+    }
     return res.status(500).json({ 
       error: "Erro ao atualizar usuário", 
-      message: error.message 
+      message: msg 
     });
   }
 }
