@@ -89,9 +89,25 @@
 
     <!-- Biblioteca para exportar Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="detalhes.js"></script>
     <!-- O novo script de layout que carrega o menu e o usuário -->
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>
+    <script>
+      (async function () {
+        if (!window.SGCPermissoes) return;
+        try {
+          await SGCPermissoes.carregar();
+          const ok =
+            SGCPermissoes.podeAcessar('consultar-requisicoes') ||
+            SGCPermissoes.podeAcessar('requisicoes');
+          if (!ok) {
+            alert('Sem permissão para consultar requisições.');
+            window.location.href = '/menu.html';
+          }
+        } catch (e) { console.warn(e); }
+      })();
+    </script>
 </body>
 </html>

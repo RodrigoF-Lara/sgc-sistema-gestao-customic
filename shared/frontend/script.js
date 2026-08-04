@@ -1,6 +1,12 @@
 document.getElementById('csvForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
+    // Bloqueio de UI (a API também valida)
+    if (window.SGC_PODE_NOVA_REQ === false) {
+        alert('Sem permissão para criar nova requisição.');
+        return;
+    }
+
     const fileInput = document.getElementById('csvFile');
     const dtNecessidade = document.getElementById('dtNecessidade').value;
     const prioridade = document.getElementById('prioridade').value;
@@ -24,13 +30,22 @@ document.getElementById('csvForm').addEventListener('submit', async function(e) 
     }, 500);
 
     const userName = localStorage.getItem('userName');
+    function authHeaders() {
+        if (window.SGCPermissoes) return window.SGCPermissoes.authHeaders();
+        const h = { "Content-Type": "application/json" };
+        const nivel = localStorage.getItem("userLevel");
+        const code = localStorage.getItem("userCode");
+        if (nivel) h["x-user-level"] = nivel;
+        if (code) h["x-user-code"] = code;
+        return h;
+    }
 
     try {
         // Criar a requisição
         // ALTERAÇÃO AQUI
         const responseNovaReq = await fetch("/api/embalagem/requisicao", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders(),
             body: JSON.stringify({
                 action: 'createHeader', // Novo parâmetro de ação
                 dtNecessidade: dtNecessidade,
@@ -42,7 +57,7 @@ document.getElementById('csvForm').addEventListener('submit', async function(e) 
         const dataNovaReq = await responseNovaReq.json();
 
         if (!responseNovaReq.ok) {
-            throw new Error(dataNovaReq.message || "Erro ao criar requisição");
+            throw new Error(dataNovaReq.error || dataNovaReq.message || "Erro ao criar requisição");
         }
 
         const idReq = dataNovaReq.idReq;
@@ -60,7 +75,7 @@ document.getElementById('csvForm').addEventListener('submit', async function(e) 
                     // ALTERAÇÃO AQUI
         const responseUpload = await fetch("/api/embalagem/requisicao", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders(),
             body: JSON.stringify({
                 action: 'uploadItems', // Novo parâmetro de ação
                 data: results.data,

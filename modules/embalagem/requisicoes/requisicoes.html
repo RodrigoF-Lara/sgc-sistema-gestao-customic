@@ -267,29 +267,104 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="/shared/frontend/script.js"></script>
     <script src="consulta.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>
     <script>
-        // Controle das abas
-        const tabs = document.querySelectorAll('.req-tab');
-        const panels = document.querySelectorAll('.req-panel');
+        // Controle das abas + permissões (nova vs consultar)
+        (async function initAbasRequisicoes() {
+            const tabs = document.querySelectorAll('.req-tab');
+            const panels = document.querySelectorAll('.req-panel');
+            const tabNova = document.getElementById('tabNova');
+            const tabConsulta = document.getElementById('tabConsulta');
+            const panelNova = document.getElementById('panelNova');
+            const panelConsulta = document.getElementById('panelConsulta');
 
-        tabs.forEach(tab => {
-            tab.addEventListener('click', function() {
+            function pode(id) {
+                return window.SGCPermissoes && window.SGCPermissoes.podeAcessar(id);
+            }
+
+            if (window.SGCPermissoes) {
+                try { await window.SGCPermissoes.carregar(); } catch (e) { console.warn(e); }
+            }
+
+            // Cada aba tem seu link_id. Hub "requisicoes" só entra se NENHUMA aba
+            // específica estiver marcada (compatibilidade com seeds antigos).
+            const hub = pode('requisicoes');
+            const expNova = pode('nova-requisicao');
+            const expConsulta = pode('consultar-requisicoes');
+            const soHub = hub && !expNova && !expConsulta;
+            const podeNova = expNova || soHub;
+            const podeConsulta = expConsulta || soHub;
+
+            if (!podeNova && !podeConsulta && !hub) {
+                alert('Acesso negado. Você não tem permissão para Requisições.');
+                window.location.href = '/menu.html';
+                return;
+            }
+            // Tem só o hub no menu mas as abas específicas foram negadas?
+            if (!podeNova && !podeConsulta) {
+                alert('Acesso negado. Nenhuma aba de requisição liberada para o seu cargo.');
+                window.location.href = '/menu.html';
+                return;
+            }
+
+            if (!podeNova) {
+                if (tabNova) { tabNova.style.display = 'none'; tabNova.disabled = true; }
+                if (panelNova) { panelNova.style.display = 'none'; panelNova.classList.remove('active'); }
+            }
+            if (!podeConsulta) {
+                if (tabConsulta) { tabConsulta.style.display = 'none'; tabConsulta.disabled = true; }
+                if (panelConsulta) { panelConsulta.style.display = 'none'; panelConsulta.classList.remove('active'); }
+            }
+
+            function ativarAba(tabEl) {
+                if (!tabEl || tabEl.style.display === 'none') return;
                 tabs.forEach(t => t.classList.remove('active'));
                 panels.forEach(p => p.classList.remove('active'));
-                this.classList.add('active');
-                document.getElementById('panel' + this.dataset.tab.charAt(0).toUpperCase() + this.dataset.tab.slice(1)).classList.add('active');
-            });
-        });
+                tabEl.classList.add('active');
+                const key = tabEl.dataset.tab;
+                const panel = document.getElementById('panel' + key.charAt(0).toUpperCase() + key.slice(1));
+                if (panel) {
+                    panel.classList.add('active');
+                    panel.style.display = '';
+                }
+            }
 
-        // Se vier com ?tab=consulta na URL, abre direto na aba consulta
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('tab') === 'consulta') {
-            document.getElementById('tabConsulta').click();
-        }
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Bloqueia clique em aba sem permissão
+                    if (this.dataset.tab === 'nova' && !podeNova) {
+                        alert('Sem permissão para criar nova requisição.');
+                        return;
+                    }
+                    if (this.dataset.tab === 'consulta' && !podeConsulta) {
+                        alert('Sem permissão para consultar requisições.');
+                        return;
+                    }
+                    ativarAba(this);
+                });
+            });
+
+            // Abre a aba correta (URL ou primeira permitida)
+            const params = new URLSearchParams(window.location.search);
+            const tabParam = params.get('tab');
+            if (tabParam === 'consulta' && podeConsulta) {
+                ativarAba(tabConsulta);
+            } else if (tabParam === 'nova' && podeNova) {
+                ativarAba(tabNova);
+            } else if (podeNova) {
+                ativarAba(tabNova);
+            } else {
+                ativarAba(tabConsulta);
+            }
+
+            // Expõe flags para script.js / consulta.js
+            window.SGC_PODE_NOVA_REQ = podeNova;
+            window.SGC_PODE_CONSULTAR_REQ = podeConsulta;
+        })();
 
         // Dropzone do CSV: mostrar nome e suportar drag&drop
         (function() {

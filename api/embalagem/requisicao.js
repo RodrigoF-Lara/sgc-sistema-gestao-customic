@@ -1,4 +1,5 @@
 import { getConnection, sql } from "../../db.js";
+import { exigirPermissao, podeAcessar, nivelDoRequest } from "../../lib/permissoesHelper.js";
 
 function obterDataHoraSaoPaulo() {
     const agora = new Date();
@@ -41,6 +42,20 @@ export default async function handler(req, res) {
 
 // --- LÓGICA GET (COM AJUSTE NA BUSCA DO LOG) ---
 async function handleGet(req, res) {
+    // Consulta lista/detalhe exige permissão de consultar (ou hub legado)
+    const nivel = nivelDoRequest(req);
+    if (nivel !== null) {
+        const ok =
+            (await podeAcessar("consultar-requisicoes", nivel)) ||
+            (await podeAcessar("requisicoes", nivel));
+        if (!ok) {
+            return res.status(403).json({
+                success: false,
+                error: "Sem permissão para consultar requisições.",
+            });
+        }
+    }
+
     const { id, idReqItemLog, idReqLog } = req.query;
     const pool = await getConnection();
     if (id) {
@@ -94,10 +109,17 @@ async function handleGet(req, res) {
     }
 }
 
-// --- LÓGICA POST (sem alterações) ---
+// --- LÓGICA POST ---
 async function handlePost(req, res) {
     const { action } = req.body;
     const pool = await getConnection();
+
+    // Criar requisição / upload de itens exige "nova-requisicao"
+    if (action === 'createHeader' || action === 'uploadItems') {
+        if (!(await exigirPermissao(req, res, 'nova-requisicao', 'Sem permissão para criar nova requisição.'))) {
+            return;
+        }
+    }
     
     if (action === 'createHeader') {
         const { dtNecessidade, prioridade, solicitante } = req.body;

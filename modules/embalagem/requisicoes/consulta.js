@@ -28,6 +28,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return n === 'adm' || n === '1' || n === 'administrador' || n === 'admin';
     }
 
+    function authHeaders(extra) {
+        const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+        if (window.SGCPermissoes) {
+            Object.assign(h, window.SGCPermissoes.authHeaders());
+        } else {
+            if (userLevel) h['x-user-level'] = userLevel;
+            if (userCode) h['x-user-code'] = userCode;
+        }
+        return h;
+    }
+
     // --- FUNÇÕES AUXILIARES ---
     function formatarData(dataString) {
         if (!dataString) return 'N/A';
@@ -411,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch('/api/embalagem/requisicao', {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify({
                     idReq,
                     usuario: userName || 'Usuário não identificado',
@@ -498,11 +509,14 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             container.innerHTML = '<div class="loader-container"><div class="loader"></div><p>Buscando requisições...</p></div>';
             const [responseReqs, responseCal] = await Promise.all([
-                fetch('/api/embalagem/requisicao'),
-                fetch('/api/shared/config?tipo=calendarioProdutivo&action=get')
+                fetch('/api/embalagem/requisicao', { headers: authHeaders() }),
+                fetch('/api/shared/config?tipo=calendarioProdutivo&action=get', { headers: authHeaders() })
             ]);
 
-            if (!responseReqs.ok) throw new Error('Falha ao buscar dados do servidor.');
+            if (!responseReqs.ok) {
+                const err = await responseReqs.json().catch(() => ({}));
+                throw new Error(err.error || err.message || 'Falha ao buscar dados do servidor.');
+            }
 
             todasRequisicoes = await responseReqs.json();
 

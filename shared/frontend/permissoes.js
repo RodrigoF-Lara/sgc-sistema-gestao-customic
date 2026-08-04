@@ -182,26 +182,33 @@
   }
 
   /**
-   * Mapa de elementos do menu lateral (id HTML) → link_id
+   * Mapa de elementos do menu lateral (id HTML) → link_id (string ou array = basta 1 liberado)
+   * Ex.: nav-requisicoes aparece se o usuário tiver nova OU consultar OU o hub.
    */
   const NAV_TO_LINK = {
     "nav-menu": "home",
-    "nav-requisicoes": "requisicoes",
+    "nav-requisicoes": ["requisicoes", "nova-requisicao", "consultar-requisicoes"],
     "nav-saida-rapida": "saida-rapida",
     "nav-estoque": "estoque",
     "nav-inventario-ciclico": "inventario-ciclico",
     "nav-lancamento-nf": "lancamento-nf",
     "nav-status-nf": "status-nf",
     "nav-saving": "saving-compras",
-    "nav-relatorios": "relatorios",
+    "nav-relatorios": ["relatorios", "relatorio-baixa-periodo", "relatorio-requisicoes", "relatorio-saldo", "relatorio-acuracidade", "consumo-medio"],
     "nav-produtos": "cadastro-produtos",
     "nav-fornecedores": "cadastro-fornecedores",
     "nav-usuarios": "usuarios",
-    "nav-configuracoes": "configuracoes",
+    "nav-configuracoes": ["configuracoes", "config-inventario", "calendario-produtivo", "niveis", "permissoes"],
     "nav-config-notificacoes": "config-notificacoes",
     "nav-niveis": "niveis",
     "nav-permissoes": "permissoes",
   };
+
+  function podeQualquer(linkIds) {
+    if (!linkIds) return false;
+    const list = Array.isArray(linkIds) ? linkIds : [linkIds];
+    return list.some((id) => podeAcessar(id));
+  }
 
   /** Cards do menu.html: seletor de href ou data-link-id */
   const HREF_TO_LINK = {
@@ -262,7 +269,7 @@
         : document.getElementById(navId);
       if (!el) return;
       const linkId = NAV_TO_LINK[navId];
-      if (!podeAcessar(linkId)) {
+      if (!podeQualquer(linkId)) {
         el.style.display = "none";
         el.setAttribute("data-perm-hidden", "1");
       } else {
@@ -359,6 +366,7 @@
   global.SGCPermissoes = {
     carregar,
     podeAcessar,
+    podeQualquer,
     invalidarCache,
     filtrarMenuLateral,
     filtrarCards,
