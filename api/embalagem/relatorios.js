@@ -547,6 +547,9 @@ async function relatorioSaldoEstoque(req, res) {
         console.log('?? Relatório de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo, saldoZero, saldoNegativo, ativos, inativos });
         
         // Query principal
+        // Custos: pega a melhor linha de NF_PRODUTOS (inclui "primeiro custo" sem NF),
+        // priorizando linhas com valor > 0 e data de emissão mais recente.
+        // Fornecedor: só de NF real (join em NF_CABECALHO).
         let query = `
             SELECT 
                 cp.CODIGO,
@@ -554,10 +557,10 @@ async function relatorioSaldoEstoque(req, res) {
                 cp.TIPO,
                 ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
                 ISNULL(k.SALDO, 0) AS SALDO,
-                uf.ULTIMO_FORNECEDOR,
-                ISNULL(uf.CUSTO_CONTABIL_MEDIO, 0) AS CUSTO_CONTABIL_MEDIO,
-                ISNULL(uf.CUSTO_FISCAL_MEDIO, 0)   AS CUSTO_FISCAL_MEDIO,
-                ISNULL(uf.PRECO_UNIT_ULT_NF, 0)    AS PRECO_UNIT_ULT_NF
+                forn.ULTIMO_FORNECEDOR,
+                ISNULL(custo.CUSTO_CONTABIL_MEDIO, 0) AS CUSTO_CONTABIL_MEDIO,
+                ISNULL(custo.CUSTO_FISCAL_MEDIO, 0)   AS CUSTO_FISCAL_MEDIO,
+                ISNULL(custo.PRECO_UNIT_ULT_NF, 0)    AS PRECO_UNIT_ULT_NF
             FROM [dbo].[CAD_PROD] cp
             LEFT JOIN (
                 SELECT 
@@ -569,24 +572,56 @@ async function relatorioSaldoEstoque(req, res) {
                 GROUP BY CODIGO
             ) k ON cp.CODIGO = k.CODIGO
             LEFT JOIN (
-                SELECT 
-                    np.PROD_COD_PROD AS CODIGO,
-                    cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR,
-                    np.PROD_CUSTO_CONTABIL_MEDIO_NOVO AS CUSTO_CONTABIL_MEDIO,
-                    np.PROD_CUSTO_FISCAL_MEDIO_NOVO   AS CUSTO_FISCAL_MEDIO,
-                    np.PROD_VALOR_UNIT                AS PRECO_UNIT_ULT_NF
-                FROM [dbo].[NF_PRODUTOS] np
-                INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
-                INNER JOIN [dbo].[CAD_FORNECEDOR] cf ON nc.CAB_NUM_FORN = cf.COD_FORNECEDOR
-                INNER JOIN (
-                    SELECT 
-                        PROD_COD_PROD,
-                        MAX(PROD_ID_NF) AS ULTIMA_NF
-                    FROM [dbo].[NF_PRODUTOS]
-                    GROUP BY PROD_COD_PROD
-                ) ultima ON np.PROD_COD_PROD = ultima.PROD_COD_PROD 
-                    AND np.PROD_ID_NF = ultima.ULTIMA_NF
-            ) uf ON cp.CODIGO = uf.CODIGO
+                SELECT
+                    x.PROD_COD_PROD AS CODIGO,
+                    x.PROD_CUSTO_CONTABIL_MEDIO_NOVO AS CUSTO_CONTABIL_MEDIO,
+                    x.PROD_CUSTO_FISCAL_MEDIO_NOVO   AS CUSTO_FISCAL_MEDIO,
+                    COALESCE(
+                        NULLIF(x.PROD_VALOR_UNIT, 0),
+                        NULLIF(x.PROD_CUSTO_FISCAL_MEDIO_NOVO, 0),
+                        NULLIF(x.PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0),
+                        NULLIF(x.PROD_CUSTO_PAGO, 0),
+                        0
+                    ) AS PRECO_UNIT_ULT_NF
+                FROM (
+                    SELECT
+                        np.*,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY np.PROD_COD_PROD
+                            ORDER BY
+                                CASE
+                                    WHEN ISNULL(np.PROD_CUSTO_FISCAL_MEDIO_NOVO, 0) > 0
+                                      OR ISNULL(np.PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0) > 0
+                                      OR ISNULL(np.PROD_VALOR_UNIT, 0) > 0
+                                      OR ISNULL(np.PROD_CUSTO_PAGO, 0) > 0
+                                    THEN 0 ELSE 1
+                                END,
+                                ISNULL(np.PROD_DT_EMISSAO, '1900-01-01') DESC,
+                                np.PROD_ID_PROD DESC
+                        ) AS RN
+                    FROM [dbo].[NF_PRODUTOS] np
+                ) x
+                WHERE x.RN = 1
+            ) custo ON cp.CODIGO = custo.CODIGO
+            LEFT JOIN (
+                SELECT
+                    y.PROD_COD_PROD AS CODIGO,
+                    cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR
+                FROM (
+                    SELECT
+                        np.PROD_COD_PROD,
+                        np.PROD_ID_NF,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY np.PROD_COD_PROD
+                            ORDER BY ISNULL(np.PROD_DT_EMISSAO, '1900-01-01') DESC, np.PROD_ID_PROD DESC
+                        ) AS RN
+                    FROM [dbo].[NF_PRODUTOS] np
+                    INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
+                ) y
+                INNER JOIN [dbo].[NF_CABECALHO] nc2 ON y.PROD_ID_NF = nc2.CAB_ID_NF
+                LEFT JOIN [dbo].[CAD_FORNECEDOR] cf ON nc2.CAB_NUM_FORN = cf.COD_FORNECEDOR
+                WHERE y.RN = 1
+            ) forn ON cp.CODIGO = forn.CODIGO
             WHERE (
                 (@ATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 1) OR
                 (@INATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 0)

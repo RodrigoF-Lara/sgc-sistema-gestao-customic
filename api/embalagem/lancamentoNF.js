@@ -184,10 +184,20 @@ export default async function handler(req, res) {
                                 PROD_CUSTO_CONTABIL_MEDIO_NOVO,
                                 PROD_CUSTO_FISCAL_MEDIO_NOVO,
                                 PROD_CUSTO_PAGO,
+                                PROD_VALOR_UNIT,
                                 PROD_DT_EMISSAO
                             FROM [dbo].[NF_PRODUTOS]
                             WHERE PROD_COD_PROD = @COD
-                            ORDER BY PROD_DT_EMISSAO DESC
+                            ORDER BY
+                                CASE
+                                    WHEN ISNULL(PROD_CUSTO_FISCAL_MEDIO_NOVO, 0) > 0
+                                      OR ISNULL(PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0) > 0
+                                      OR ISNULL(PROD_VALOR_UNIT, 0) > 0
+                                      OR ISNULL(PROD_CUSTO_PAGO, 0) > 0
+                                    THEN 0 ELSE 1
+                                END,
+                                ISNULL(PROD_DT_EMISSAO, '1900-01-01') DESC,
+                                PROD_ID_PROD DESC
                         `)
                 ]);
 
@@ -671,34 +681,50 @@ export default async function handler(req, res) {
                     .input("COD", sql.VarChar, codigo)
                     .query("SELECT PROD_ID_PROD FROM [dbo].[NF_PRODUTOS] WHERE PROD_COD_PROD = @COD AND PROD_DT_EMISSAO = '2000-01-01'");
 
+                const cc = Number(custo_contabil) || 0;
+                const cf = Number(custo_fiscal) || 0;
+                const cp = Number(custo_pago) || 0;
+                // Preço unitário de referência (para relatório de saldo / Preço Unit. Últ. NF)
+                const valorUnit = cp > 0 ? cp : (cf > 0 ? cf : cc);
+
                 if (existe.recordset.length === 0) {
                     await pool.request()
                         .input("COD",    sql.VarChar, codigo)
-                        .input("CC",     sql.Float, Number(custo_contabil) || 0)
-                        .input("CF",     sql.Float, Number(custo_fiscal) || 0)
-                        .input("CP",     sql.Float, Number(custo_pago) || 0)
+                        .input("CC",     sql.Float, cc)
+                        .input("CF",     sql.Float, cf)
+                        .input("CP",     sql.Float, cp)
+                        .input("VU",     sql.Float, valorUnit)
                         .query(`
                             INSERT INTO [dbo].[NF_PRODUTOS]
                                 ([PROD_COD_PROD],[PROD_CUSTO_CONTABIL_MEDIO_NOVO],[PROD_CUSTO_CONTABIL],
-                                 [PROD_CUSTO_FISCAL_MEDIO_NOVO],[PROD_CUSTO_FISCAL],[PROD_CUSTO_PAGO],[PROD_DT_EMISSAO])
-                            VALUES (@COD,@CC,@CC,@CF,@CF,@CP,'2000-01-01')
+                                 [PROD_CUSTO_FISCAL_MEDIO_NOVO],[PROD_CUSTO_FISCAL],[PROD_CUSTO_PAGO],
+                                 [PROD_VALOR_UNIT],[PROD_DT_EMISSAO])
+                            VALUES (@COD,@CC,@CC,@CF,@CF,@CP,@VU,'2000-01-01')
                         `);
                 } else {
                     await pool.request()
                         .input("ID",   sql.Int,     existe.recordset[0].PROD_ID_PROD)
-                        .input("CC",   sql.Float,   Number(custo_contabil) || 0)
-                        .input("CF",   sql.Float,   Number(custo_fiscal) || 0)
-                        .input("CP",   sql.Float,   Number(custo_pago) || 0)
+                        .input("CC",   sql.Float,   cc)
+                        .input("CF",   sql.Float,   cf)
+                        .input("CP",   sql.Float,   cp)
+                        .input("VU",   sql.Float,   valorUnit)
                         .query(`
                             UPDATE [dbo].[NF_PRODUTOS] SET
                                 [PROD_CUSTO_CONTABIL_MEDIO_NOVO]=@CC,[PROD_CUSTO_CONTABIL]=@CC,
                                 [PROD_CUSTO_FISCAL_MEDIO_NOVO]=@CF,[PROD_CUSTO_FISCAL]=@CF,
-                                [PROD_CUSTO_PAGO]=@CP
+                                [PROD_CUSTO_PAGO]=@CP,
+                                [PROD_VALOR_UNIT]=@VU
                             WHERE PROD_ID_PROD = @ID
                         `);
                 }
 
-                return res.status(200).json({ message: "Primeiro custo salvo com sucesso." });
+                return res.status(200).json({
+                    message: "Primeiro custo salvo com sucesso.",
+                    custo_contabil: cc,
+                    custo_fiscal: cf,
+                    custo_pago: cp,
+                    valor_unit: valorUnit
+                });
             }
 
             return res.status(400).json({ message: `Action POST '${action}' nÃ£o reconhecida.` });

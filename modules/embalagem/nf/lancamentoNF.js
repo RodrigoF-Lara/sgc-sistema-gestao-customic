@@ -726,6 +726,8 @@ $("btn-salvar-primeiro-custo").addEventListener("click", async () => {
             }),
         });
         showToast("Primeiro custo salvo com sucesso.");
+        // Atualiza cards "atual" e garante que a UI reflita o que foi gravado
+        await buscarCusto();
     } catch (e) {
         showToast(e.message, "error");
     } finally {
