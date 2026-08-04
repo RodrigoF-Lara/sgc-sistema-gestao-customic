@@ -1,5 +1,5 @@
 import { getConnection, sql } from "../../db.js";
-import { exigirAdmin, normalizarNivel } from "./permissoesHelper.js";
+import { exigirAdmin, normalizarNivel } from "../../lib/permissoesHelper.js";
 
 /**
  * API de Grupos / Cargos de usuário

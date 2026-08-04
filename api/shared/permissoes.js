@@ -7,8 +7,8 @@ import {
   normalizarNivel,
   isAdmin,
   podeAcessar,
-} from "./permissoesHelper.js";
-import { MENU_CATALOG, ACOES_ESPECIAIS } from "./menuCatalog.js";
+} from "../../lib/permissoesHelper.js";
+import { MENU_CATALOG, ACOES_ESPECIAIS } from "../../lib/menuCatalog.js";
 
 /**
  * API da matriz de permissões
