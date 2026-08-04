@@ -115,16 +115,23 @@ BEGIN
 END
 GO
 
--- Remove seed numérico antigo (1-4) se ninguém usa mais esses códigos
-DELETE FROM dbo.SHR_PERMISSOES_MENU
-WHERE NIVEL IN ('1', '2', '3', '4');
+-- Remove seed numérico antigo (1-4) — só se as tabelas já existirem
+IF OBJECT_ID('dbo.SHR_PERMISSOES_MENU', 'U') IS NOT NULL
+BEGIN
+    DELETE FROM dbo.SHR_PERMISSOES_MENU
+    WHERE NIVEL IN ('1', '2', '3', '4');
+END
+GO
 
-DELETE FROM dbo.SHR_NIVEIS_USUARIO
-WHERE CODIGO IN ('1', '2', '3', '4')
-  AND NOT EXISTS (
-      SELECT 1 FROM dbo.CAD_USUARIO u
-      WHERE LTRIM(RTRIM(CAST(u.NIVEL AS VARCHAR(50)))) = SHR_NIVEIS_USUARIO.CODIGO
-  );
+IF OBJECT_ID('dbo.SHR_NIVEIS_USUARIO', 'U') IS NOT NULL
+BEGIN
+    DELETE FROM dbo.SHR_NIVEIS_USUARIO
+    WHERE CODIGO IN ('1', '2', '3', '4')
+      AND NOT EXISTS (
+          SELECT 1 FROM dbo.CAD_USUARIO u
+          WHERE LTRIM(RTRIM(CAST(u.NIVEL AS VARCHAR(50)))) = SHR_NIVEIS_USUARIO.CODIGO
+      );
+END
 GO
 
 -- Seed dos cargos (não sobrescreve se já existir)
