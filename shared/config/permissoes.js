@@ -65,9 +65,9 @@
 
     try {
       const [rNiveis, rCatalogo, rMatriz] = await Promise.all([
-        fetch("/api/shared/niveis", { headers: authHeaders() }),
-        fetch("/api/shared/permissoes?action=catalogo", { headers: authHeaders() }),
-        fetch("/api/shared/permissoes?action=matriz", { headers: authHeaders() }),
+        fetch("/api/shared/config?tipo=niveis", { headers: authHeaders() }),
+        fetch("/api/shared/config?tipo=permissoes&action=catalogo", { headers: authHeaders() }),
+        fetch("/api/shared/config?tipo=permissoes&action=matriz", { headers: authHeaders() }),
       ]);
 
       const dNiveis = await rNiveis.json();
@@ -269,7 +269,7 @@
     btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Salvando…';
 
     try {
-      const res = await fetch("/api/shared/permissoes", {
+      const res = await fetch("/api/shared/config?tipo=permissoes", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ permissoes }),

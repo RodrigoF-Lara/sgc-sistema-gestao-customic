@@ -1,7 +1,7 @@
 /**
  * Helper client-side de permissões (SGC).
  *
- * Carrega a matriz do nível logado via /api/shared/permissoes?action=minhas
+ * Carrega a matriz do nível logado via /api/shared/config?tipo=permissoes&action=minhas
  * e expõe window.SGCPermissoes.podeAcessar(linkId).
  *
  * Regras espelhadas do servidor:
@@ -123,7 +123,7 @@
 
     state.loading = (async () => {
       try {
-        const res = await fetch("/api/shared/permissoes?action=minhas", {
+        const res = await fetch("/api/shared/config?tipo=permissoes&action=minhas", {
           headers: authHeaders(),
         });
         const data = await res.json();

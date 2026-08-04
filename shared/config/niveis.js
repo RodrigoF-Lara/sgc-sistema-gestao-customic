@@ -45,7 +45,7 @@
   async function carregar() {
     const tbody = document.getElementById("niveisBody");
     try {
-      const res = await fetch("/api/shared/niveis", { headers: authHeaders() });
+      const res = await fetch("/api/shared/config?tipo=niveis", { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok || !data.success) {
         tbody.innerHTML = `<tr><td colspan="6" style="color:#c00">${data.error || "Erro ao carregar"}</td></tr>`;
@@ -172,7 +172,7 @@
       : { action: "create", codigo, label, setor, ordem: parseInt(ordem, 10) };
 
     try {
-      const res = await fetch("/api/shared/niveis", {
+      const res = await fetch("/api/shared/config?tipo=niveis", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(body),
@@ -195,7 +195,7 @@
       return;
     }
     try {
-      const res = await fetch("/api/shared/niveis", {
+      const res = await fetch("/api/shared/config?tipo=niveis", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ action: "delete", id: parseInt(id, 10) }),

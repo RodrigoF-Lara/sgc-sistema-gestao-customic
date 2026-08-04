@@ -39,6 +39,19 @@ CAD_USUARIO.SETOR          =  setor            ex: ESTOQUE
 | 3 | `assistente_estoque` |
 | 4 | `auxiliar_estoque` |
 
+## APIs (importante para o Vercel Hobby)
+
+O plano **Hobby limita a 12 Serverless Functions**. O projeto já usa 12 arquivos em `api/`,
+então cargos e matriz **não** têm endpoint próprio — entram em `config.js`:
+
+| Uso | URL |
+|-----|-----|
+| Listar/CRUD cargos | `GET/POST /api/shared/config?tipo=niveis` |
+| Matriz / minhas / catálogo | `GET/POST /api/shared/config?tipo=permissoes&action=...` |
+
+Lógica em `lib/niveisApi.js`, `lib/permissoesApi.js`, `lib/permissoesHelper.js`, `lib/menuCatalog.js`
+(fora de `api/` → não contam como function).
+
 ## Deploy
 
 1. Rode no SQL Server:

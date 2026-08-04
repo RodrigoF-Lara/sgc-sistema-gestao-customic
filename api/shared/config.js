@@ -1,13 +1,19 @@
 import { getConnection, sql } from "../../db.js";
+import { handleNiveis } from "../../lib/niveisApi.js";
+import { handlePermissoes } from "../../lib/permissoesApi.js";
 
 /**
- * API unificada de Configurações
- * Gerencia configurações de inventário e notificações
- * 
+ * API unificada de Configurações (+ cargos/permissões)
+ *
  * Rotas:
- * - /api/config?tipo=inventario&action=get
- * - /api/config?tipo=notificacoes&action=get
- * - /api/config?tipo=calendarioProdutivo&action=get
+ * - /api/shared/config?tipo=inventario&action=get
+ * - /api/shared/config?tipo=notificacoes&action=get
+ * - /api/shared/config?tipo=calendarioProdutivo&action=get
+ * - /api/shared/config?tipo=niveis
+ * - /api/shared/config?tipo=permissoes&action=minhas|matriz|catalogo|check
+ *
+ * Cargos e permissões vivem aqui (não em api/shared/niveis|permissoes.js)
+ * para respeitar o limite de 12 Serverless Functions do Vercel Hobby.
  */
 export default async function handler(req, res) {
   const { method, query } = req;
@@ -23,8 +29,14 @@ export default async function handler(req, res) {
       return await handleNotificacoes(req, res, pool, method, query);
     } else if (tipo === 'calendarioProdutivo') {
       return await handleCalendarioProdutivo(req, res, pool, method, query);
+    } else if (tipo === 'niveis') {
+      return await handleNiveis(req, res, pool, method);
+    } else if (tipo === 'permissoes') {
+      return await handlePermissoes(req, res, pool, method, query);
     } else {
-      return res.status(400).json({ error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes ou calendarioProdutivo)" });
+      return res.status(400).json({
+        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis ou permissoes)"
+      });
     }
   } catch (error) {
     console.error("Erro na API de configurações:", error);

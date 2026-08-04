@@ -72,7 +72,7 @@ async function carregarNiveisSelect() {
 
     let lista = fallback;
     try {
-        const res = await fetch('/api/shared/niveis', { headers: authHeaders() });
+        const res = await fetch('/api/shared/config?tipo=niveis', { headers: authHeaders() });
         const data = await res.json();
         if (res.ok && data.success && Array.isArray(data.data) && data.data.length) {
             lista = data.data;
