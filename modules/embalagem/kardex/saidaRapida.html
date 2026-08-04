@@ -290,9 +290,13 @@
                 const data = await res.json();
                 if (res.ok && data.usuario) {
                     usuario = `${data.usuario.F_NAME} ${data.usuario.L_NAME}`;
+                    let nivel = String(data.usuario.NIVEL ?? '').trim();
+                    const legados = { '1': 'adm', '2': 'gerente_estoque', '3': 'assistente_estoque', '4': 'auxiliar_estoque' };
+                    if (legados[nivel]) nivel = legados[nivel];
                     localStorage.setItem('userName', usuario);
-                    localStorage.setItem('userLevel', data.usuario.NIVEL);
+                    localStorage.setItem('userLevel', nivel.toLowerCase());
                     localStorage.setItem('userCode', data.usuario.USUARIO);
+                    if (data.usuario.SETOR) localStorage.setItem('userSetor', data.usuario.SETOR);
                     localStorage.setItem('loginTime', new Date().toLocaleString('pt-BR'));
                     msg.textContent = '';
                     init();

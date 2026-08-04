@@ -21,7 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function usuarioEhAdmin() {
-        return userLevel === '1' || userLevel === 1 || Number(userLevel) === 1;
+        if (window.SGCPermissoes && typeof window.SGCPermissoes.isAdmin === 'function') {
+            return window.SGCPermissoes.isAdmin();
+        }
+        const n = String(userLevel || '').trim().toLowerCase();
+        return n === 'adm' || n === '1' || n === 'administrador' || n === 'admin';
     }
 
     // --- FUNÇÕES AUXILIARES ---

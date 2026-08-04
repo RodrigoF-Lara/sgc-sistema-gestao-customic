@@ -21,3 +21,4 @@ sql/
 | `embalagem/create_tb_req_delete_log.sql` | Embalagem | Cria `TB_REQ_DELETE_LOG` para auditoria de exclusões de requisições |
 | `embalagem/fix_requisicoes_hora_solicitacao_inconsistente.sql` | Embalagem | Corrige registros onde a solicitação ficou maior que a conclusão por drift de fuso |
 | `shared/create_tb_config_calendario_produtivo.sql` | Shared | Cria `TB_CONFIG_CALENDARIO_PRODUTIVO` para definir dias/horários úteis usados no lead time |
+| `shared/create_permissoes_tables.sql` | Shared | Cria `SHR_NIVEIS_USUARIO` + `SHR_PERMISSOES_MENU` e seed dos grupos (1–4) e permissões iniciais |

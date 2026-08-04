@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargos / Grupos - SGC</title>
+    <link rel="stylesheet" href="/shared/frontend/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
+        .page-header { margin-bottom: 24px; }
+        .page-header h1 { text-align: left; margin-bottom: 8px; color: var(--cor-principal); }
+        .page-header p { color: #666; }
+        .card {
+            background: #fff; border-radius: 12px; padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 20px;
+        }
+        .card h2 { font-size: 1.15em; margin-bottom: 16px; border: none; text-align: left; }
+        .form-row {
+            display: grid; grid-template-columns: 1.1fr 1.4fr 1fr 90px auto;
+            gap: 12px; align-items: end;
+        }
+        .form-group label { display: block; font-size: .85em; font-weight: 600; margin-bottom: 4px; color: #444; }
+        .form-group input {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--cor-cinza-borda);
+            border-radius: 8px; font-size: .95em;
+        }
+        .btn {
+            padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 600; font-size: .9em;
+        }
+        .btn-primary { background: var(--cor-principal); color: #fff; }
+        .btn-primary:hover { background: var(--cor-principal-escura); }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-sm { padding: 6px 12px; font-size: .85em; }
+        .btn-icon {
+            width: 34px; height: 34px; border: none; border-radius: 8px;
+            cursor: pointer; background: #f1f3f5; color: #333;
+        }
+        .btn-icon.delete { color: #dc3545; }
+        .btn-icon:hover { background: #e2e6ea; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-size: .8em; text-transform: uppercase; color: #888; letter-spacing: .03em; }
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px;
+            font-size: .75em; font-weight: 700; background: #e3f2fd; color: #1565c0;
+        }
+        .badge.protegido { background: #fff3e0; color: #e65100; }
+        .badge.setor { background: #ecfdf5; color: #047857; }
+        .status-msg {
+            display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-weight: 500;
+        }
+        .status-msg.success { display: block; background: #d4edda; color: #155724; }
+        .status-msg.error { display: block; background: #f8d7da; color: #721c24; }
+        .hint { font-size: .85em; color: #888; margin-top: 8px; }
+        .acoes { display: flex; gap: 6px; }
+        @media (max-width: 800px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+    <main class="main-content">
+        <div class="page-wrap">
+            <div class="page-header">
+                <h1><i class="fa fa-user-tie"></i> Cargos (Cargo + Setor)</h1>
+                <p>Defina os cargos usados no cadastro de usuários e na matriz de permissões. Ex.: <strong>GERENTE (estoque)</strong>.</p>
+            </div>
+
+            <div id="status-msg" class="status-msg"></div>
+
+            <div class="card">
+                <h2 id="form-title">Novo cargo</h2>
+                <form id="nivelForm">
+                    <input type="hidden" id="nivelId" value="">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="codigo">Código *</label>
+                            <input type="text" id="codigo" placeholder="ex: gerente_estoque" required maxlength="50" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="label">Nome de exibição *</label>
+                            <input type="text" id="label" placeholder="ex: GERENTE (estoque)" required maxlength="120">
+                        </div>
+                        <div class="form-group">
+                            <label for="setor">Setor</label>
+                            <input type="text" id="setor" class="uppercase" placeholder="ex: ESTOQUE" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="ordem">Ordem</label>
+                            <input type="number" id="ordem" value="100" min="0" max="9999">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary" id="btnSalvar">
+                                <i class="fa fa-save"></i> Salvar
+                            </button>
+                        </div>
+                    </div>
+                    <p class="hint">
+                        O <strong>código</strong> é imutável e grava em <code>CAD_USUARIO.NIVEL</code>
+                        (ex: <code>adm</code>, <code>gerente_estoque</code>).
+                        O cargo <strong>adm</strong> é protegido e tem acesso total.
+                        Sugestão de código: <code>cargo_setor</code> em minúsculas.
+                    </p>
+                    <div id="editActions" style="display:none; margin-top:12px; gap:8px;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnCancelar">Cancelar edição</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Cargos cadastrados</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Setor</th>
+                            <th>Ordem</th>
+                            <th>Flags</th>
+                            <th style="width:100px">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="niveisBody">
+                        <tr><td colspan="6" style="color:#888">Carregando…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top:8px">
+                <a href="/shared/config/permissoes.html"><i class="fa fa-key"></i> Ir para Matriz de Permissões</a>
+                &nbsp;·&nbsp;
+                <a href="/shared/config/configuracoes.html"><i class="fa fa-arrow-left"></i> Configurações</a>
+            </p>
+        </div>
+    </main>
+
+    <script src="/shared/frontend/permissoes.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/config/niveis.js"></script>
+</body>
+</html>

@@ -82,6 +82,14 @@
             background: linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%);
         }
 
+        .config-card-icon.niveis {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .config-card-icon.permissoes {
+            background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        }
+
         .config-card h2 {
             font-size: 1.4em;
             margin-bottom: 12px;
@@ -123,7 +131,7 @@
 
             <div class="config-grid">
                 <!-- Card Inventário Cíclico -->
-                <a href="/modules/embalagem/inventario/configInventario.html" class="config-card">
+                <a href="/modules/embalagem/inventario/configInventario.html" class="config-card" data-link-id="config-inventario">
                     <div class="config-card-icon inventario">
                         <i class="fa fa-clipboard-check"></i>
                     </div>
@@ -133,7 +141,7 @@
                 </a>
 
                 <!-- Card Notificações -->
-                <a href="/shared/config/configNotificacoes.html" class="config-card">
+                <a href="/shared/config/configNotificacoes.html" class="config-card" data-link-id="config-notificacoes">
                     <div class="config-card-icon notificacoes">
                         <i class="fa fa-bell"></i>
                     </div>
@@ -143,7 +151,7 @@
                 </a>
 
                 <!-- Card Calendário Produtivo -->
-                <a href="/shared/config/calendarioProdutivo.html" class="config-card">
+                <a href="/shared/config/calendarioProdutivo.html" class="config-card" data-link-id="calendario-produtivo">
                     <div class="config-card-icon calendario">
                         <i class="fa fa-calendar-days"></i>
                     </div>
@@ -151,10 +159,31 @@
                     <p>Defina dias e horários de funcionamento para calcular lead time apenas em horas úteis.</p>
                     <span class="config-card-badge">Lead Time Útil</span>
                 </a>
+
+                <!-- Card Grupos de Usuários (admin) -->
+                <a href="/shared/config/niveis.html" class="config-card" data-link-id="niveis">
+                    <div class="config-card-icon niveis">
+                        <i class="fa fa-user-tie"></i>
+                    </div>
+                    <h2>Cargos</h2>
+                    <p>Gerencie cargos + setor (ADM, GERENTE (estoque), ANALISTA (estoque), etc.) usados nas permissões.</p>
+                    <span class="config-card-badge">Acesso · ADM</span>
+                </a>
+
+                <!-- Card Matriz de Permissões (admin) -->
+                <a href="/shared/config/permissoes.html" class="config-card" data-link-id="permissoes">
+                    <div class="config-card-icon permissoes">
+                        <i class="fa fa-key"></i>
+                    </div>
+                    <h2>Matriz de Permissões</h2>
+                    <p>Defina, por grupo, quais módulos e ações cada usuário pode acessar no sistema.</p>
+                    <span class="config-card-badge">Acesso · ADM</span>
+                </a>
             </div>
         </div>
     </main>
 
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="/shared/frontend/layout.js"></script>
 </body>
 </html>

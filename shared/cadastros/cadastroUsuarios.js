@@ -1,11 +1,24 @@
 // Gestão de Usuários - SGC
 let usuarioSelecionado = null;
+/** Mapa codigo -> { label, setor } (vindo da API de cargos) */
+let niveisMap = {};
+let niveisLista = [];
 
 // Torna selecionarUsuario global para onclick funcionar
 window.selecionarUsuario = selecionarUsuario;
 
-// Verificação de acesso - Apenas ADMIN (nível 1)
-function verificarAcesso() {
+function authHeaders() {
+    if (window.SGCPermissoes) return window.SGCPermissoes.authHeaders();
+    const h = { 'Content-Type': 'application/json' };
+    const nivel = localStorage.getItem('userLevel');
+    const code = localStorage.getItem('userCode');
+    if (nivel) h['x-user-level'] = nivel;
+    if (code) h['x-user-code'] = code;
+    return h;
+}
+
+// Verificação de acesso - Admin ou quem tiver permissão "usuarios"
+async function verificarAcesso() {
     const userLevel = localStorage.getItem('userLevel');
     const userName = localStorage.getItem('userName');
     
@@ -19,22 +32,92 @@ function verificarAcesso() {
         window.location.href = '/index.html';
         return false;
     }
+
+    // Preferir helper de permissões (admin = nível 1 ou matriz)
+    if (window.SGCPermissoes) {
+        await window.SGCPermissoes.carregar();
+        if (window.SGCPermissoes.podeAcessar('usuarios') || window.SGCPermissoes.podeAcessar('usuarios-gerenciar')) {
+            return true;
+        }
+        alert(`Acesso Negado!\n\n${userName || 'Usuário'}, você não tem permissão para gerenciar usuários.`);
+        window.location.href = '/menu.html';
+        return false;
+    }
     
-    // NIVEL 1 = ADMIN
-    if (userLevel !== '1' && userLevel !== 1 && parseInt(userLevel) !== 1) {
-        alert(`Acesso Negado!\n\n${userName || 'Usuário'}, você não tem permissão para acessar esta página.\n\nApenas administradores podem gerenciar usuários.`);
+    // Fallback: ADM (ou legado '1')
+    const n = String(userLevel || '').trim().toLowerCase();
+    if (n !== 'adm' && n !== '1' && n !== 'administrador' && n !== 'admin') {
+        alert(`Acesso Negado!\n\n${userName || 'Usuário'}, você não tem permissão para acessar esta página.\n\nApenas ADM podem gerenciar usuários.`);
         window.location.href = '/menu.html';
         return false;
     }
     return true;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+async function carregarNiveisSelect() {
+    const select = document.getElementById('nivel');
+    if (!select) return;
+
+    const fallback = [
+        { codigo: 'adm', label: 'ADM', setor: null },
+        { codigo: 'gerente_estoque', label: 'GERENTE (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'coordenador_estoque', label: 'COORDENADOR (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'supervisor_estoque', label: 'SUPERVISOR (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'lider_estoque', label: 'LIDER (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'analista_estoque', label: 'ANALISTA (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'assistente_estoque', label: 'ASSISTENTE (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'auxiliar_estoque', label: 'AUXILIAR (estoque)', setor: 'ESTOQUE' },
+        { codigo: 'estagio_estoque', label: 'ESTÁGIO (estoque)', setor: 'ESTOQUE' },
+    ];
+
+    let lista = fallback;
+    try {
+        const res = await fetch('/api/shared/niveis', { headers: authHeaders() });
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.data) && data.data.length) {
+            lista = data.data;
+        }
+    } catch (err) {
+        console.warn('Falha ao carregar cargos da API, usando fallback:', err);
+    }
+
+    niveisLista = lista;
+    niveisMap = {};
+    select.innerHTML = '<option value="">Selecione o cargo...</option>';
+    lista.forEach((n) => {
+        const codigo = String(n.codigo);
+        niveisMap[codigo] = { label: n.label || codigo, setor: n.setor || null };
+        // Compat: se alguém ainda usa niveisMap[x] como string em templates antigos
+        niveisMap[codigo].toString = () => niveisMap[codigo].label;
+
+        const opt = document.createElement('option');
+        opt.value = codigo;
+        opt.textContent = n.label || codigo;
+        if (n.setor) opt.dataset.setor = n.setor;
+        select.appendChild(opt);
+    });
+
+    // Ao escolher cargo, preenche SETOR automaticamente
+    select.onchange = function () {
+        const opt = select.options[select.selectedIndex];
+        const setorInput = document.getElementById('setor');
+        if (!setorInput || !opt) return;
+        const info = niveisMap[opt.value];
+        if (info && info.setor) {
+            setorInput.value = info.setor;
+        } else if (opt.dataset && opt.dataset.setor) {
+            setorInput.value = opt.dataset.setor;
+        }
+    };
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
     // Verifica acesso antes de carregar a página
-    if (!verificarAcesso()) {
+    if (!(await verificarAcesso())) {
         return;
     }
     
+    await carregarNiveisSelect();
     carregarUsuarios();
     inicializarEventos();
     configurarMascaras();
@@ -164,11 +247,18 @@ function renderizarUsuarios(usuarios) {
     }
 
     const html = usuarios.map(usuario => {
-        const NIVEL_LABELS = { '1': 'ADMIN', '2': 'GERENTE', '3': 'USER', '4': 'ESTOQUISTA' };
-        const NIVEL_CLASSES = { '1': 'admin', '2': 'gerente', '3': 'user', '4': 'user' };
         const nivelRaw = String(usuario.NIVEL || '').trim();
-        const nivelLabel = NIVEL_LABELS[nivelRaw] || nivelRaw || 'USER';
-        const nivelClass = NIVEL_CLASSES[nivelRaw] || nivelLabel.toLowerCase();
+        const nivelNorm = nivelRaw.toLowerCase();
+        const info = niveisMap[nivelRaw] || niveisMap[nivelNorm];
+        const nivelLabel = (info && info.label) || info || ({
+            '1': 'ADM', adm: 'ADM',
+            '2': 'GERENTE (estoque)', gerente_estoque: 'GERENTE (estoque)',
+            '3': 'ASSISTENTE (estoque)', assistente_estoque: 'ASSISTENTE (estoque)',
+            '4': 'AUXILIAR (estoque)', auxiliar_estoque: 'AUXILIAR (estoque)',
+        })[nivelNorm] || nivelRaw || '—';
+        const nivelClass = (nivelNorm === 'adm' || nivelNorm === '1') ? 'admin'
+            : (nivelNorm.includes('gerente') || nivelNorm === '2') ? 'gerente'
+            : 'user';
         const userKey = usuario.USUARIO || '';
         const nomeCompleto = `${usuario.F_NAME || ''} ${usuario.L_NAME || ''}`;
 
@@ -252,11 +342,22 @@ async function carregarUsuarioParaEdicao(usuarioNome) {
                 document.getElementById('usuarioId').value = usuario.USUARIO || '';
                 document.getElementById('usuario').value = usuario.USUARIO || '';
                 document.getElementById('senha').value = ''; // Não mostra senha por segurança
-                document.getElementById('nivel').value = String(usuario.NIVEL || '').trim();
+                // Aceita NIVEL legado (1-4) mapeando para novos códigos se select não tiver o valor
+                let nivelVal = String(usuario.NIVEL || '').trim();
+                const legados = { '1': 'adm', '2': 'gerente_estoque', '3': 'assistente_estoque', '4': 'auxiliar_estoque' };
+                const selectNivel = document.getElementById('nivel');
+                if (selectNivel && ![...selectNivel.options].some(o => o.value === nivelVal) && legados[nivelVal]) {
+                    nivelVal = legados[nivelVal];
+                }
+                selectNivel.value = nivelVal;
                 document.getElementById('cpf').value = usuario.CPF || '';
                 document.getElementById('firstName').value = usuario.F_NAME || '';
                 document.getElementById('lastName').value = usuario.L_NAME || '';
                 document.getElementById('setor').value = usuario.SETOR || '';
+                // Se setor vazio, preenche a partir do cargo
+                if (!document.getElementById('setor').value && selectNivel.onchange) {
+                    selectNivel.onchange();
+                }
 
                 // Altera título do formulário
                 document.getElementById('form-title').textContent = 'Editar Usuário';

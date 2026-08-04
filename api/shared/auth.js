@@ -164,11 +164,20 @@ async function criarUsuario(req, res, pool) {
       });
     }
 
+    // NIVEL = código do cargo (texto), ex: adm, gerente_estoque
+    const nivelCodigo = String(nivel).trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+    if (!nivelCodigo) {
+      return res.status(400).json({ error: "Cargo/nível inválido" });
+    }
+
     // Insere o novo usuário
     const result = await pool.request()
       .input('usuario', sql.VarChar(50), usuario.toUpperCase())
       .input('senha', sql.VarChar(50), senha.toUpperCase())
-      .input('nivel', sql.Int, parseInt(nivel))
+      .input('nivel', sql.VarChar(50), nivelCodigo)
       .input('cpf', sql.VarChar(14), cpf)
       .input('firstName', sql.VarChar(50), firstName.toUpperCase())
       .input('lastName', sql.VarChar(50), lastName.toUpperCase())
@@ -246,8 +255,14 @@ async function atualizarUsuario(req, res, pool) {
       request.input('senha', sql.VarChar(50), senha.toUpperCase());
     }
     if (nivel) {
+      const nivelCodigo = String(nivel).trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      if (!nivelCodigo) {
+        return res.status(400).json({ error: "Cargo/nível inválido" });
+      }
       updateFields.push('NIVEL = @nivel');
-      request.input('nivel', sql.Int, parseInt(nivel));
+      request.input('nivel', sql.VarChar(50), nivelCodigo);
     }
     if (cpf) {
       updateFields.push('CPF = @cpf');

@@ -50,8 +50,13 @@
                 "userName",
                 `${data.usuario.F_NAME} ${data.usuario.L_NAME}`
               );
-              localStorage.setItem("userLevel", data.usuario.NIVEL);
+              // Cargo/grupo (texto). Migra legados numéricos 1-4 no client se o SQL ainda não rodou.
+              let nivel = String(data.usuario.NIVEL ?? "").trim();
+              const legados = { "1": "adm", "2": "gerente_estoque", "3": "assistente_estoque", "4": "auxiliar_estoque" };
+              if (legados[nivel]) nivel = legados[nivel];
+              localStorage.setItem("userLevel", nivel.toLowerCase());
               localStorage.setItem("userCode", data.usuario.USUARIO);
+              if (data.usuario.SETOR) localStorage.setItem("userSetor", data.usuario.SETOR);
               
               console.log('LOGIN - Salvou userLevel:', localStorage.getItem('userLevel'));
               window.location.href = "/menu.html";

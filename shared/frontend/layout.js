@@ -1,18 +1,57 @@
+// Garante que o helper de permissões esteja disponível (páginas que não o incluem)
+function ensurePermissoesScript() {
+  return new Promise((resolve) => {
+    if (window.SGCPermissoes) return resolve();
+    const existing = document.querySelector('script[src*="permissoes.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      // se já carregou antes do listener
+      if (window.SGCPermissoes) resolve();
+      // fallback curto
+      setTimeout(() => resolve(), 400);
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = '/shared/frontend/permissoes.js';
+    s.onload = () => resolve();
+    s.onerror = () => resolve();
+    document.head.appendChild(s);
+  });
+}
+
+async function aplicarFiltroPermissoes(sidebarRoot) {
+  try {
+    await ensurePermissoesScript();
+    if (!window.SGCPermissoes) return;
+    await window.SGCPermissoes.carregar();
+    window.SGCPermissoes.filtrarMenuLateral(sidebarRoot || document);
+    // Cards do menu principal / hubs
+    window.SGCPermissoes.filtrarCards(document);
+  } catch (err) {
+    console.error('Falha ao aplicar permissões no menu:', err);
+  }
+}
+
 // Carrega menu-lateral.html (se existir) e inicializa comportamento do sidebar
 document.addEventListener('DOMContentLoaded', function () {
   const sidebarContainer = document.getElementById('sidebar-container');
-  if (!sidebarContainer) return;
+  if (!sidebarContainer) {
+    // Páginas sem sidebar ainda podem ter cards filtráveis
+    aplicarFiltroPermissoes(document);
+    return;
+  }
 
   fetch('/shared/frontend/menu-lateral.html')
     .then(response => {
       if (!response.ok) throw new Error('menu-lateral.html não encontrado');
       return response.text();
     })
-    .then(html => {
+    .then(async html => {
       sidebarContainer.innerHTML = html;
       inicializarSidebar();
+      await aplicarFiltroPermissoes(sidebarContainer);
     })
-    .catch(err => {
+    .catch(async err => {
       console.error('Falha ao carregar menu-lateral.html:', err);
       // Fallback sincronizado com nomes existentes no projeto
       sidebarContainer.innerHTML = `
@@ -33,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="sidebar-footer"><button id="logout-btn" class="logout-btn">Sair</button></div>
       `;
       inicializarSidebar();
+      await aplicarFiltroPermissoes(sidebarContainer);
     });
 });
 
@@ -72,8 +112,10 @@ function inicializarSidebar() {
     'cadastrousuarios': 'nav-usuarios',
     'configuracoes': 'nav-configuracoes',
     'configinventario': 'nav-configuracoes',
-    'confignotificacoes': 'nav-configuracoes',
-    'calendarioprodutivo': 'nav-configuracoes'
+    'confignotificacoes': 'nav-config-notificacoes',
+    'calendarioprodutivo': 'nav-configuracoes',
+    'niveis': 'nav-niveis',
+    'permissoes': 'nav-permissoes'
   };
   const navId = idMap[pageKey] || `nav-${pageKey}`;
   const navLink = document.getElementById(navId);
@@ -105,6 +147,10 @@ function inicializarSidebar() {
       if (confirm('Tem certeza que deseja sair?')) {
         localStorage.removeItem('userName');
         localStorage.removeItem('loginTime');
+        localStorage.removeItem('userLevel');
+        localStorage.removeItem('userCode');
+        if (window.SGCPermissoes) window.SGCPermissoes.invalidarCache();
+        try { sessionStorage.removeItem('sgcPermissoesCache'); } catch (_) { /* ignore */ }
         window.location.href = '/index.html';
       }
     });

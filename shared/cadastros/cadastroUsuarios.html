@@ -385,14 +385,15 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="nivel">Nível *</label>
+                            <label for="nivel">Cargo *</label>
                             <select id="nivel" required>
-                                <option value="">Selecione...</option>
-                                <option value="1">ADMIN</option>
-                                <option value="2">GERENTE</option>
-                                <option value="3">USER</option>
-                                <option value="4">ESTOQUISTA</option>
+                                <option value="">Carregando cargos...</option>
                             </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="setor">Setor</label>
+                            <input type="text" id="setor" class="uppercase" maxlength="50" placeholder="Preenchido pelo cargo">
                         </div>
 
                         <div class="form-group">
@@ -408,11 +409,6 @@
                         <div class="form-group">
                             <label for="lastName">Sobrenome *</label>
                             <input type="text" id="lastName" class="uppercase" required maxlength="50">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="setor">Setor</label>
-                            <input type="text" id="setor" class="uppercase" maxlength="50">
                         </div>
 
                         <div class="form-actions">
@@ -435,6 +431,7 @@
         </div>
     </main>
 
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="cadastroUsuarios.js"></script>
 </body>

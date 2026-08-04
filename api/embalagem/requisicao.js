@@ -263,8 +263,9 @@ async function usuarioEhAdmin(pool, usuarioCodigo) {
 
     if (result.recordset.length === 0) return false;
 
-    const nivel = Number(result.recordset[0].NIVEL);
-    return Number.isFinite(nivel) && nivel === 1;
+    // Aceita cargo 'adm' (novo) e legado numérico '1'
+    const raw = String(result.recordset[0].NIVEL ?? '').trim().toLowerCase();
+    return raw === 'adm' || raw === '1' || raw === 'administrador' || raw === 'admin';
 }
 
 async function handleDelete(req, res) {
