@@ -57,23 +57,23 @@
                     </div>
 
                     <div class="botoes-movimento">
-                        <button id="btnEntrada" class="btn-movimento entrada" disabled>
+                        <button id="btnEntrada" class="btn-movimento entrada" data-perm="estoque-entrada" disabled>
                             <i class="fa-solid fa-arrow-up"></i>
                             <span>ENTRADA</span>
                         </button>
-                        <button id="btnSaida" class="btn-movimento saida" disabled>
+                        <button id="btnSaida" class="btn-movimento saida" data-perm="estoque-saida" disabled>
                             <i class="fa-solid fa-arrow-down"></i>
                             <span>SAÍDA</span>
                         </button>
-                        <button id="btnZerarEndereco" class="btn-movimento zerar" disabled>
+                        <button id="btnZerarEndereco" class="btn-movimento zerar" data-perm="estoque-zerar-endereco" disabled>
                             <i class="fa-solid fa-location-crosshairs"></i>
                             <span>ZERAR ENDEREÇO</span>
                         </button>
-                        <button id="btnZerarCodigo" class="btn-movimento zerar-codigo" disabled>
+                        <button id="btnZerarCodigo" class="btn-movimento zerar-codigo" data-perm="estoque-zerar-codigo" disabled>
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             <span>ZERAR CÓDIGO</span>
                         </button>
-                        <button id="btnAlterarEndereco" class="btn-movimento alterar" disabled>
+                        <button id="btnAlterarEndereco" class="btn-movimento alterar" data-perm="estoque-alterar-endereco" disabled>
                             <i class="fa-solid fa-right-left"></i>
                             <span>ALTERAR ENDEREÇO</span>
                         </button>
@@ -297,6 +297,7 @@
         </div>
     </div>
 
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="inventoryManagement.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>

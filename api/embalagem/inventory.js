@@ -1,4 +1,15 @@
 import { getConnection, sql } from "../../db.js";
+import { exigirPermissao } from "../../lib/permissoesHelper.js";
+
+/** tipo de movimento (API) → link_id da matriz de permissões */
+const TIPO_PARA_LINK = {
+  ENTRADA: "estoque-entrada",
+  SAIDA: "estoque-saida",
+  SAÍDA: "estoque-saida",
+  ZERAR_ENDERECO: "estoque-zerar-endereco",
+  ZERAR_CODIGO: "estoque-zerar-codigo",
+  ALTERAR_ENDERECO: "estoque-alterar-endereco",
+};
 
 export default async function handler(req, res) {
   try {
@@ -193,7 +204,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ message: "Dados insuficientes para registrar movimento." });
       }
 
-      const operacao = tipo.toUpperCase();
+      const operacao = tipo.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      // Autorização por ação (ADM bypass no helper)
+      const linkId = TIPO_PARA_LINK[operacao] || TIPO_PARA_LINK[tipo.toUpperCase()];
+      if (linkId) {
+        const ok = await exigirPermissao(
+          req,
+          res,
+          linkId,
+          `Sem permissão para a ação: ${tipo}`
+        );
+        if (!ok) return;
+      }
+
       const transaction = pool.transaction();
       let responseData = { message: "Movimento registrado com sucesso!" };
       

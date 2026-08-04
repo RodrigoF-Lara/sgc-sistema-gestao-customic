@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const codigoEl = document.getElementById("codigo");
   const btnConsultar = document.getElementById("consultarBtn");
   const produtoInfo = document.getElementById("produtoInfo");
@@ -37,6 +37,88 @@ document.addEventListener("DOMContentLoaded", () => {
   let codigoAtual = "";
   let loteSelecionado = null;
 
+  // --- Permissões por botão (matriz: ações especiais) ---
+  const BTN_PERMS = [
+    { el: btnEntrada, linkId: "estoque-entrada" },
+    { el: btnSaida, linkId: "estoque-saida" },
+    { el: btnZerarEndereco, linkId: "estoque-zerar-endereco" },
+    { el: btnZerarCodigo, linkId: "estoque-zerar-codigo" },
+    { el: btnAlterarEndereco, linkId: "estoque-alterar-endereco" },
+  ];
+
+  function authHeaders(extra) {
+    const h = Object.assign({ "Content-Type": "application/json" }, extra || {});
+    if (window.SGCPermissoes) {
+      const a = window.SGCPermissoes.authHeaders();
+      Object.assign(h, a);
+    } else {
+      const nivel = localStorage.getItem("userLevel");
+      const code = localStorage.getItem("userCode");
+      if (nivel) h["x-user-level"] = nivel;
+      if (code) h["x-user-code"] = code;
+    }
+    return h;
+  }
+
+  function podeAcao(linkId) {
+    if (window.SGCPermissoes && typeof window.SGCPermissoes.podeAcessar === "function") {
+      return window.SGCPermissoes.podeAcessar(linkId);
+    }
+    // Sem helper carregado: só ADM (legado)
+    const n = String(localStorage.getItem("userLevel") || "").toLowerCase();
+    return n === "adm" || n === "1" || n === "administrador" || n === "admin";
+  }
+
+  /** Aplica visibilidade dos botões conforme permissão (esconde se negado). */
+  function aplicarPermissoesBotoes(habilitarAposConsulta) {
+    let algumVisivel = false;
+    BTN_PERMS.forEach(({ el, linkId }) => {
+      if (!el) return;
+      const permitido = podeAcao(linkId);
+      if (!permitido) {
+        el.style.display = "none";
+        el.disabled = true;
+        el.setAttribute("data-perm-hidden", "1");
+        el.title = "Sem permissão para esta ação";
+      } else {
+        el.style.display = "";
+        el.removeAttribute("data-perm-hidden");
+        el.title = "";
+        el.disabled = !habilitarAposConsulta;
+        algumVisivel = true;
+      }
+    });
+    // Se nenhum botão liberado, esconde o card inteiro de movimentações
+    if (entradaSaidaContainer && habilitarAposConsulta && !algumVisivel) {
+      const card = entradaSaidaContainer.querySelector(".botoes-movimento");
+      if (card) {
+        let msg = entradaSaidaContainer.querySelector(".perm-sem-acoes");
+        if (!msg) {
+          msg = document.createElement("p");
+          msg.className = "perm-sem-acoes";
+          msg.style.cssText = "text-align:center;color:#666;padding:12px;";
+          msg.textContent = "Você não tem permissão para movimentar estoque. Apenas consulta.";
+          entradaSaidaContainer.querySelector(".gerenciar-card")?.appendChild(msg);
+        }
+      }
+    }
+  }
+
+  // Carrega permissões e protege a página de estoque
+  if (window.SGCPermissoes) {
+    try {
+      await window.SGCPermissoes.carregar();
+      if (!window.SGCPermissoes.podeAcessar("estoque")) {
+        alert("Acesso negado. Você não tem permissão para Gerenciar Estoque.");
+        window.location.href = "/menu.html";
+        return;
+      }
+    } catch (e) {
+      console.warn("Falha ao carregar permissões:", e);
+    }
+  }
+  aplicarPermissoesBotoes(false);
+
   async function consultar(codigo) {
     codigoAtual = codigo;
     produtoInfo.style.display = "none";
@@ -70,22 +152,14 @@ document.addEventListener("DOMContentLoaded", () => {
       
       statusEl.textContent = "";
       
-      // Habilita botões de entrada e saída
-      btnEntrada.disabled = false;
-      btnSaida.disabled = false;
-      btnZerarEndereco.disabled = false;
-      btnZerarCodigo.disabled = false;
-      btnAlterarEndereco.disabled = false;
+      // Habilita só os botões permitidos pelo cargo
+      aplicarPermissoesBotoes(true);
       loteSelecionado = null; // Reseta lote selecionado
 
     } catch (err) {
       statusEl.style.color = "#c00";
       statusEl.textContent = `Erro: ${err.message}`;
-      btnEntrada.disabled = true;
-      btnSaida.disabled = true;
-      btnZerarEndereco.disabled = true;
-      btnZerarCodigo.disabled = true;
-      btnAlterarEndereco.disabled = true;
+      aplicarPermissoesBotoes(false);
     }
   }
 
@@ -932,7 +1006,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch("/api/embalagem/inventory", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
           codigo: codigoAtual,
           tipo: "ZERAR_CODIGO",
@@ -1032,7 +1106,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const res = await fetch("/api/embalagem/inventory", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify({
             codigo: codigoAtual,
             tipo: "ALTERAR_ENDERECO",
@@ -1137,7 +1211,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const res = await fetch("/api/embalagem/inventory", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify({
             codigo: codigoAtual,
             tipo: "ZERAR_ENDERECO",
@@ -1404,7 +1478,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const res = await fetch("/api/embalagem/inventory", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify(body),
         });
 
