@@ -121,14 +121,24 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('🎯 Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo: chkSaldoPositivo.checked, saldoZero: chkSaldoZero.checked, saldoNegativo: chkSaldoNegativo.checked, ativos: chkAtivos.checked, inativos: chkInativos.checked });
 
             const response = await fetch(url);
+            const rawText = await response.text();
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('❌ Erro na resposta:', errorData);
-                throw new Error(errorData.message || 'Erro ao buscar dados');
+            let resultado;
+            try {
+                resultado = rawText ? JSON.parse(rawText) : {};
+            } catch (parseErr) {
+                console.error('❌ Resposta não-JSON da API:', rawText?.slice?.(0, 300));
+                throw new Error(
+                    response.ok
+                        ? 'Resposta inválida do servidor (não é JSON).'
+                        : (rawText?.slice?.(0, 200) || `Erro HTTP ${response.status}`)
+                );
             }
 
-            const resultado = await response.json();
+            if (!response.ok) {
+                console.error('❌ Erro na resposta:', resultado);
+                throw new Error(resultado.message || resultado.error || `Erro HTTP ${response.status}`);
+            }
             
             console.log('✅ Resultado recebido:', resultado);
             

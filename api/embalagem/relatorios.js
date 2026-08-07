@@ -541,87 +541,38 @@ async function buscarTiposProduto(req, res) {
 async function relatorioSaldoEstoque(req, res) {
     try {
         const { curvaABC, tipoProduto, saldoPositivo, saldoZero, saldoNegativo, ativos, inativos } = req.query;
+        const esc = (s) => String(s).replace(/'/g, "''");
 
         const pool = await getConnection();
-        
-        console.log('?? Relatório de Saldo - Filtros:', { curvaABC: curvaABC || 'Todas', tipoProduto: tipoProduto || 'Todos', saldoPositivo, saldoZero, saldoNegativo, ativos, inativos });
-        
-        // Query principal
-        // Custos: pega a melhor linha de NF_PRODUTOS (inclui "primeiro custo" sem NF),
-        // priorizando linhas com valor > 0 e data de emissão mais recente.
-        // Fornecedor: só de NF real (join em NF_CABECALHO).
-        let query = `
-            SELECT 
+
+        console.log('[saldoEstoque] Filtros:', {
+            curvaABC: curvaABC || 'Todas',
+            tipoProduto: tipoProduto || 'Todos',
+            saldoPositivo,
+            saldoZero,
+            saldoNegativo,
+            ativos,
+            inativos
+        });
+
+        // 1) Base rápida: CAD_PROD + saldo do kardex (sem varrer NF_PRODUTOS)
+        let queryBase = `
+            SELECT
                 cp.CODIGO,
                 cp.DESCRICAO,
                 cp.TIPO,
                 ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
-                ISNULL(k.SALDO, 0) AS SALDO,
-                forn.ULTIMO_FORNECEDOR,
-                ISNULL(custo.CUSTO_CONTABIL_MEDIO, 0) AS CUSTO_CONTABIL_MEDIO,
-                ISNULL(custo.CUSTO_FISCAL_MEDIO, 0)   AS CUSTO_FISCAL_MEDIO,
-                ISNULL(custo.PRECO_UNIT_ULT_NF, 0)    AS PRECO_UNIT_ULT_NF
-            FROM [dbo].[CAD_PROD] cp
+                ISNULL(k.SALDO, 0) AS SALDO
+            FROM [dbo].[CAD_PROD] cp WITH (NOLOCK)
             LEFT JOIN (
-                SELECT 
+                SELECT
                     CODIGO,
                     SUM(SALDO) AS SALDO
-                FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                FROM [dbo].[KARDEX_2026_EMBALAGEM] WITH (NOLOCK)
                 WHERE D_E_L_E_T_ <> '*'
                     AND KARDEX = 2026
                 GROUP BY CODIGO
             ) k ON cp.CODIGO = k.CODIGO
-            LEFT JOIN (
-                SELECT
-                    x.PROD_COD_PROD AS CODIGO,
-                    x.PROD_CUSTO_CONTABIL_MEDIO_NOVO AS CUSTO_CONTABIL_MEDIO,
-                    x.PROD_CUSTO_FISCAL_MEDIO_NOVO   AS CUSTO_FISCAL_MEDIO,
-                    COALESCE(
-                        NULLIF(x.PROD_VALOR_UNIT, 0),
-                        NULLIF(x.PROD_CUSTO_FISCAL_MEDIO_NOVO, 0),
-                        NULLIF(x.PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0),
-                        NULLIF(x.PROD_CUSTO_PAGO, 0),
-                        0
-                    ) AS PRECO_UNIT_ULT_NF
-                FROM (
-                    SELECT
-                        np.*,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY np.PROD_COD_PROD
-                            ORDER BY
-                                CASE
-                                    WHEN ISNULL(np.PROD_CUSTO_FISCAL_MEDIO_NOVO, 0) > 0
-                                      OR ISNULL(np.PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0) > 0
-                                      OR ISNULL(np.PROD_VALOR_UNIT, 0) > 0
-                                      OR ISNULL(np.PROD_CUSTO_PAGO, 0) > 0
-                                    THEN 0 ELSE 1
-                                END,
-                                ISNULL(np.PROD_DT_EMISSAO, '1900-01-01') DESC,
-                                np.PROD_ID_PROD DESC
-                        ) AS RN
-                    FROM [dbo].[NF_PRODUTOS] np
-                ) x
-                WHERE x.RN = 1
-            ) custo ON cp.CODIGO = custo.CODIGO
-            LEFT JOIN (
-                SELECT
-                    y.PROD_COD_PROD AS CODIGO,
-                    cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR
-                FROM (
-                    SELECT
-                        np.PROD_COD_PROD,
-                        np.PROD_ID_NF,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY np.PROD_COD_PROD
-                            ORDER BY ISNULL(np.PROD_DT_EMISSAO, '1900-01-01') DESC, np.PROD_ID_PROD DESC
-                        ) AS RN
-                    FROM [dbo].[NF_PRODUTOS] np
-                    INNER JOIN [dbo].[NF_CABECALHO] nc ON np.PROD_ID_NF = nc.CAB_ID_NF
-                ) y
-                INNER JOIN [dbo].[NF_CABECALHO] nc2 ON y.PROD_ID_NF = nc2.CAB_ID_NF
-                LEFT JOIN [dbo].[CAD_FORNECEDOR] cf ON nc2.CAB_NUM_FORN = cf.COD_FORNECEDOR
-                WHERE y.RN = 1
-            ) forn ON cp.CODIGO = forn.CODIGO
             WHERE (
                 (@ATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 1) OR
                 (@INATIVOS = 1 AND ISNULL(cp.ATIVO, 1) = 0)
@@ -631,50 +582,162 @@ async function relatorioSaldoEstoque(req, res) {
                 (@SALDO_ZERO = 1     AND ISNULL(k.SALDO, 0) = 0) OR
                 (@SALDO_NEGATIVO = 1 AND ISNULL(k.SALDO, 0) < 0)
             )`;
-        
-        const request = pool.request();
-        request.input('ATIVOS',          sql.Bit, ativos         === 'sim' ? 1 : 0);
-        request.input('INATIVOS',        sql.Bit, inativos       === 'sim' ? 1 : 0);
-        request.input('SALDO_POSITIVO',  sql.Bit, saldoPositivo  === 'sim' ? 1 : 0);
-        request.input('SALDO_ZERO',      sql.Bit, saldoZero      === 'sim' ? 1 : 0);
-        request.input('SALDO_NEGATIVO',  sql.Bit, saldoNegativo  === 'sim' ? 1 : 0);
-        
-        // Filtro por curva ABC
+
+        const requestBase = pool.request();
+        requestBase.timeout = 15000;
+        requestBase.input('ATIVOS',         sql.Bit, ativos        === 'sim' ? 1 : 0);
+        requestBase.input('INATIVOS',       sql.Bit, inativos      === 'sim' ? 1 : 0);
+        requestBase.input('SALDO_POSITIVO', sql.Bit, saldoPositivo === 'sim' ? 1 : 0);
+        requestBase.input('SALDO_ZERO',     sql.Bit, saldoZero     === 'sim' ? 1 : 0);
+        requestBase.input('SALDO_NEGATIVO', sql.Bit, saldoNegativo === 'sim' ? 1 : 0);
+
         if (curvaABC && curvaABC.trim()) {
             if (curvaABC === 'C') {
                 // C inclui NULL, '', e 'C'
-                query += ` AND (cp.CURVA_A_B_C IS NULL OR cp.CURVA_A_B_C = '' OR cp.CURVA_A_B_C = 'C')`;
+                queryBase += ` AND (cp.CURVA_A_B_C IS NULL OR cp.CURVA_A_B_C = '' OR cp.CURVA_A_B_C = 'C')`;
             } else {
-                query += ` AND cp.CURVA_A_B_C = @CURVA_ABC`;
-                request.input('CURVA_ABC', sql.NVarChar(1), curvaABC.trim());
+                queryBase += ` AND cp.CURVA_A_B_C = @CURVA_ABC`;
+                requestBase.input('CURVA_ABC', sql.NVarChar(1), curvaABC.trim());
             }
         }
-        
-        // Filtro por tipo de produto
+
         if (tipoProduto && tipoProduto.trim()) {
-            query += ` AND cp.TIPO = @TIPO_PRODUTO`;
-            request.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
+            queryBase += ` AND cp.TIPO = @TIPO_PRODUTO`;
+            requestBase.input('TIPO_PRODUTO', sql.NVarChar, tipoProduto.trim());
         }
-        
-        // Filtro por saldo removido — agora tratado diretamente via params no WHERE
-        
-        query += ` ORDER BY CURVA_A_B_C, cp.CODIGO`;
 
-        console.log('?? Query executada:', query);
+        queryBase += ` ORDER BY CURVA_A_B_C, cp.CODIGO`;
 
-        const result = await request.query(query);
+        console.log('[saldoEstoque] query_base...');
+        const tBase = Date.now();
+        const baseRes = await requestBase.query(queryBase);
+        const base = baseRes.recordset || [];
+        console.log('[saldoEstoque] query_base OK', base.length, 'em', Date.now() - tBase, 'ms');
 
-        console.log('?? Produtos encontrados:', result.recordset.length);
+        if (base.length === 0) {
+            return res.status(200).json({
+                dados: [],
+                totalizadores: {
+                    totalProdutos: 0,
+                    totalCurvaA: 0,
+                    totalCurvaB: 0,
+                    totalCurvaC: 0,
+                    totalSaldo: 0
+                }
+            });
+        }
 
-        // Calcula totalizadores
-        const totalProdutos = result.recordset.length;
-        const totalCurvaA = result.recordset.filter(p => p.CURVA_A_B_C === 'A').length;
-        const totalCurvaB = result.recordset.filter(p => p.CURVA_A_B_C === 'B').length;
-        const totalCurvaC = result.recordset.filter(p => p.CURVA_A_B_C === 'C').length;
-        const totalSaldo = result.recordset.reduce((acc, item) => acc + parseFloat(item.SALDO || 0), 0);
+        const codigos = [...new Set(base.map(r => String(r.CODIGO)))];
+        const codigosSql = codigos.map(c => `N'${esc(c)}'`).join(',');
+
+        // 2) Custos só dos códigos do filtro (inclui "primeiro custo" sem NF real)
+        const sqlCusto = `
+            SELECT
+                x.PROD_COD_PROD AS CODIGO,
+                x.PROD_CUSTO_CONTABIL_MEDIO_NOVO AS CUSTO_CONTABIL_MEDIO,
+                x.PROD_CUSTO_FISCAL_MEDIO_NOVO   AS CUSTO_FISCAL_MEDIO,
+                COALESCE(
+                    NULLIF(x.PROD_VALOR_UNIT, 0),
+                    NULLIF(x.PROD_CUSTO_FISCAL_MEDIO_NOVO, 0),
+                    NULLIF(x.PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0),
+                    NULLIF(x.PROD_CUSTO_PAGO, 0),
+                    0
+                ) AS PRECO_UNIT_ULT_NF
+            FROM (
+                SELECT
+                    np.PROD_COD_PROD,
+                    np.PROD_CUSTO_CONTABIL_MEDIO_NOVO,
+                    np.PROD_CUSTO_FISCAL_MEDIO_NOVO,
+                    np.PROD_VALOR_UNIT,
+                    np.PROD_CUSTO_PAGO,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY np.PROD_COD_PROD
+                        ORDER BY
+                            CASE
+                                WHEN ISNULL(np.PROD_CUSTO_FISCAL_MEDIO_NOVO, 0) > 0
+                                  OR ISNULL(np.PROD_CUSTO_CONTABIL_MEDIO_NOVO, 0) > 0
+                                  OR ISNULL(np.PROD_VALOR_UNIT, 0) > 0
+                                  OR ISNULL(np.PROD_CUSTO_PAGO, 0) > 0
+                                THEN 0 ELSE 1
+                            END,
+                            ISNULL(np.PROD_DT_EMISSAO, '1900-01-01') DESC,
+                            np.PROD_ID_PROD DESC
+                    ) AS RN
+                FROM [dbo].[NF_PRODUTOS] np WITH (NOLOCK)
+                WHERE np.PROD_COD_PROD IN (${codigosSql})
+            ) x
+            WHERE x.RN = 1
+        `;
+
+        console.log('[saldoEstoque] query_custo para', codigos.length, 'codigos...');
+        const tCusto = Date.now();
+        const reqCusto = pool.request();
+        reqCusto.timeout = 20000;
+        const custoRes = await reqCusto.query(sqlCusto);
+        const custoMap = {};
+        for (const row of custoRes.recordset || []) {
+            custoMap[String(row.CODIGO)] = row;
+        }
+        console.log('[saldoEstoque] query_custo OK', Object.keys(custoMap).length, 'em', Date.now() - tCusto, 'ms');
+
+        // 3) Último fornecedor só de NF real e só dos códigos filtrados
+        const sqlForn = `
+            SELECT
+                y.PROD_COD_PROD AS CODIGO,
+                cf.RAZAO_SOCIAL AS ULTIMO_FORNECEDOR
+            FROM (
+                SELECT
+                    np.PROD_COD_PROD,
+                    np.PROD_ID_NF,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY np.PROD_COD_PROD
+                        ORDER BY ISNULL(np.PROD_DT_EMISSAO, '1900-01-01') DESC, np.PROD_ID_PROD DESC
+                    ) AS RN
+                FROM [dbo].[NF_PRODUTOS] np WITH (NOLOCK)
+                INNER JOIN [dbo].[NF_CABECALHO] nc WITH (NOLOCK) ON np.PROD_ID_NF = nc.CAB_ID_NF
+                WHERE np.PROD_COD_PROD IN (${codigosSql})
+            ) y
+            INNER JOIN [dbo].[NF_CABECALHO] nc2 WITH (NOLOCK) ON y.PROD_ID_NF = nc2.CAB_ID_NF
+            LEFT JOIN [dbo].[CAD_FORNECEDOR] cf WITH (NOLOCK) ON nc2.CAB_NUM_FORN = cf.COD_FORNECEDOR
+            WHERE y.RN = 1
+        `;
+
+        console.log('[saldoEstoque] query_fornecedor...');
+        const tForn = Date.now();
+        const reqForn = pool.request();
+        reqForn.timeout = 20000;
+        const fornRes = await reqForn.query(sqlForn);
+        const fornMap = {};
+        for (const row of fornRes.recordset || []) {
+            fornMap[String(row.CODIGO)] = row.ULTIMO_FORNECEDOR;
+        }
+        console.log('[saldoEstoque] query_fornecedor OK', Object.keys(fornMap).length, 'em', Date.now() - tForn, 'ms');
+
+        // 4) Monta resultado final
+        const dados = base.map(item => {
+            const cod = String(item.CODIGO);
+            const custo = custoMap[cod] || {};
+            return {
+                CODIGO: item.CODIGO,
+                DESCRICAO: item.DESCRICAO,
+                TIPO: item.TIPO,
+                CURVA_A_B_C: item.CURVA_A_B_C,
+                SALDO: item.SALDO,
+                ULTIMO_FORNECEDOR: fornMap[cod] || null,
+                CUSTO_CONTABIL_MEDIO: Number(custo.CUSTO_CONTABIL_MEDIO || 0),
+                CUSTO_FISCAL_MEDIO: Number(custo.CUSTO_FISCAL_MEDIO || 0),
+                PRECO_UNIT_ULT_NF: Number(custo.PRECO_UNIT_ULT_NF || 0)
+            };
+        });
+
+        const totalProdutos = dados.length;
+        const totalCurvaA = dados.filter(p => p.CURVA_A_B_C === 'A').length;
+        const totalCurvaB = dados.filter(p => p.CURVA_A_B_C === 'B').length;
+        const totalCurvaC = dados.filter(p => p.CURVA_A_B_C === 'C').length;
+        const totalSaldo = dados.reduce((acc, item) => acc + parseFloat(item.SALDO || 0), 0);
 
         return res.status(200).json({
-            dados: result.recordset,
+            dados,
             totalizadores: {
                 totalProdutos,
                 totalCurvaA,
@@ -685,11 +748,11 @@ async function relatorioSaldoEstoque(req, res) {
         });
 
     } catch (err) {
-        console.error("? Erro ao gerar relatório de saldo:", err);
-        return res.status(500).json({ 
-            message: "Erro ao gerar relatório", 
-            error: err.message,
-            stack: err.stack
+        console.error('[saldoEstoque] Erro ao gerar relatório de saldo:', err);
+        try { await resetPool(); } catch (_) { /* ignore */ }
+        return res.status(500).json({
+            message: "Erro ao gerar relatório",
+            error: err.message
         });
     }
 }
