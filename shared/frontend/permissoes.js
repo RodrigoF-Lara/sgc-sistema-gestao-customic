@@ -197,7 +197,6 @@
     "nav-relatorios": ["relatorios", "relatorio-baixa-periodo", "relatorio-requisicoes", "relatorio-saldo", "relatorio-acuracidade", "consumo-medio"],
     "nav-produtos": "cadastro-produtos",
     "nav-fornecedores": "cadastro-fornecedores",
-    "nav-cadastro-producao": "cadastro-producao",
     "nav-usuarios": "usuarios",
     "nav-configuracoes": ["configuracoes", "config-inventario", "calendario-produtivo", "niveis", "permissoes"],
     "nav-config-notificacoes": "config-notificacoes",
@@ -231,7 +230,6 @@
     "/modules/embalagem/relatorios/relatorioAcuracidade.html": "relatorio-acuracidade",
     "/shared/cadastros/cadastroProdutos.html": "cadastro-produtos",
     "/shared/cadastros/cadastroFornecedores.html": "cadastro-fornecedores",
-    "/shared/cadastros/cadastroProducao.html": "cadastro-producao",
     "/shared/cadastros/cadastroUsuarios.html": "usuarios",
     "/shared/config/configuracoes.html": "configuracoes",
     "/shared/config/configNotificacoes.html": "config-notificacoes",
@@ -283,6 +281,13 @@
     // Processa grupos do mais interno para o mais externo
     const groups = Array.from(scope.querySelectorAll(".nav-group")).reverse();
     groups.forEach((group) => {
+      // Agrupadores reservados (ex.: Cadastros de Produção) ficam visíveis mesmo vazios
+      if (group.getAttribute("data-keep-visible") === "1") {
+        group.style.display = "";
+        group.removeAttribute("data-perm-hidden");
+        return;
+      }
+
       const items = group.querySelector(":scope > .nav-group-items") || group.querySelector(".nav-group-items");
       if (!items) return;
 

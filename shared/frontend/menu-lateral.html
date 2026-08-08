@@ -115,12 +115,21 @@
           <a href="/shared/cadastros/cadastroFornecedores.html" id="nav-fornecedores">
             <i class="fa fa-truck"></i><span>Fornecedores</span>
           </a>
-          <a href="/shared/cadastros/cadastroProducao.html" id="nav-cadastro-producao">
-            <i class="fa fa-industry"></i><span>Cadastro de Produção</span>
-          </a>
           <a href="/shared/cadastros/cadastroUsuarios.html" id="nav-usuarios">
             <i class="fa fa-users"></i><span>Usuários</span>
           </a>
+
+          <!-- Submenu agrupador: itens serão adicionados depois -->
+          <div class="nav-group" data-group="cadastros-producao" data-keep-visible="1">
+            <button type="button" class="nav-group-toggle" aria-expanded="false">
+              <i class="fa fa-industry"></i>
+              <span class="nav-group-label">Cadastros de Produção</span>
+              <i class="fa fa-chevron-down nav-group-caret"></i>
+            </button>
+            <div class="nav-group-items">
+              <!-- futuros cadastros de produção -->
+            </div>
+          </div>
         </div>
       </div>
 
