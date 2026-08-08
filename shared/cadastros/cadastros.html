@@ -20,7 +20,7 @@
 
         <div class="menu-options">
           <!-- Cadastro de Produtos -->
-          <a href="/shared/cadastros/cadastroProdutos.html" class="menu-option-card">
+          <a href="/shared/cadastros/cadastroProdutos.html" class="menu-option-card" data-link-id="cadastro-produtos">
             <i class="fa-solid fa-box-open"></i>
             <h2>Cadastro de Produtos</h2>
             <p style="font-size: 0.9em; color: #666; margin-top: 10px">
@@ -29,7 +29,7 @@
           </a>
 
           <!-- Cadastro de Fornecedores -->
-          <a href="/shared/cadastros/cadastroFornecedores.html" class="menu-option-card">
+          <a href="/shared/cadastros/cadastroFornecedores.html" class="menu-option-card" data-link-id="cadastro-fornecedores">
             <i class="fa-solid fa-truck"></i>
             <h2>Cadastro de Fornecedores</h2>
             <p style="font-size: 0.9em; color: #666; margin-top: 10px">
@@ -37,8 +37,17 @@
             </p>
           </a>
 
+          <!-- Cadastro de Produção -->
+          <a href="/shared/cadastros/cadastroProducao.html" class="menu-option-card" data-link-id="cadastro-producao">
+            <i class="fa-solid fa-industry"></i>
+            <h2>Cadastro de Produção</h2>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px">
+              Cadastros do módulo de Produção
+            </p>
+          </a>
+
           <!-- Cadastro de Usuários -->
-          <a href="/shared/cadastros/cadastroUsuarios.html" class="menu-option-card">
+          <a href="/shared/cadastros/cadastroUsuarios.html" class="menu-option-card" data-link-id="usuarios">
             <i class="fa-solid fa-users"></i>
             <h2>Cadastro de Usuários</h2>
             <p style="font-size: 0.9em; color: #666; margin-top: 10px">
@@ -49,6 +58,7 @@
       </div>
     </div>
 
+    <script src="/shared/frontend/permissoes.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>
   </body>

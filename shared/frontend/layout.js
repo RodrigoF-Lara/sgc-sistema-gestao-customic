@@ -109,6 +109,7 @@ function inicializarSidebar() {
     'cadastros': 'nav-cadastros-group',
     'cadastroprodutos': 'nav-produtos',
     'cadastrofornecedores': 'nav-fornecedores',
+    'cadastroproducao': 'nav-cadastro-producao',
     'cadastrousuarios': 'nav-usuarios',
     'configuracoes': 'nav-configuracoes',
     'configinventario': 'nav-configuracoes',
