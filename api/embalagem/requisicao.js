@@ -109,33 +109,182 @@ async function handleGet(req, res) {
     }
 }
 
+function normalizarChaveCsv(chave) {
+    return String(chave || "")
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_");
+}
+
+function valorCampoCsv(row, aliases) {
+    if (!row || typeof row !== "object") return null;
+    const map = {};
+    for (const [chave, valor] of Object.entries(row)) {
+        map[normalizarChaveCsv(chave)] = valor;
+    }
+    for (const alias of aliases) {
+        const valor = map[alias];
+        if (valor !== undefined && valor !== null && String(valor).trim() !== "") {
+            return String(valor).trim();
+        }
+    }
+    return null;
+}
+
+function normalizarItensCsv(data) {
+    if (!Array.isArray(data)) return [];
+    const itens = [];
+    for (const row of data) {
+        const codigo = valorCampoCsv(row, ["CODIGO", "COD", "CODE", "PRODUTO"]);
+        const qntRaw = valorCampoCsv(row, ["QNT_REQ", "QNT", "QTD", "QUANTIDADE", "QTD_REQ", "QNTREQ"]);
+        if (!codigo) continue;
+        const quantidade = parseFloat(String(qntRaw ?? "").replace(",", "."));
+        if (!Number.isFinite(quantidade) || quantidade <= 0) continue;
+        itens.push({ CODIGO: codigo, QNT_REQ: quantidade });
+    }
+    return itens;
+}
+
+async function inserirItensRequisicao(makeRequest, idReq, itens) {
+    let idReqItem = 1;
+    for (const item of itens) {
+        await makeRequest()
+            .input("ID_REQ", sql.Int, idReq)
+            .input("ID_REQ_ITEM", sql.Int, idReqItem++)
+            .input("CODIGO", sql.NVarChar, item.CODIGO)
+            .input("QNT_REQ", sql.Float, item.QNT_REQ)
+            .input("QNT_PAGA", sql.Float, 0)
+            .input("SALDO", sql.Float, item.QNT_REQ)
+            .input("STATUS_ITEM", sql.NVarChar, "Pendente")
+            .query(`
+                INSERT INTO [dbo].[TB_REQ_ITEM]
+                    (ID_REQ, ID_REQ_ITEM, CODIGO, QNT_REQ, QNT_PAGA, SALDO, STATUS_ITEM)
+                VALUES
+                    (@ID_REQ, @ID_REQ_ITEM, @CODIGO, @QNT_REQ, @QNT_PAGA, @SALDO, @STATUS_ITEM)
+            `);
+    }
+}
+
+async function criarCabecalhoRequisicao(executor, { solicitante, dtNecessidade, prioridade }) {
+    const agoraSP = obterDataHoraSaoPaulo();
+    const result = await executor
+        .input("SOLICITANTE", sql.NVarChar, solicitante)
+        .input("DT_REQUISICAO", sql.Date, agoraSP.dataISO)
+        .input("HR_REQUSICAO", sql.NVarChar, agoraSP.horaLocal)
+        .input("STATUS", sql.NVarChar, "Pendente")
+        .input("DT_NECESSIDADE", sql.Date, dtNecessidade)
+        .input("PRIORIDADE", sql.NVarChar, prioridade)
+        .query(`
+            INSERT INTO [dbo].[TB_REQUISICOES]
+                (SOLICITANTE, DT_REQUISICAO, HR_REQUSICAO, STATUS, DT_NECESSIDADE, PRIORIDADE)
+            OUTPUT INSERTED.ID_REQ
+            VALUES
+                (@SOLICITANTE, @DT_REQUISICAO, @HR_REQUSICAO, @STATUS, @DT_NECESSIDADE, @PRIORIDADE);
+        `);
+    return result.recordset[0].ID_REQ;
+}
+
+async function removerRequisicaoVazia(pool, idReq) {
+    const countResult = await pool.request()
+        .input("ID_REQ", sql.Int, idReq)
+        .query("SELECT COUNT(1) AS TOTAL FROM [dbo].[TB_REQ_ITEM] WHERE ID_REQ = @ID_REQ");
+    if (Number(countResult.recordset[0]?.TOTAL || 0) > 0) return false;
+
+    await pool.request()
+        .input("ID_REQ", sql.Int, idReq)
+        .query("DELETE FROM [dbo].[TB_REQ_ITEM_LOG] WHERE ID_REQ = @ID_REQ");
+    await pool.request()
+        .input("ID_REQ", sql.Int, idReq)
+        .query("DELETE FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @ID_REQ");
+    return true;
+}
+
 // --- LÓGICA POST ---
 async function handlePost(req, res) {
     const { action } = req.body;
     const pool = await getConnection();
 
     // Criar requisição / upload de itens exige "nova-requisicao"
-    if (action === 'createHeader' || action === 'uploadItems') {
-        if (!(await exigirPermissao(req, res, 'nova-requisicao', 'Sem permissão para criar nova requisição.'))) {
+    if (action === "createHeader" || action === "uploadItems" || action === "createWithItems") {
+        if (!(await exigirPermissao(req, res, "nova-requisicao", "Sem permissão para criar nova requisição."))) {
             return;
         }
     }
-    
-    if (action === 'createHeader') {
-        const { dtNecessidade, prioridade, solicitante } = req.body;
-        const agoraSP = obterDataHoraSaoPaulo();
-        const result = await pool.request().input('SOLICITANTE', sql.NVarChar, solicitante).input('DT_REQUISICAO', sql.Date, agoraSP.dataISO).input('HR_REQUSICAO', sql.NVarChar, agoraSP.horaLocal).input('STATUS', sql.NVarChar, 'Pendente').input('DT_NECESSIDADE', sql.Date, dtNecessidade).input('PRIORIDADE', sql.NVarChar, prioridade).query("INSERT INTO [dbo].[TB_REQUISICOES] (SOLICITANTE, DT_REQUISICAO, HR_REQUSICAO, STATUS, DT_NECESSIDADE, PRIORIDADE) OUTPUT INSERTED.ID_REQ VALUES (@SOLICITANTE, @DT_REQUISICAO, @HR_REQUSICAO, @STATUS, @DT_NECESSIDADE, @PRIORIDADE);");
-        return res.status(201).json({ idReq: result.recordset[0].ID_REQ });
-    } else if (action === 'uploadItems') {
-        const { data, idReq } = req.body;
-        let idReqItem = 1;
-        for (let row of data) {
-            const { CODIGO, QNT_REQ } = row;
-            if (!CODIGO || isNaN(parseFloat(QNT_REQ))) continue;
-            await pool.request().input('ID_REQ', sql.Int, idReq).input('ID_REQ_ITEM', sql.Int, idReqItem++).input('CODIGO', sql.NVarChar, CODIGO).input('QNT_REQ', sql.Float, QNT_REQ).input('QNT_PAGA', sql.Float, 0).input('SALDO', sql.Float, QNT_REQ).input('STATUS_ITEM', sql.NVarChar, 'Pendente').query("INSERT INTO [dbo].[TB_REQ_ITEM] (ID_REQ, ID_REQ_ITEM, CODIGO, QNT_REQ, QNT_PAGA, SALDO, STATUS_ITEM) VALUES (@ID_REQ, @ID_REQ_ITEM, @CODIGO, @QNT_REQ, @QNT_PAGA, @SALDO, @STATUS_ITEM)");
+
+    if (action === "createWithItems") {
+        const { dtNecessidade, prioridade, solicitante, data } = req.body;
+        if (!dtNecessidade || !prioridade || !solicitante) {
+            return res.status(400).json({ message: "Informe data de necessidade, prioridade e solicitante." });
         }
-        return res.status(201).json({ message: "Itens inseridos com sucesso" });
-    } else if (action === 'atender') {
+        const itens = normalizarItensCsv(data);
+        if (itens.length === 0) {
+            return res.status(400).json({
+                message: "Nenhum item válido no arquivo. Use as colunas CODIGO e QNT_REQ (separador ; ou ,)."
+            });
+        }
+
+        const transaction = new sql.Transaction(pool);
+        try {
+            await transaction.begin();
+            const idReq = await criarCabecalhoRequisicao(new sql.Request(transaction), {
+                solicitante,
+                dtNecessidade,
+                prioridade,
+            });
+            await inserirItensRequisicao(() => new sql.Request(transaction), idReq, itens);
+            await transaction.commit();
+            return res.status(201).json({
+                idReq,
+                totalItens: itens.length,
+                message: `Requisição #${idReq} criada com ${itens.length} item(ns).`
+            });
+        } catch (err) {
+            try { await transaction.rollback(); } catch (_) { /* ignore */ }
+            console.error("Erro ao criar requisição com itens:", err);
+            return res.status(500).json({
+                message: "Erro ao criar requisição. Nenhum cabeçalho vazio foi gravado.",
+                details: err.message
+            });
+        }
+    }
+
+    if (action === "createHeader") {
+        const { dtNecessidade, prioridade, solicitante } = req.body;
+        if (!dtNecessidade || !prioridade || !solicitante) {
+            return res.status(400).json({ message: "Informe data de necessidade, prioridade e solicitante." });
+        }
+        const idReq = await criarCabecalhoRequisicao(pool.request(), {
+            solicitante,
+            dtNecessidade,
+            prioridade,
+        });
+        return res.status(201).json({ idReq });
+    }
+
+    if (action === "uploadItems") {
+        const { data, idReq } = req.body;
+        if (!idReq) {
+            return res.status(400).json({ message: "ID da requisição é obrigatório." });
+        }
+        const itens = normalizarItensCsv(data);
+        if (itens.length === 0) {
+            const removida = await removerRequisicaoVazia(pool, idReq);
+            return res.status(400).json({
+                message: "Nenhum item válido no arquivo. Use as colunas CODIGO e QNT_REQ (separador ; ou ,).",
+                headerRemovido: removida
+            });
+        }
+        await inserirItensRequisicao(() => pool.request(), idReq, itens);
+        return res.status(201).json({
+            message: `Itens inseridos com sucesso (${itens.length})`,
+            totalItens: itens.length
+        });
+    }
+
+    if (action === "atender") {
         return await atenderRequisicao(req, res);
     }
     return res.status(400).json({ message: "Ação POST inválida." });
