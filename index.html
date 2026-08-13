@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - SGC Customic</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/shared/frontend/style.css" />
   </head>
   <body class="login-body">
@@ -39,7 +40,19 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ usuario, pw }),
             });
-            const data = await res.json();
+            const raw = await res.text();
+            let data = {};
+            try {
+              data = raw ? JSON.parse(raw) : {};
+            } catch (_) {
+              status.style.color = "#c00";
+              status.textContent =
+                "Resposta inválida do servidor (HTTP " +
+                res.status +
+                "). Confira se está em http://localhost:3000 e se o npm run local está rodando.";
+              console.error("Login resposta não-JSON:", raw.slice(0, 300));
+              return;
+            }
             if (res.ok && data.usuario) {
               console.log('LOGIN - Dados recebidos:', data.usuario);
               console.log('LOGIN - NIVEL:', data.usuario.NIVEL, 'tipo:', typeof data.usuario.NIVEL);
@@ -63,11 +76,15 @@
             } else {
               status.style.color = "#c00";
               status.textContent =
-                data.message || "Usuário ou senha inválidos.";
+                data.message ||
+                data.error ||
+                ("Falha no login (HTTP " + res.status + ").");
             }
           } catch (err) {
             status.style.color = "#c00";
-            status.textContent = "Erro de conexão. Tente novamente.";
+            status.textContent =
+              "Erro de conexão com http://localhost:3000. Rode: npm run local";
+            console.error(err);
           }
         });
     </script>

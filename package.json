@@ -1,4 +1,10 @@
 {
+  "name": "sgc-sistema-gestao-customic",
+  "private": true,
+  "scripts": {
+    "local": "vercel dev --listen 3000",
+    "env:pull": "vercel env pull .env.local"
+  },
   "dependencies": {
     "mssql": "^12.2.0"
   }

@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Menu Principal - Kardex</title>
+    <title>Menu Principal - SGC Customic</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/shared/frontend/style.css" />
     <link
       rel="stylesheet"
@@ -11,192 +12,445 @@
     />
   </head>
   <body class="menu-body">
-    <!-- O novo menu lateral será carregado aqui pelo layout.js -->
     <div id="sidebar-container" class="sidebar"></div>
 
-    <!-- Todo o conteúdo da página fica dentro desta div -->
     <div class="main-content">
-      <div class="container">
-        <!-- O conteúdo específico da página de menu vai aqui -->
-        <div class="menu-header">
-          <h1>Menu Principal</h1>
-          <p id="welcomeMessage">Olá! Selecione uma opção para começar.</p>
+      <div class="container menu-home">
+        <!-- Hero -->
+        <header class="menu-hero">
+          <div class="menu-hero-text">
+            <p class="menu-hero-kicker">SGC · Sistema de Gestão Customic</p>
+            <h1>Menu Principal</h1>
+            <p id="welcomeMessage" class="menu-hero-welcome">
+              Olá! Selecione um módulo para começar.
+            </p>
+          </div>
+          <div class="menu-search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="search"
+              id="menuSearch"
+              class="menu-search"
+              placeholder="Buscar tela… (ex: estoque, NF, permissões)"
+              autocomplete="off"
+            />
+          </div>
+        </header>
+
+        <!-- Abas de módulo -->
+        <nav class="menu-tabs" role="tablist" aria-label="Módulos">
+          <button type="button" class="menu-tab is-active" data-tab="embalagem" role="tab" aria-selected="true">
+            <i class="fa-solid fa-boxes-packing"></i>
+            <span>Embalagens</span>
+          </button>
+          <button type="button" class="menu-tab" data-tab="producao" role="tab" aria-selected="false">
+            <i class="fa-solid fa-industry"></i>
+            <span>Produção</span>
+            <em class="menu-tab-badge">em breve</em>
+          </button>
+          <button type="button" class="menu-tab" data-tab="geral" role="tab" aria-selected="false">
+            <i class="fa-solid fa-gears"></i>
+            <span>Geral</span>
+          </button>
+        </nav>
+
+        <!-- ============================================================ -->
+        <!-- EMBALAGENS                                                    -->
+        <!-- ============================================================ -->
+        <div class="menu-panel is-active" data-panel="embalagem" role="tabpanel">
+          <section class="menu-section menu-module" data-module="embalagem">
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-cubes"></i> Operações
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/embalagem/requisicoes/novaRequisicao.html" class="menu-option-card" data-link-id="nova-requisicao">
+                  <span class="menu-card-icon tone-blue"><i class="fa-solid fa-file-circle-plus"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Nova Requisição</h2>
+                    <p>Abrir pedido de material</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/requisicoes/consulta.html" class="menu-option-card" data-link-id="consultar-requisicoes">
+                  <span class="menu-card-icon tone-blue"><i class="fa-solid fa-magnifying-glass"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Consultar Requisições</h2>
+                    <p>Histórico e status</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/kardex/saidaRapida.html" class="menu-option-card" data-link-id="saida-rapida">
+                  <span class="menu-card-icon tone-cyan"><i class="fa-solid fa-qrcode"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Saída Rápida (QR)</h2>
+                    <p>Baixa por código de barras</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/kardex/estoque.html" class="menu-option-card" data-link-id="estoque">
+                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-archive"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Gerenciar Estoque</h2>
+                    <p>Entradas, saídas e endereços</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/inventario/inventarioCiclico.html" class="menu-option-card" data-link-id="inventario-ciclico">
+                  <span class="menu-card-icon tone-teal"><i class="fa-solid fa-clipboard-check"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Inventário Cíclico</h2>
+                    <p>Contagem e acuracidade</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Notas Fiscais
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/embalagem/nf/lancamentoNF.html" class="menu-option-card" data-link-id="lancamento-nf">
+                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-file-invoice"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Lançamento NF</h2>
+                    <p>Registrar notas de entrada</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/nf/statusNF.html" class="menu-option-card" data-link-id="status-nf">
+                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-barcode"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Status NF</h2>
+                    <p>Acompanhar processamento</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-chart-line"></i> Relatórios &amp; Saving
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/embalagem/relatorios/relatorioBaixaPorPeriodo.html" class="menu-option-card" data-link-id="relatorio-baixa-periodo">
+                  <span class="menu-card-icon tone-violet"><i class="fa-solid fa-chart-line"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Baixa por Período</h2>
+                    <p>Consumo no intervalo</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/kardex/consumoMedio.html" class="menu-option-card" data-link-id="consumo-medio">
+                  <span class="menu-card-icon tone-violet"><i class="fa-solid fa-box"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Consumo Médio</h2>
+                    <p>Média de uso por item</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/relatorios/relatorioRequisicoes.html" class="menu-option-card" data-link-id="relatorio-requisicoes">
+                  <span class="menu-card-icon tone-violet"><i class="fa-solid fa-clipboard-list"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Requisições</h2>
+                    <p>Relatório de pedidos</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/relatorios/relatorioSaldo.html" class="menu-option-card" data-link-id="relatorio-saldo">
+                  <span class="menu-card-icon tone-violet"><i class="fa-solid fa-boxes-stacked"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Saldo em Estoque</h2>
+                    <p>Posição atual de saldos</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/relatorios/relatorioAcuracidade.html" class="menu-option-card" data-link-id="relatorio-acuracidade">
+                  <span class="menu-card-icon tone-violet"><i class="fa-solid fa-bullseye"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Acuracidade</h2>
+                    <p>Indicadores de inventário</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/embalagem/saving/savingCompras.html" class="menu-option-card" data-link-id="saving-compras">
+                  <span class="menu-card-icon tone-green"><i class="fa-solid fa-piggy-bank"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Saving de Compras</h2>
+                    <p>Economia e custo base</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+          </section>
         </div>
 
         <!-- ============================================================ -->
-        <!-- MÓDULO: EMBALAGENS                                            -->
+        <!-- PRODUÇÃO                                                      -->
         <!-- ============================================================ -->
-        <section class="menu-section menu-module">
-          <h2 class="menu-section-title menu-module-title">
-            <i class="fa-solid fa-boxes-packing"></i> Módulo de Embalagens
-          </h2>
-
-          <h3 class="menu-subsection-title">
-            <i class="fa-solid fa-cubes"></i> Operações
-          </h3>
-          <div class="menu-options">
-            <a href="/modules/embalagem/requisicoes/novaRequisicao.html" class="menu-option-card" data-link-id="nova-requisicao">
-              <i class="fa-solid fa-file-circle-plus"></i>
-              <h2>Nova Requisição</h2>
-            </a>
-            <a href="/modules/embalagem/requisicoes/consulta.html" class="menu-option-card" data-link-id="consultar-requisicoes">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              <h2>Consultar Requisições</h2>
-            </a>
-            <a href="/modules/embalagem/kardex/saidaRapida.html" class="menu-option-card" data-link-id="saida-rapida">
-              <i class="fa-solid fa-qrcode"></i>
-              <h2>Saída Rápida (QR)</h2>
-            </a>
-            <a href="/modules/embalagem/kardex/estoque.html" class="menu-option-card" data-link-id="estoque">
-              <i class="fa-solid fa-archive"></i>
-              <h2>Gerenciar Estoque</h2>
-            </a>
-            <a href="/modules/embalagem/inventario/inventarioCiclico.html" class="menu-option-card" data-link-id="inventario-ciclico">
-              <i class="fa-solid fa-clipboard-check"></i>
-              <h2>Inventário Cíclico</h2>
-            </a>
-          </div>
-
-          <h3 class="menu-subsection-title">
-            <i class="fa-solid fa-file-invoice-dollar"></i> Notas Fiscais
-          </h3>
-          <div class="menu-options">
-            <a href="/modules/embalagem/nf/lancamentoNF.html" class="menu-option-card" data-link-id="lancamento-nf">
-              <i class="fa-solid fa-file-invoice"></i>
-              <h2>Lançamento NF</h2>
-            </a>
-            <a href="/modules/embalagem/nf/statusNF.html" class="menu-option-card" data-link-id="status-nf">
-              <i class="fa-solid fa-barcode"></i>
-              <h2>Status NF</h2>
-            </a>
-          </div>
-
-          <h3 class="menu-subsection-title">
-            <i class="fa-solid fa-chart-line"></i> Relatórios
-          </h3>
-          <div class="menu-options">
-            <a href="/modules/embalagem/relatorios/relatorioBaixaPorPeriodo.html" class="menu-option-card" data-link-id="relatorio-baixa-periodo">
-              <i class="fa-solid fa-chart-line"></i>
-              <h2>Baixa por Período</h2>
-            </a>
-            <a href="/modules/embalagem/kardex/consumoMedio.html" class="menu-option-card" data-link-id="consumo-medio">
-              <i class="fa-solid fa-box"></i>
-              <h2>Consumo Médio</h2>
-            </a>
-            <a href="/modules/embalagem/relatorios/relatorioRequisicoes.html" class="menu-option-card" data-link-id="relatorio-requisicoes">
-              <i class="fa-solid fa-clipboard-list"></i>
-              <h2>Requisições</h2>
-            </a>
-            <a href="/modules/embalagem/relatorios/relatorioSaldo.html" class="menu-option-card" data-link-id="relatorio-saldo">
-              <i class="fa-solid fa-boxes-stacked"></i>
-              <h2>Saldo em Estoque</h2>
-            </a>
-            <a href="/modules/embalagem/relatorios/relatorioAcuracidade.html" class="menu-option-card" data-link-id="relatorio-acuracidade">
-              <i class="fa-solid fa-bullseye"></i>
-              <h2>Acuracidade</h2>
-            </a>
-          </div>
-        </section>
+        <div class="menu-panel" data-panel="producao" role="tabpanel" hidden>
+          <section class="menu-section menu-module" data-module="producao">
+            <div class="menu-empty-state">
+              <i class="fa-solid fa-industry"></i>
+              <h2>Módulo de Produção</h2>
+              <p>Em desenvolvimento. As telas serão liberadas em breve.</p>
+            </div>
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-road"></i> Roadmap
+              </h3>
+              <div class="menu-options">
+                <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+                  <span class="menu-card-icon tone-slate"><i class="fa-solid fa-list-check"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Ordens de Produção</h2>
+                    <p>Em breve</p>
+                  </span>
+                </a>
+                <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+                  <span class="menu-card-icon tone-slate"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Apontamentos</h2>
+                    <p>Em breve</p>
+                  </span>
+                </a>
+                <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+                  <span class="menu-card-icon tone-slate"><i class="fa-solid fa-truck-ramp-box"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Expedição</h2>
+                    <p>Em breve</p>
+                  </span>
+                </a>
+                <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
+                  <span class="menu-card-icon tone-slate"><i class="fa-solid fa-gauge-high"></i></span>
+                  <span class="menu-card-body">
+                    <h2>OEE / Indicadores</h2>
+                    <p>Em breve</p>
+                  </span>
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <!-- ============================================================ -->
-        <!-- MÓDULO: PRODUÇÃO (em desenvolvimento)                         -->
+        <!-- GERAL                                                         -->
         <!-- ============================================================ -->
-        <section class="menu-section menu-module">
-          <h2 class="menu-section-title menu-module-title">
-            <i class="fa-solid fa-industry"></i> Módulo de Produção
-            <span class="menu-badge-soon">em breve</span>
-          </h2>
-          <div class="menu-options">
-            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
-              <i class="fa-solid fa-list-check"></i>
-              <h2>Ordens de Produção</h2>
-            </a>
-            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
-              <i class="fa-solid fa-clock-rotate-left"></i>
-              <h2>Apontamentos</h2>
-            </a>
-            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
-              <i class="fa-solid fa-truck-ramp-box"></i>
-              <h2>Expedição</h2>
-            </a>
-            <a href="#" class="menu-option-card menu-option-disabled" title="Disponível em breve">
-              <i class="fa-solid fa-gauge-high"></i>
-              <h2>OEE / Indicadores</h2>
-            </a>
-          </div>
-        </section>
+        <div class="menu-panel" data-panel="geral" role="tabpanel" hidden>
+          <section class="menu-section menu-module" data-module="geral">
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-address-book"></i> Cadastros
+              </h3>
+              <div class="menu-options">
+                <a href="/shared/cadastros/cadastroProdutos.html" class="menu-option-card" data-link-id="cadastro-produtos">
+                  <span class="menu-card-icon tone-blue"><i class="fa-solid fa-box-open"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Produtos</h2>
+                    <p>Cadastro e curva ABC</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/shared/cadastros/cadastroFornecedores.html" class="menu-option-card" data-link-id="cadastro-fornecedores">
+                  <span class="menu-card-icon tone-cyan"><i class="fa-solid fa-truck"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Fornecedores</h2>
+                    <p>Parceiros de compra</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/shared/cadastros/cadastroUsuarios.html" class="menu-option-card" data-link-id="usuarios">
+                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-users"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Usuários</h2>
+                    <p>Acesso ao sistema</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
 
-        <!-- ============================================================ -->
-        <!-- GERAL (compartilhado entre todos os módulos)                  -->
-        <!-- ============================================================ -->
-        <section class="menu-section menu-module">
-          <h2 class="menu-section-title menu-module-title">
-            <i class="fa-solid fa-gears"></i> Geral
-          </h2>
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-industry"></i> Cadastros de Produção
+              </h3>
+              <div class="menu-options" data-group="cadastros-producao">
+                <a href="/modules/producao/cadastros/cadastroOperacoes.html" class="menu-option-card" data-link-id="cadastro-operacoes">
+                  <span class="menu-card-icon tone-teal"><i class="fa-solid fa-gears"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Operações</h2>
+                    <p>Operações do processo produtivo</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/producao/cadastros/cadastroEstruturaProduto.html" class="menu-option-card" data-link-id="cadastro-estrutura-produto">
+                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-sitemap"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Estrutura de Produto</h2>
+                    <p>BOM / componentes e quantidades</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/producao/cadastros/cadastroRecursos.html" class="menu-option-card" data-link-id="cadastro-recursos">
+                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-industry"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Recursos</h2>
+                    <p>Máquinas, linhas e capacidade</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
 
-          <h3 class="menu-subsection-title">
-            <i class="fa-solid fa-address-book"></i> Cadastros
-          </h3>
-          <div class="menu-options">
-            <a href="/shared/cadastros/cadastroProdutos.html" class="menu-option-card" data-link-id="cadastro-produtos">
-              <i class="fa-solid fa-box-open"></i>
-              <h2>Produtos</h2>
-            </a>
-            <a href="/shared/cadastros/cadastroFornecedores.html" class="menu-option-card" data-link-id="cadastro-fornecedores">
-              <i class="fa-solid fa-truck"></i>
-              <h2>Fornecedores</h2>
-            </a>
-            <a href="/shared/cadastros/cadastroUsuarios.html" class="menu-option-card" data-link-id="usuarios">
-              <i class="fa-solid fa-users"></i>
-              <h2>Usuários</h2>
-            </a>
-          </div>
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-sliders"></i> Configurações
+              </h3>
+              <div class="menu-options">
+                <a href="/shared/config/configuracoes.html" class="menu-option-card" data-link-id="configuracoes">
+                  <span class="menu-card-icon tone-slate"><i class="fa-solid fa-cog"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Configurações Gerais</h2>
+                    <p>Parâmetros do sistema</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/shared/config/configNotificacoes.html" class="menu-option-card" data-link-id="config-notificacoes">
+                  <span class="menu-card-icon tone-amber"><i class="fa-solid fa-bell"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Notificações</h2>
+                    <p>Alertas e avisos</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/shared/config/niveis.html" class="menu-option-card" data-link-id="niveis">
+                  <span class="menu-card-icon tone-rose"><i class="fa-solid fa-user-tie"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Cargos</h2>
+                    <p>Grupos de acesso</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/shared/config/permissoes.html" class="menu-option-card" data-link-id="permissoes">
+                  <span class="menu-card-icon tone-rose"><i class="fa-solid fa-key"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Permissões</h2>
+                    <p>Matriz por cargo</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
 
-          <h3 class="menu-subsection-title">
-            <i class="fa-solid fa-industry"></i> Cadastros de Produção
-          </h3>
-          <div class="menu-options" data-group="cadastros-producao">
-            <!-- futuros cards de cadastros de produção -->
-          </div>
-
-          <h3 class="menu-subsection-title">
-            <i class="fa-solid fa-sliders"></i> Configurações
-          </h3>
-          <div class="menu-options">
-            <a href="/shared/config/configuracoes.html" class="menu-option-card" data-link-id="configuracoes">
-              <i class="fa-solid fa-cog"></i>
-              <h2>Configurações Gerais</h2>
-            </a>
-            <a href="/shared/config/configNotificacoes.html" class="menu-option-card" data-link-id="config-notificacoes">
-              <i class="fa-solid fa-bell"></i>
-              <h2>Notificações</h2>
-            </a>
-            <a href="/shared/config/niveis.html" class="menu-option-card" data-link-id="niveis">
-              <i class="fa-solid fa-user-tie"></i>
-              <h2>Cargos</h2>
-            </a>
-            <a href="/shared/config/permissoes.html" class="menu-option-card" data-link-id="permissoes">
-              <i class="fa-solid fa-key"></i>
-              <h2>Permissões</h2>
-            </a>
-          </div>
-        </section>
+        <p id="menuSearchEmpty" class="menu-search-empty" hidden>
+          Nenhum item encontrado para essa busca.
+        </p>
       </div>
     </div>
 
-    <!-- Helper de permissões (filtra cards + menu) -->
     <script src="/shared/frontend/permissoes.js"></script>
-    <!-- O novo script de layout que carrega o menu e o usuário -->
     <script src="/shared/frontend/layout.js"></script>
-    <!-- Script para troca suave de fundos (aplicável a todas as páginas) -->
     <script src="/shared/frontend/fundos.js"></script>
-    <!-- Script adicional para personalizar a mensagem de boas-vindas -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const userName = localStorage.getItem("userName");
         if (userName) {
           const welcomeMessage = document.getElementById("welcomeMessage");
-          welcomeMessage.textContent = `Olá, ${userName}! Selecione uma opção para começar.`;
+          if (welcomeMessage) {
+            welcomeMessage.textContent = `Olá, ${userName}! O que deseja fazer agora?`;
+          }
+        }
+
+        // Abas de módulo
+        const tabs = document.querySelectorAll(".menu-tab");
+        const panels = document.querySelectorAll(".menu-panel");
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => {
+            const id = tab.getAttribute("data-tab");
+            tabs.forEach((t) => {
+              t.classList.toggle("is-active", t === tab);
+              t.setAttribute("aria-selected", t === tab ? "true" : "false");
+            });
+            panels.forEach((p) => {
+              const on = p.getAttribute("data-panel") === id;
+              p.classList.toggle("is-active", on);
+              p.hidden = !on;
+            });
+            // Limpa busca ao trocar de aba
+            const search = document.getElementById("menuSearch");
+            if (search && search.value) {
+              search.value = "";
+              search.dispatchEvent(new Event("input"));
+            }
+          });
+        });
+
+        // Busca local nos cards
+        const searchInput = document.getElementById("menuSearch");
+        const emptyMsg = document.getElementById("menuSearchEmpty");
+        if (searchInput) {
+          searchInput.addEventListener("input", () => {
+            const q = searchInput.value.trim().toLowerCase();
+            const allCards = document.querySelectorAll("a.menu-option-card");
+            let visible = 0;
+
+            if (q) {
+              // Mostra todos os painéis durante a busca
+              panels.forEach((p) => {
+                p.hidden = false;
+                p.classList.add("is-active");
+              });
+              tabs.forEach((t) => t.classList.remove("is-active"));
+            } else {
+              // Restaura aba ativa (primeira se nenhuma)
+              const activeTab =
+                document.querySelector(".menu-tab.is-active") ||
+                document.querySelector('.menu-tab[data-tab="embalagem"]');
+              if (activeTab) activeTab.click();
+            }
+
+            allCards.forEach((card) => {
+              if (card.getAttribute("data-perm-hidden") === "1") return;
+              if (card.style.display === "none" && !q) return;
+
+              const text = (card.textContent || "").toLowerCase();
+              const match = !q || text.includes(q);
+              if (card.classList.contains("menu-option-disabled") && q && !match) {
+                card.style.display = "none";
+                return;
+              }
+              // Não reexibe cards escondidos por permissão
+              if (card.getAttribute("data-perm-hidden") === "1") {
+                card.style.display = "none";
+                return;
+              }
+              card.style.display = match ? "" : "none";
+              if (match && card.style.display !== "none") visible++;
+            });
+
+            // Esconde grupos sem cards visíveis
+            document.querySelectorAll(".menu-group").forEach((g) => {
+              const cards = g.querySelectorAll("a.menu-option-card");
+              if (!cards.length) return;
+              let any = false;
+              cards.forEach((c) => {
+                if (c.style.display !== "none" && c.getAttribute("data-perm-hidden") !== "1") {
+                  any = true;
+                }
+              });
+              g.style.display = any || !q ? (any ? "" : q ? "none" : "") : "none";
+              if (!any && q) g.style.display = "none";
+              else if (any) g.style.display = "";
+            });
+
+            if (emptyMsg) emptyMsg.hidden = !(q && visible === 0);
+          });
         }
       });
     </script>

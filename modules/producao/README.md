@@ -9,6 +9,7 @@
 
 | Submódulo | Descrição | Status |
 |-----------|-----------|--------|
+| **Cadastros** | Operações, Estrutura de Produto (BOM), Recursos | 🟡 Menu liberado (CRUD em construção) |
 | **PCP** | Planejamento e Controle da Produção | ⬜ Planejado |
 | **Ordens de Produção** | Criação, liberação e acompanhamento de OPs | ⬜ Planejado |
 | **Apontamentos** | Registro de produção (chão de fábrica) | ⬜ Planejado |

@@ -1,6 +1,12 @@
 <!-- Menu lateral (IDs alinhados ao layout.js e aos arquivos existentes) -->
 <div class="sidebar-header">
-  <h3>SGC - Sistema de Gestão Customic</h3>
+  <div class="sidebar-brand">
+    <span class="sidebar-brand-mark">S</span>
+    <div class="sidebar-brand-text">
+      <strong>SGC</strong>
+      <span>Customic</span>
+    </div>
+  </div>
 </div>
 
 <div class="sidebar-user-info">
@@ -9,7 +15,7 @@
 </div>
 
 <nav class="sidebar-nav">
-  <a href="/menu.html" id="nav-menu">
+  <a href="/menu.html" id="nav-menu" class="nav-home">
     <i class="fa fa-home"></i><span>Menu Principal</span>
   </a>
 
@@ -19,7 +25,7 @@
   <div class="nav-group nav-module" data-group="mod-embalagem">
     <button type="button" class="nav-group-toggle nav-module-toggle" aria-expanded="false">
       <i class="fa-solid fa-boxes-packing"></i>
-      <span class="nav-group-label">Módulo Embalagens</span>
+      <span class="nav-group-label">Embalagens</span>
       <i class="fa fa-chevron-down nav-group-caret"></i>
     </button>
     <div class="nav-group-items">
@@ -79,7 +85,7 @@
   <div class="nav-group nav-module" data-group="mod-producao">
     <button type="button" class="nav-group-toggle nav-module-toggle" aria-expanded="false">
       <i class="fa-solid fa-industry"></i>
-      <span class="nav-group-label">Módulo Produção</span>
+      <span class="nav-group-label">Produção</span>
       <span class="nav-badge-soon">em breve</span>
       <i class="fa fa-chevron-down nav-group-caret"></i>
     </button>
@@ -119,15 +125,22 @@
             <i class="fa fa-users"></i><span>Usuários</span>
           </a>
 
-          <!-- Submenu agrupador: itens serão adicionados depois -->
-          <div class="nav-group" data-group="cadastros-producao" data-keep-visible="1">
+          <div class="nav-group" data-group="cadastros-producao">
             <button type="button" class="nav-group-toggle" aria-expanded="false">
               <i class="fa fa-industry"></i>
               <span class="nav-group-label">Cadastros de Produção</span>
               <i class="fa fa-chevron-down nav-group-caret"></i>
             </button>
             <div class="nav-group-items">
-              <!-- futuros cadastros de produção -->
+              <a href="/modules/producao/cadastros/cadastroOperacoes.html" id="nav-cadastro-operacoes">
+                <i class="fa fa-gears"></i><span>Operações</span>
+              </a>
+              <a href="/modules/producao/cadastros/cadastroEstruturaProduto.html" id="nav-cadastro-estrutura-produto">
+                <i class="fa fa-sitemap"></i><span>Estrutura de Produto</span>
+              </a>
+              <a href="/modules/producao/cadastros/cadastroRecursos.html" id="nav-cadastro-recursos">
+                <i class="fa fa-industry"></i><span>Recursos</span>
+              </a>
             </div>
           </div>
         </div>
