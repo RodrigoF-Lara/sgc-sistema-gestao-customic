@@ -1,5 +1,5 @@
 import { getConnection, sql } from "../../db.js";
-import { exigirPermissao } from "../../lib/permissoesHelper.js";
+import { exigirPermissao, exigirQualquerPermissao } from "../../lib/permissoesHelper.js";
 
 /** tipo de movimento (API) → link_id da matriz de permissões */
 const TIPO_PARA_LINK = {
@@ -205,16 +205,27 @@ export default async function handler(req, res) {
       }
 
       const operacao = tipo.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      // Autorização por ação (ADM bypass no helper)
-      const linkId = TIPO_PARA_LINK[operacao] || TIPO_PARA_LINK[tipo.toUpperCase()];
-      if (linkId) {
-        const ok = await exigirPermissao(
+      // Autorização por ação (ADM bypass no helper).
+      // SAÍDA: quem tem Gerenciar Estoque OU Saída Rápida (QR) pode registrar.
+      if (operacao === "SAIDA") {
+        const ok = await exigirQualquerPermissao(
           req,
           res,
-          linkId,
-          `Sem permissão para a ação: ${tipo}`
+          ["estoque-saida", "saida-rapida"],
+          "Sem permissão para registrar saída."
         );
         if (!ok) return;
+      } else {
+        const linkId = TIPO_PARA_LINK[operacao] || TIPO_PARA_LINK[tipo.toUpperCase()];
+        if (linkId) {
+          const ok = await exigirPermissao(
+            req,
+            res,
+            linkId,
+            `Sem permissão para a ação: ${tipo}`
+          );
+          if (!ok) return;
+        }
       }
 
       const transaction = pool.transaction();
@@ -299,7 +310,7 @@ export default async function handler(req, res) {
         } else if (operacao === 'SAIDA') {
           // Lógica de SAÍDA (refeita)
           if (!idTbResumo) {
-            return res.status(400).json({ message: "ID do lote é obrigatório para a saída." });
+            throw new Error("ID do lote é obrigatório para a saída.");
           }
 
           const loteInfo = await transaction.request()

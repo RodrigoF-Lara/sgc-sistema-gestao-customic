@@ -256,6 +256,15 @@
 
         const $ = id => document.getElementById(id);
 
+        function authHeaders() {
+            const h = { 'Content-Type': 'application/json' };
+            const nivel = localStorage.getItem('userLevel');
+            const code = localStorage.getItem('userCode');
+            if (nivel) h['x-user-level'] = nivel;
+            if (code) h['x-user-code'] = code;
+            return h;
+        }
+
         // ── Telas ──────────────────────────────────
         function show(telaId) {
             ['loginBox','telaInicial','telaScanner','telaDetalhes','telaSucesso']
@@ -265,7 +274,9 @@
         }
 
         function init() {
-            if (!usuario) {
+            const nivel = localStorage.getItem('userLevel');
+            if (!usuario || !nivel) {
+                usuario = '';
                 show('loginBox');
             } else {
                 $('userBadge').textContent = usuario;
@@ -453,18 +464,20 @@
             try {
                 const res = await fetch('/api/embalagem/inventory', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders(),
                     body: JSON.stringify({
                         codigo: loteAtual.CODIGO,
                         tipo: 'SAIDA',
                         quantidade: qnt,
                         usuario: usuario,
                         idTbResumo: loteAtual.ID,
-                        observacao: obs
+                        observacao: obs,
+                        origem: 'saida-rapida',
+                        userLevel: localStorage.getItem('userLevel') || undefined
                     })
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message || 'Erro ao registrar saída');
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || data.error || 'Erro ao registrar saída');
 
                 $('sucessoDetalhe').innerHTML =
                     `<strong>${qnt}</strong> un. de <strong>${loteAtual.CODIGO}</strong><br>` +
