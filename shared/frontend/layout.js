@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
+  sidebarContainer.classList.add('sidebar');
+
   fetch('/shared/frontend/menu-lateral.html')
     .then(response => {
       if (!response.ok) throw new Error('menu-lateral.html não encontrado');

@@ -83,6 +83,7 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
 /* =================================================================== */
 /* LAYOUT PRINCIPAL (SIDEBAR + CONTEÃšDO)                             */
 /* =================================================================== */
+#sidebar-container,
 .sidebar {
     width: 268px;
     background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
