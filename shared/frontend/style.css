@@ -294,23 +294,26 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
     display: flex;
     align-items: center;
     justify-content: center;
-    position: fixed;
-    top: 12px;
-    left: 12px;
-    z-index: 1100;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
     width: 40px;
     height: 40px;
-    border-radius: 8px;
+    border-radius: 12px;
     border: none;
-    background: var(--cor-principal);
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
     color: #fff;
     font-size: 16px;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    transition: background 0.2s ease, transform 0.2s ease, left 0.25s ease;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+    padding: 0;
+    transition: background 0.2s ease, transform 0.2s ease, filter 0.2s ease;
 }
-.sidebar-toggle-btn:hover { background: var(--cor-principal-escura); }
+.sidebar-toggle-btn:hover { filter: brightness(1.08); }
 .sidebar-toggle-btn:active { transform: scale(0.95); }
+/* Clone fixo só no mobile — no desktop a marca “S” não compete com o hambúrguer */
+.sidebar-toggle-btn-mobile { display: none; }
+.sidebar-brand-mark { display: none; }
 
 .sidebar-overlay {
     display: none;
@@ -351,8 +354,11 @@ body.sidebar-collapsed .sidebar-footer a { padding: 10px 0; }
 body.sidebar-collapsed .sidebar-footer a span { display: none; }
 body.sidebar-collapsed .sidebar-footer a i { margin: 0; }
 
-/* Botão acompanha a largura da sidebar quando colapsada */
-body.sidebar-collapsed .sidebar-toggle-btn { left: 12px; }
+body.sidebar-collapsed .sidebar-toggle-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+}
 
 /* ----- MOBILE: slide + overlay ----- */
 @media (max-width: 768px) {
@@ -391,7 +397,20 @@ body.sidebar-collapsed .sidebar-toggle-btn { left: 12px; }
     body.sidebar-collapsed .nav-group-items { display: none; }
     body.sidebar-collapsed .nav-group.open > .nav-group-items { display: flex !important; }
 
-    body.sidebar-open .sidebar-toggle-btn i::before { content: "\f00d"; } /* fa-times */
+    /* Fechado: só o clone fixo. Aberto: hambúrguer do header vira X (sem sobrepor o S). */
+    .sidebar-brand-mark { display: none; }
+    .sidebar-toggle-btn-mobile {
+        display: flex;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 1100;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+    }
+    body.sidebar-open .sidebar-toggle-btn-mobile { display: none; }
+    body.sidebar-open .sidebar-brand .sidebar-toggle-btn i::before { content: "\f00d"; }
     body.sidebar-open .sidebar-overlay { display: block; opacity: 1; }
 
     .main-content {

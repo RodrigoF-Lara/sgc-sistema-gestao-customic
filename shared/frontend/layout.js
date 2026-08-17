@@ -164,21 +164,46 @@ function inicializarSidebar() {
 }
 
 function inicializarSidebarMobile() {
-  // Evita duplicar elementos se layout for re-inicializado
-  if (document.getElementById('sidebar-toggle-btn')) return;
+  if (document.body.dataset.sidebarToggleInit === '1') return;
+  document.body.dataset.sidebarToggleInit = '1';
 
-  const toggleBtn = document.createElement('button');
-  toggleBtn.id = 'sidebar-toggle-btn';
-  toggleBtn.className = 'sidebar-toggle-btn';
-  toggleBtn.setAttribute('aria-label', 'Abrir/fechar menu');
-  toggleBtn.innerHTML = '<i class="fa fa-bars"></i>';
+  // Desktop: botão já vive no header da sidebar (marca). Mobile: clone fixo,
+  // senão some junto com a sidebar fechada (translateX).
+  let toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'sidebar-toggle-btn';
+    toggleBtn.className = 'sidebar-toggle-btn';
+    toggleBtn.setAttribute('aria-label', 'Abrir/fechar menu');
+    toggleBtn.innerHTML = '<i class="fa fa-bars"></i>';
+    const brand = document.querySelector('.sidebar-brand');
+    if (brand) brand.insertBefore(toggleBtn, brand.firstChild);
+    else document.body.appendChild(toggleBtn);
+  }
 
-  const overlay = document.createElement('div');
-  overlay.id = 'sidebar-overlay';
-  overlay.className = 'sidebar-overlay';
+  let mobileBtn = document.getElementById('sidebar-toggle-btn-mobile');
+  if (!mobileBtn) {
+    const noHeader = !toggleBtn.closest('.sidebar-brand');
+    if (noHeader) {
+      toggleBtn.classList.add('sidebar-toggle-btn-mobile');
+      mobileBtn = toggleBtn;
+    } else {
+      mobileBtn = document.createElement('button');
+      mobileBtn.id = 'sidebar-toggle-btn-mobile';
+      mobileBtn.className = 'sidebar-toggle-btn sidebar-toggle-btn-mobile';
+      mobileBtn.setAttribute('aria-label', 'Abrir/fechar menu');
+      mobileBtn.innerHTML = '<i class="fa fa-bars"></i>';
+      document.body.appendChild(mobileBtn);
+    }
+  }
 
-  document.body.appendChild(toggleBtn);
-  document.body.appendChild(overlay);
+  let overlay = document.getElementById('sidebar-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'sidebar-overlay';
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+  }
 
   const isMobile = () => window.innerWidth <= 768;
 
@@ -202,6 +227,7 @@ function inicializarSidebarMobile() {
   };
 
   toggleBtn.addEventListener('click', toggle);
+  if (mobileBtn !== toggleBtn) mobileBtn.addEventListener('click', toggle);
   overlay.addEventListener('click', closeMobile);
 
   // Tooltip nos itens quando colapsado (desktop)
