@@ -349,6 +349,10 @@
       }
     });
     root.querySelectorAll(".menu-section").forEach((section) => {
+      if (section.querySelector(".menu-empty-state")) {
+        section.style.display = "";
+        return;
+      }
       const cards = section.querySelectorAll("a.menu-option-card");
       if (cards.length === 0) return;
       let visible = 0;
