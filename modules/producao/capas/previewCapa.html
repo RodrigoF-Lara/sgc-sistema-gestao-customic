@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview de Capas - SGC Customic</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <style>
+      body.capa-page .main-content {
+        padding: 16px 18px 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .capa-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-shrink: 0;
+      }
+      .capa-head h1 {
+        margin: 0;
+        text-align: left;
+        font-size: 1.35rem;
+      }
+      .capa-head p {
+        margin: 4px 0 0;
+        color: #667085;
+        font-size: 0.9rem;
+      }
+      .capa-app {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr) 300px;
+        gap: 14px;
+      }
+      .capa-panel {
+        background: #fff;
+        border: 1px solid #e6eaf0;
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(16, 24, 40, 0.04);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .capa-panel-h {
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid #eef1f5;
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #1a253c;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .capa-panel-h i { color: #1976d2; }
+      .capa-search {
+        margin: 10px 12px 8px;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .capa-search i {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #98a2b3;
+      }
+      .capa-search input {
+        width: 100%;
+        padding: 8px 10px 8px 32px;
+        border: 1px solid #d0d5dd;
+        border-radius: 8px;
+        font-size: 0.9rem;
+      }
+      .capa-chips {
+        display: flex;
+        gap: 6px;
+        padding: 0 12px 8px;
+        flex-shrink: 0;
+      }
+      .capa-chip {
+        border: 1px solid #d0d5dd;
+        background: #fff;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        color: #344054;
+      }
+      .capa-chip.is-on {
+        background: #1976d2;
+        border-color: #1976d2;
+        color: #fff;
+      }
+      .model-list {
+        overflow: auto;
+        padding: 4px 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .model-card {
+        display: grid;
+        grid-template-columns: 52px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 8px;
+        border: 1px solid #eef1f5;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #fafbfc;
+        text-align: left;
+        width: 100%;
+      }
+      .model-card:hover { border-color: #b6d4fe; background: #f3f8ff; }
+      .model-card.is-on {
+        border-color: #1976d2;
+        background: #eaf3ff;
+        box-shadow: 0 0 0 1px #1976d2;
+      }
+      .model-card img {
+        width: 52px;
+        height: 72px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 6px;
+      }
+      .model-card strong {
+        display: block;
+        font-size: 0.84rem;
+        color: #1a253c;
+        line-height: 1.25;
+      }
+      .model-card span {
+        display: block;
+        font-size: 0.75rem;
+        color: #667085;
+        margin-top: 2px;
+      }
+      .stage-panel { position: relative; }
+      .stage-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          linear-gradient(45deg, #f0f2f5 25%, transparent 25%),
+          linear-gradient(-45deg, #f0f2f5 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #f0f2f5 75%),
+          linear-gradient(-45deg, transparent 75%, #f0f2f5 75%);
+        background-size: 22px 22px;
+        background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+        background-color: #fafbfc;
+        cursor: default;
+        position: relative;
+        touch-action: none;
+      }
+      .stage-wrap.has-photo { cursor: grab; }
+      .stage-wrap.is-drag { cursor: grabbing; }
+      .stage-wrap canvas {
+        max-width: 100%;
+        max-height: 100%;
+        display: block;
+        touch-action: none;
+      }
+      .drop-hint {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        top: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        color: #475467;
+        font-size: 0.82rem;
+        text-align: center;
+        padding: 8px 12px;
+        background: rgba(255,255,255,0.9);
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(16,24,40,0.08);
+      }
+      .drop-hint.hidden { display: none; }
+      .stage-wrap.is-over {
+        outline: 3px dashed #1976d2;
+        outline-offset: -8px;
+      }
+      .ctrl-body {
+        overflow: auto;
+        padding: 12px 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .upload-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 12px;
+        border: 2px dashed #b6d4fe;
+        background: #f5f9ff;
+        border-radius: 10px;
+        cursor: pointer;
+        color: #1565c0;
+        font-weight: 600;
+      }
+      .upload-btn:hover { background: #eaf3ff; }
+      .photo-name {
+        font-size: 0.8rem;
+        color: #667085;
+        word-break: break-all;
+      }
+      .ctrl-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.82rem;
+        color: #344054;
+        margin-bottom: 4px;
+      }
+      .ctrl-row strong { font-variant-numeric: tabular-nums; }
+      input[type="range"] { width: 100%; }
+      .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+      .btn-mini {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #d0d5dd;
+        background: #fff;
+        border-radius: 8px;
+        padding: 8px 6px;
+        cursor: pointer;
+        font-size: 0.78rem;
+        color: #344054;
+      }
+      .btn-mini:hover { border-color: #1976d2; color: #1976d2; }
+      .btn-dl {
+        width: 100%;
+        border: none;
+        background: linear-gradient(135deg, #1976d2, #1565c0);
+        color: #fff;
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+      .btn-dl:disabled { opacity: 0.45; cursor: not-allowed; }
+      .btn-ghost {
+        width: 100%;
+        border: 1px solid #d0d5dd;
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px;
+        cursor: pointer;
+        color: #344054;
+      }
+      .hint {
+        font-size: 0.78rem;
+        color: #667085;
+        line-height: 1.4;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .empty-models { padding: 20px; color: #98a2b3; text-align: center; }
+
+      @media (max-width: 1100px) {
+        body.capa-page .main-content { overflow: auto; }
+        .capa-app {
+          grid-template-columns: 1fr;
+          grid-template-rows: 220px minmax(420px, 58vh) auto;
+        }
+        .model-list {
+          flex-direction: row;
+          overflow-x: auto;
+        }
+        .model-card { min-width: 220px; }
+        .stage-wrap { min-height: 420px; }
+      }
+    </style>
+  </head>
+  <body class="capa-page">
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+      <div class="capa-head">
+        <div>
+          <h1><i class="fa-solid fa-mobile-screen-button"></i> Preview de Capas</h1>
+          <p>Escolha o modelo, envie a arte e ajuste dentro da faca para ver a capinha personalizada.</p>
+        </div>
+      </div>
+
+      <div class="capa-app">
+        <aside class="capa-panel">
+          <div class="capa-panel-h"><i class="fa-solid fa-layer-group"></i> Modelos</div>
+          <div class="capa-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="modelSearch" type="search" placeholder="Buscar (ex: 16 Pro Max, S25 Ultra)" />
+          </div>
+          <div class="capa-chips" role="tablist">
+            <button type="button" class="capa-chip is-on" data-brand="all">Todos</button>
+            <button type="button" class="capa-chip" data-brand="apple">iPhone</button>
+            <button type="button" class="capa-chip" data-brand="samsung">Samsung</button>
+          </div>
+          <div id="modelList" class="model-list"></div>
+        </aside>
+
+        <section class="capa-panel stage-panel">
+          <div class="capa-panel-h">
+            <i class="fa-solid fa-scissors"></i>
+            <span id="stageTitle">Selecione um modelo</span>
+          </div>
+          <div id="stageWrap" class="stage-wrap">
+            <canvas id="preview"></canvas>
+            <div id="dropHint" class="drop-hint">
+              Arraste uma foto para cá ou use o botão à direita.
+            </div>
+          </div>
+        </section>
+
+        <aside class="capa-panel">
+          <div class="capa-panel-h"><i class="fa-solid fa-sliders"></i> Ajustes</div>
+          <div class="ctrl-body">
+            <label class="upload-btn">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              Enviar foto
+              <input id="photoInput" type="file" accept="image/*" hidden />
+            </label>
+            <div id="photoName" class="photo-name">Nenhuma foto carregada.</div>
+
+            <div>
+              <div class="ctrl-row"><span>Zoom</span><strong id="zoomVal">100%</strong></div>
+              <input id="zoomRange" type="range" min="20" max="400" value="100" />
+            </div>
+            <div>
+              <div class="ctrl-row"><span>Rotação</span><strong id="rotVal">0°</strong></div>
+              <input id="rotRange" type="range" min="-180" max="180" value="0" />
+            </div>
+
+            <div class="btn-row">
+              <button type="button" class="btn-mini" id="btnCover" title="Preencher a faca"><i class="fa-solid fa-expand"></i> Preencher</button>
+              <button type="button" class="btn-mini" id="btnFit" title="Encaixar inteira"><i class="fa-solid fa-compress"></i> Encaixar</button>
+              <button type="button" class="btn-mini" id="btnFlip" title="Espelhar"><i class="fa-solid fa-left-right"></i> Espelhar</button>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-mini" id="btnReset"><i class="fa-solid fa-rotate-left"></i> Resetar</button>
+              <button type="button" class="btn-mini" id="btnClear"><i class="fa-solid fa-trash"></i> Remover foto</button>
+            </div>
+
+            <button type="button" class="btn-dl" id="btnDownload" disabled>
+              <i class="fa-solid fa-download"></i> Baixar preview PNG
+            </button>
+
+            <div class="hint">
+              <strong>Como usar</strong><br />
+              Arraste a foto para posicionar. Role o mouse (ou pinça no celular) para zoom.
+              A arte fica recortada no formato da capa; o recorte da câmera permanece vazado.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script src="/shared/frontend/permissoes.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
+    <script src="./previewCapa.js"></script>
+  </body>
+</html>

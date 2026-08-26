@@ -112,6 +112,7 @@ function inicializarSidebar() {
     'cadastroprodutos': 'nav-produtos',
     'cadastrofornecedores': 'nav-fornecedores',
     'cadastrousuarios': 'nav-usuarios',
+    'previewcapa': 'nav-preview-capa',
     'cadastrooperacoes': 'nav-cadastro-operacoes',
     'cadastroestruturaproduto': 'nav-cadastro-estrutura-produto',
     'cadastrorecursos': 'nav-cadastro-recursos',
