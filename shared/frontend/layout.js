@@ -113,6 +113,9 @@ function inicializarSidebar() {
     'cadastrofornecedores': 'nav-fornecedores',
     'cadastrousuarios': 'nav-usuarios',
     'previewcapa': 'nav-preview-capa',
+    'novopedido': 'nav-novo-pedido-capa',
+    'pedidos': 'nav-pedidos-capa',
+    'detalhepedido': 'nav-pedidos-capa',
     'cadastrooperacoes': 'nav-cadastro-operacoes',
     'cadastroestruturaproduto': 'nav-cadastro-estrutura-produto',
     'cadastrorecursos': 'nav-cadastro-recursos',
@@ -123,7 +126,10 @@ function inicializarSidebar() {
     'niveis': 'nav-niveis',
     'permissoes': 'nav-permissoes'
   };
-  const navId = idMap[pageKey] || `nav-${pageKey}`;
+  let navId = idMap[pageKey] || `nav-${pageKey}`;
+  if (pageKey === 'pedidos' && /fila=1/.test(window.location.search)) {
+    navId = 'nav-fila-capas';
+  }
   const navLink = document.getElementById(navId);
   if (navLink) navLink.classList.add('active');
 

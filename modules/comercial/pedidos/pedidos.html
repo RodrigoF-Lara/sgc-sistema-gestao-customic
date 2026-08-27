@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pedidos de capa - SGC Customic</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+      .page-head h1 { margin: 0; text-align: left; font-size: 1.35rem; }
+      .page-head p { margin: 4px 0 0; color: #667085; }
+      .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+      .toolbar input, .toolbar select { padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; }
+      .toolbar input { min-width: 240px; }
+      .btn-new { background: #1976d2; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+      table.ped-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: #fff; border-radius: 10px; overflow: hidden; }
+      table.ped-table th { text-align: left; background: #f7f9fc; padding: 10px; border-bottom: 1px solid #eee; }
+      table.ped-table td { padding: 10px; border-bottom: 1px solid #f0f2f5; }
+      table.ped-table tr { cursor: pointer; }
+      table.ped-table tbody tr:hover { background: #f5f9ff; }
+      .st-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+      .st-rascunho { background: #f2f4f7; color: #344054; }
+      .st-em_producao { background: #ffead5; color: #b54708; }
+      .st-produzido { background: #d1e9ff; color: #175cd3; }
+      .st-enviado { background: #d1fadf; color: #067647; }
+      .st-cancelado { background: #fee4e2; color: #b42318; }
+      .pri-urgente { color: #b42318; font-weight: 700; }
+      .empty { padding: 40px; text-align: center; color: #98a2b3; }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+    <div class="main-content">
+      <div class="container">
+        <div class="page-head">
+          <div>
+            <h1 id="pageTitle"><i class="fa-solid fa-clipboard-list"></i> Pedidos de capas</h1>
+            <p id="pageSub">Acompanhe rascunhos, produção e envios.</p>
+          </div>
+          <a class="btn-new" id="btnNovo" href="./novoPedido.html"><i class="fa-solid fa-plus"></i> Novo pedido</a>
+        </div>
+        <div class="toolbar">
+          <input id="busca" type="search" placeholder="Buscar cliente, pedido, modelo…" />
+          <select id="filtroStatus">
+            <option value="">Todos os status</option>
+            <option value="RASCUNHO">Rascunho</option>
+            <option value="EM_PRODUCAO">Em produção</option>
+            <option value="PRODUZIDO">Produzido</option>
+            <option value="ENVIADO">Enviado</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+          <button type="button" id="btnBuscar"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
+        </div>
+        <div class="card" style="padding:0; overflow:auto;">
+          <table class="ped-table">
+            <thead>
+              <tr>
+                <th>Interno</th>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Modelo</th>
+                <th>Qtd</th>
+                <th>Necessidade</th>
+                <th>Status</th>
+                <th>Vendedor</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div id="empty" class="empty" hidden>Nenhum pedido encontrado.</div>
+        </div>
+      </div>
+    </div>
+    <script src="/shared/frontend/permissoes.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
+    <script src="./pedidosCommon.js"></script>
+    <script src="./pedidos.js"></script>
+  </body>
+</html>

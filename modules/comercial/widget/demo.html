@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo — widget na página de produto</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 16px; color: #222; }
+      .fake-pdp { border: 1px solid #eee; border-radius: 12px; padding: 20px; }
+      .price { color: #c62828; font-size: 1.4rem; font-weight: 700; }
+      .sku { color: #666; font-size: 0.9rem; }
+      .buy { background: #111; color: #fff; border: 0; padding: 12px 20px; border-radius: 8px; margin: 12px 0 20px; }
+    </style>
+  </head>
+  <body>
+    <p><a href="/menu.html">← SGC</a></p>
+    <div class="fake-pdp">
+      <h1>Capa Customic Impactor Clear para iPhone 17</h1>
+      <p class="sku">Código identificador (SKU): 307849</p>
+      <p class="price">R$ 99,00</p>
+      <button class="buy" type="button">Comprar</button>
+      <p>Abaixo é o widget, como ficaria na página da Convertr:</p>
+      <div id="customic-capa-widget"></div>
+      <script src="/widget/capa.js" data-sku="307849"></script>
+    </div>
+  </body>
+</html>

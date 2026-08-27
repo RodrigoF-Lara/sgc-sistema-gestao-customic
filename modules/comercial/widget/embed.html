@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Personalize sua capa</title>
+    <link rel="stylesheet" href="/modules/producao/capas/capasMockup.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #fff; color: #1a253c; }
+      .wrap { padding: 12px; }
+      h1 { font-size: 1.15rem; margin: 0 0 4px; }
+      .sub { color: #667085; font-size: 0.85rem; margin: 0 0 12px; }
+      .capa-app { grid-template-columns: minmax(0, 1fr) 240px; min-height: 640px; }
+      .models-col { display: none; }
+      .models-col.show { display: flex; }
+      .capa-app.with-models { grid-template-columns: 220px minmax(0, 1fr) 240px; }
+      .stage-wrap { min-height: 520px; border-radius: 0 0 12px 12px; }
+      .ok-box {
+        display: none; background: #ecfdf3; border: 1px solid #abefc6; color: #067647;
+        border-radius: 10px; padding: 14px; margin-bottom: 12px;
+      }
+      .ok-box.show { display: block; }
+      .ok-box strong { font-size: 1.2rem; }
+      .err { color: #b42318; font-size: 0.88rem; min-height: 1.2em; }
+      @media (max-width: 800px) {
+        .capa-app, .capa-app.with-models { grid-template-columns: 1fr; }
+        .models-col.show { max-height: 180px; }
+        .model-list { flex-direction: row; }
+        .model-card { min-width: 200px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Personalize sua capa</h1>
+      <p class="sub" id="sub">Envie uma foto, ajuste na faca e confirme a arte. Depois é só comprar na loja.</p>
+      <div class="ok-box" id="okBox">
+        Arte salva: <strong id="okCode"></strong>
+        <div style="margin-top:6px;font-size:0.85rem;">
+          Anote este código. Ele aparece no SGC como rascunho para a produção.
+          Agora adicione o produto ao carrinho normalmente.
+        </div>
+      </div>
+      <div class="capa-app" id="appGrid">
+        <aside class="capa-panel models-col" id="modelsCol">
+          <div class="capa-panel-h">Modelo</div>
+          <div class="capa-search">
+            <input id="modelSearch" type="search" placeholder="Buscar modelo" />
+          </div>
+          <div id="modelList" class="model-list"></div>
+        </aside>
+        <section class="capa-panel stage-panel">
+          <div class="capa-panel-h"><span id="stageTitle">Faca</span></div>
+          <div id="stageWrap" class="stage-wrap">
+            <canvas id="preview"></canvas>
+            <div id="dropHint" class="drop-hint">Envie sua foto para ver na capa.</div>
+          </div>
+        </section>
+        <aside class="capa-panel">
+          <div class="capa-panel-h">Ajustes</div>
+          <div class="ctrl-body">
+            <label class="upload-btn">
+              Enviar foto
+              <input id="photoInput" type="file" accept="image/*" hidden />
+            </label>
+            <div id="photoName" class="photo-name">Nenhuma foto.</div>
+            <div>
+              <div class="ctrl-row"><span>Zoom</span><strong id="zoomVal">100%</strong></div>
+              <input id="zoomRange" type="range" min="20" max="400" value="100" />
+            </div>
+            <div>
+              <div class="ctrl-row"><span>Rotação</span><strong id="rotVal">0°</strong></div>
+              <input id="rotRange" type="range" min="-180" max="180" value="0" />
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-mini" id="btnCover">Preencher</button>
+              <button type="button" class="btn-mini" id="btnFit">Encaixar</button>
+              <button type="button" class="btn-mini" id="btnFlip">Espelhar</button>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-mini" id="btnReset">Resetar</button>
+              <button type="button" class="btn-mini" id="btnClear">Remover</button>
+            </div>
+            <button type="button" class="btn-dl" id="btnSalvar">Confirmar arte</button>
+            <p class="err" id="err"></p>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <script src="/modules/producao/capas/capasMockup.js"></script>
+    <script src="/modules/comercial/widget/embed.js"></script>
+  </body>
+</html>

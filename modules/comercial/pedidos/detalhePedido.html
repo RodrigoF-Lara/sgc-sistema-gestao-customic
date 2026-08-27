@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pedido de capa - SGC Customic</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      .page-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+      .page-head h1 { margin: 0; text-align: left; font-size: 1.35rem; }
+      .meta { color: #667085; margin-top: 4px; }
+      .grid2 { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
+      .kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 10px; font-size: 0.92rem; }
+      .kv span { color: #667085; }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+      .actions button { padding: 9px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; }
+      .btn-prod { background: #f79009; color: #fff; }
+      .btn-ok { background: #1976d2; color: #fff; }
+      .btn-done { background: #079455; color: #fff; }
+      .btn-cancel { background: #fff; color: #b42318; border: 1px solid #fda29b; }
+      .imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .imgs figure { margin: 0; background: #f8fafc; border-radius: 10px; padding: 10px; text-align: center; }
+      .imgs img { max-width: 100%; max-height: 420px; object-fit: contain; }
+      .imgs figcaption { font-size: 0.8rem; color: #667085; margin-top: 6px; }
+      .timeline { list-style: none; padding: 0; margin: 0; }
+      .timeline li { padding: 10px 0 10px 16px; border-left: 2px solid #e6eaf0; position: relative; }
+      .timeline li::before {
+        content: ""; width: 10px; height: 10px; background: #1976d2; border-radius: 50%;
+        position: absolute; left: -6px; top: 14px;
+      }
+      .timeline strong { display: block; }
+      .timeline em { font-style: normal; color: #667085; font-size: 0.8rem; }
+      .st-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+      .st-rascunho { background: #f2f4f7; color: #344054; }
+      .st-em_producao { background: #ffead5; color: #b54708; }
+      .st-produzido { background: #d1e9ff; color: #175cd3; }
+      .st-enviado { background: #d1fadf; color: #067647; }
+      .st-cancelado { background: #fee4e2; color: #b42318; }
+      .err { color: #b42318; }
+      @media (max-width: 900px) {
+        .grid2, .imgs { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+    <div class="main-content">
+      <div class="container">
+        <div class="page-head">
+          <div>
+            <h1 id="titulo">Pedido</h1>
+            <p class="meta" id="subtitulo"></p>
+          </div>
+          <a href="./pedidos.html">← Voltar à lista</a>
+        </div>
+        <div id="erro" class="err"></div>
+        <div class="grid2">
+          <div class="card">
+            <h2 style="text-align:left;font-size:1.05rem;">Dados</h2>
+            <div class="kv" id="dados"></div>
+            <div class="actions" id="acoes"></div>
+          </div>
+          <div class="card">
+            <h2 style="text-align:left;font-size:1.05rem;">Histórico</h2>
+            <ul class="timeline" id="logs"></ul>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <h2 style="text-align:left;font-size:1.05rem;">Print da montagem e arte original</h2>
+          <div class="imgs">
+            <figure>
+              <img id="imgPreview" alt="Print da capa" />
+              <figcaption>Print de como deve ficar a impressão (o que o vendedor montou com o cliente)</figcaption>
+            </figure>
+            <figure>
+              <img id="imgArte" alt="Arte original" />
+              <figcaption>Foto / arte enviada pelo cliente</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="/shared/frontend/permissoes.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
+    <script src="./pedidosCommon.js"></script>
+    <script src="./detalhePedido.js"></script>
+  </body>
+</html>

@@ -46,7 +46,6 @@
           <button type="button" class="menu-tab" data-tab="producao" role="tab" aria-selected="false">
             <i class="fa-solid fa-industry"></i>
             <span>Produção</span>
-            <em class="menu-tab-badge">em breve</em>
           </button>
           <button type="button" class="menu-tab" data-tab="comercial" role="tab" aria-selected="false">
             <i class="fa-solid fa-handshake"></i>
@@ -198,10 +197,20 @@
         <!-- ============================================================ -->
         <div class="menu-panel" data-panel="producao" role="tabpanel" hidden>
           <section class="menu-section menu-module" data-module="producao">
-            <div class="menu-empty-state">
-              <i class="fa-solid fa-industry"></i>
-              <h2>Módulo de Produção</h2>
-              <p>Em desenvolvimento. As telas serão liberadas em breve.</p>
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-mobile-screen-button"></i> Capas personalizadas
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/comercial/pedidos/pedidos.html?fila=1" class="menu-option-card" data-link-id="pedido-capa-producao">
+                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-industry"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Fila de Capas</h2>
+                    <p>Produzir e marcar envio</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
             </div>
             <div class="menu-group">
               <h3 class="menu-group-title">
@@ -251,11 +260,27 @@
                 <i class="fa-solid fa-mobile-screen-button"></i> Capas
               </h3>
               <div class="menu-options">
+                <a href="/modules/comercial/pedidos/novoPedido.html" class="menu-option-card" data-link-id="pedido-capa">
+                  <span class="menu-card-icon tone-blue"><i class="fa-solid fa-file-circle-plus"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Novo Pedido de Capa</h2>
+                    <p>Montar arte com o cliente e enviar à produção</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+                <a href="/modules/comercial/pedidos/pedidos.html" class="menu-option-card" data-link-id="pedido-capa">
+                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-clipboard-list"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Pedidos de Capas</h2>
+                    <p>Acompanhar status e histórico</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
                 <a href="/modules/producao/capas/previewCapa.html" class="menu-option-card" data-link-id="preview-capa">
-                  <span class="menu-card-icon tone-blue"><i class="fa-solid fa-mobile-screen-button"></i></span>
+                  <span class="menu-card-icon tone-cyan"><i class="fa-solid fa-mobile-screen-button"></i></span>
                   <span class="menu-card-body">
                     <h2>Preview de Capas</h2>
-                    <p>Simular arte na faca do modelo</p>
+                    <p>Simular arte na faca (sem gravar pedido)</p>
                   </span>
                   <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
                 </a>

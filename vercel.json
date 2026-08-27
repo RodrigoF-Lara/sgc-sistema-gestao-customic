@@ -9,10 +9,15 @@
     },
     "api/embalagem/inventory.js": {
       "maxDuration": 30
+    },
+    "api/comercial/pedidos.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
     { "source": "/menu", "destination": "/menu.html" },
-    { "source": "/index", "destination": "/index.html" }
+    { "source": "/index", "destination": "/index.html" },
+    { "source": "/widget/capa.js", "destination": "/modules/comercial/widget/loader.js" },
+    { "source": "/widget/capa", "destination": "/modules/comercial/widget/embed.html" }
   ]
 }
