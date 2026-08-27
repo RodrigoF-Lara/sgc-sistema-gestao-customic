@@ -9,9 +9,6 @@
     },
     "api/embalagem/inventory.js": {
       "maxDuration": 30
-    },
-    "api/comercial/pedidos.js": {
-      "maxDuration": 30
     }
   },
   "rewrites": [
