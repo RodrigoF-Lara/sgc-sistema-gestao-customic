@@ -34,7 +34,7 @@
   params.set("ref", location.href);
 
   var iframe = document.createElement("iframe");
-  iframe.src = origin + "/widget/capa?" + params.toString();
+  iframe.src = origin + "/modules/comercial/widget/embed.html?" + params.toString();
   iframe.title = "Personalize sua capa";
   iframe.setAttribute("allow", "clipboard-write");
   iframe.style.cssText =
