@@ -17,6 +17,7 @@
   "rewrites": [
     { "source": "/menu", "destination": "/menu.html" },
     { "source": "/index", "destination": "/index.html" },
+    { "source": "/api/comercial/pedidos", "destination": "/api/shared/config?tipo=pedidoCapa" },
     { "source": "/widget/capa.js", "destination": "/modules/comercial/widget/loader.js" },
     { "source": "/widget/capa", "destination": "/modules/comercial/widget/embed.html" }
   ]
