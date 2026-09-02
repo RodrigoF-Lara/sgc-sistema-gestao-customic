@@ -95,6 +95,7 @@ function inicializarSidebar() {
     'detalhes': 'nav-requisicoes',
     'requisicoes': 'nav-requisicoes',
     'estoque': 'nav-estoque',
+    'mapaenderecos': 'nav-mapa-enderecos',
     'saidarapida': 'nav-saida-rapida',
     'status-nf': 'nav-status-nf',
     'statusnf': 'nav-status-nf',

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa de Endereços</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="mapaEnderecos.css" />
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+
+  <div class="main-content mapa-page">
+    <div class="mapa-wrap">
+      <header class="mapa-head">
+        <div>
+          <h1>Mapa de Endereços</h1>
+          <p>Posições ocupadas e vazias, com item e saldo do kardex. O layout pode ser editado.</p>
+        </div>
+        <div class="mapa-head-actions">
+          <button type="button" class="btn-secundario" id="btnAtualizar">
+            <i class="fa-solid fa-rotate"></i> Atualizar saldos
+          </button>
+          <button type="button" class="btn-destaque" id="btnEditar">
+            <i class="fa-solid fa-pen-to-square"></i> Editar layout
+          </button>
+        </div>
+      </header>
+
+      <div id="resumo" class="mapa-resumo"></div>
+
+      <div class="mapa-toolbar card">
+        <input type="search" id="busca" placeholder="Buscar código, descrição ou endereço..." />
+        <label class="chk">
+          <input type="checkbox" id="soVazias" /> Só vazias
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="soOcupadas" /> Só ocupadas
+        </label>
+        <div class="zoom">
+          <button type="button" id="zoomOut" title="Diminuir">−</button>
+          <span id="zoomVal">100%</span>
+          <button type="button" id="zoomIn" title="Aumentar">+</button>
+        </div>
+      </div>
+
+      <div id="statusMsg" class="mapa-msg"></div>
+      <div id="mapaRoot"></div>
+    </div>
+  </div>
+
+  <div id="modalPosicao" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitulo">Posição</h2>
+        <span class="close-btn" id="modalClose">&times;</span>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="/shared/frontend/permissoes.js"></script>
+  <script src="mapaEnderecos.js"></script>
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/shared/frontend/fundos.js"></script>
+</body>
+</html>

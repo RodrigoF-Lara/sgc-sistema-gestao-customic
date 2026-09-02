@@ -70,6 +70,7 @@ GO
         ('requisicoes'),
         ('saida-rapida'),
         ('estoque'),
+        ('mapa-enderecos'),
         ('inventario-ciclico'),
         ('lancamento-nf'),
         ('status-nf'),

@@ -190,6 +190,7 @@
     "nav-requisicoes": ["requisicoes", "nova-requisicao", "consultar-requisicoes"],
     "nav-saida-rapida": "saida-rapida",
     "nav-estoque": "estoque",
+    "nav-mapa-enderecos": ["mapa-enderecos", "estoque"],
     "nav-inventario-ciclico": "inventario-ciclico",
     "nav-lancamento-nf": "lancamento-nf",
     "nav-status-nf": "status-nf",
@@ -225,6 +226,7 @@
     "/modules/embalagem/requisicoes/requisicoes.html": "requisicoes",
     "/modules/embalagem/kardex/saidaRapida.html": "saida-rapida",
     "/modules/embalagem/kardex/estoque.html": "estoque",
+    "/modules/embalagem/kardex/mapaEnderecos.html": "mapa-enderecos",
     "/modules/embalagem/inventario/inventarioCiclico.html": "inventario-ciclico",
     "/modules/embalagem/nf/lancamentoNF.html": "lancamento-nf",
     "/modules/embalagem/nf/statusNF.html": "status-nf",
@@ -339,7 +341,9 @@
       const href = normalizeHref(a.getAttribute("href"));
       const linkId = explicit || HREF_TO_LINK[href] || null;
       if (!linkId) return;
-      if (!podeAcessar(linkId)) {
+      const ids = String(linkId).split(",").map((s) => s.trim()).filter(Boolean);
+      const ok = ids.some((id) => podeAcessar(id));
+      if (!ok) {
         a.style.display = "none";
         a.setAttribute("data-perm-hidden", "1");
       } else {

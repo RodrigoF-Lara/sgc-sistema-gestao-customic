@@ -1,5 +1,6 @@
 import { getConnection, sql } from "../../db.js";
 import { exigirPermissao, exigirQualquerPermissao } from "../../lib/permissoesHelper.js";
+import { handleMapaEnderecos } from "../../lib/mapaEnderecosApi.js";
 
 /** tipo de movimento (API) → link_id da matriz de permissões */
 const TIPO_PARA_LINK = {
@@ -17,7 +18,11 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const { codigo, action } = req.query;
-      
+
+      if (action && String(action).startsWith("mapa")) {
+        return await handleMapaEnderecos(req, res, pool);
+      }
+
       // Ação para buscar saldo agrupado por local
       if (action === 'saldoLocal' && codigo) {
         const result = await pool.request()
@@ -183,6 +188,11 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
+      const acaoMapa = String((req.body && (req.body.acao || req.body.action)) || "").trim();
+      if (acaoMapa.startsWith("mapa")) {
+        return await handleMapaEnderecos(req, res, pool);
+      }
+
       const {
         codigo,
         tipo,
