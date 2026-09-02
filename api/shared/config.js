@@ -1,7 +1,7 @@
 import { getConnection, sql } from "../../db.js";
 import { handleNiveis } from "../../lib/niveisApi.js";
 import { handlePermissoes } from "../../lib/permissoesApi.js";
-import handlePedidoCapa from "../../lib/pedidoCapaApi.js";
+import { handlePedidoCapa } from "../../lib/pedidoCapaApi.js";
 
 /**
  * API unificada de Configurações (+ cargos/permissões)
