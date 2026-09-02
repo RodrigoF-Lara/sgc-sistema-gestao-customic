@@ -37,14 +37,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function normEndereco(v) {
-    return String(v || "")
+    const s = String(v || "")
       .trim()
       .toUpperCase()
-      .replace(/[.\s]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/(\D)-0+(\d)/g, "$1-$2")
-      .replace(/-0+(\d)/g, "-$1")
-      .replace(/^0+(\d)/, "$1");
+      .replace(/[./_\s]+/g, "-")
+      .replace(/-+/g, "-");
+    const comPrefixo = s.match(/^([A-Z]+)-(\d+)-(\d+)$/);
+    if (comPrefixo) return `${comPrefixo[1]}-${Number(comPrefixo[2])}-${Number(comPrefixo[3])}`;
+    const soNumeros = s.match(/^(\d+)-(\d+)-(\d+)$/);
+    if (soNumeros) return `${Number(soNumeros[1])}-${Number(soNumeros[2])}-${Number(soNumeros[3])}`;
+    return s.replace(/^0+(\d)/, "$1").replace(/-0+(\d)/g, "-$1");
   }
 
   async function apiGet(action) {
@@ -170,20 +172,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderResumo(data);
     const fora = (data.foraDoMapa || []).length
       ? `<div class="fora-box">
-          <h3><i class="fa-solid fa-triangle-exclamation"></i> Saldo em endereço que não está no mapa</h3>
-          <div class="fora-list">
-            ${(data.foraDoMapa || [])
-              .map(
-                (f) => `<button type="button" class="fora-chip" data-endereco="${f.endereco}">
-                  <strong>${f.endereco}</strong>
-                  ${(f.itens || []).map((it) => `${it.codigo} · ${fmt(it.saldo)}`).join("<br>")}
-                </button>`
-              )
-              .join("")}
+          <h3>Saldo em endereço que não está no mapa (${data.foraDoMapa.length})</h3>
+          <p class="fora-hint">O kardex tem saldo nesses códigos de endereço, mas eles não batem com nenhuma posição desenhada. Clique na linha para ver o item.</p>
+          <div class="fora-table-wrap">
+            <table class="fora-table">
+              <thead>
+                <tr><th>Endereço</th><th>Código</th><th>Descrição</th><th>Saldo</th></tr>
+              </thead>
+              <tbody>
+                ${(data.foraDoMapa || [])
+                  .flatMap((f) =>
+                    (f.itens && f.itens.length ? f.itens : [{ codigo: "—", descricao: "", saldo: f.saldoTotal }]).map(
+                      (it) => `<tr class="fora-row" data-endereco="${f.endereco}">
+                        <td class="fora-end">${f.endereco}</td>
+                        <td>${it.codigo || "—"}</td>
+                        <td>${it.descricao || "—"}</td>
+                        <td class="fora-saldo">${fmt(it.saldo)}</td>
+                      </tr>`
+                    )
+                  )
+                  .join("")}
+              </tbody>
+            </table>
           </div>
         </div>`
       : "";
+    const legenda = `<div class="mapa-legenda">
+      <span><i class="leg-oc"></i>Ocupada</span>
+      <span><i class="leg-vz"></i>Vazia</span>
+      <span><i class="leg-ml"></i>Vários itens</span>
+    </div>`;
     root.innerHTML =
+      legenda +
       (data.estantes || []).map(renderEstante).join("") +
       fora +
       (editando
@@ -210,11 +230,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function findPos(endereco) {
+    const key = normEndereco(endereco);
     for (const e of data.estantes || []) {
-      const p = e.posicoes.find((x) => x.endereco === endereco);
+      const p = e.posicoes.find((x) => x.endereco === endereco || normEndereco(x.endereco) === key);
       if (p) return p;
     }
-    return (data.foraDoMapa || []).find((x) => x.endereco === endereco) || null;
+    return (data.foraDoMapa || []).find((x) => x.endereco === endereco || normEndereco(x.endereco) === key) || null;
   }
 
   function findEstante(id) {
@@ -407,10 +428,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
       return;
     }
-    const chip = e.target.closest(".fora-chip");
+    const chip = e.target.closest(".fora-row, .fora-chip");
     if (chip) {
-      const pos = findPos(chip.dataset.endereco);
-      if (pos) viewPosicao(pos);
+      const pos = findPos(chip.dataset.endereco) || {
+        endereco: chip.dataset.endereco,
+        itens: (data.foraDoMapa || []).find((x) => x.endereco === chip.dataset.endereco)?.itens || [],
+      };
+      viewPosicao(pos);
       return;
     }
     const nova = e.target.closest("#btnNovaEstante");
