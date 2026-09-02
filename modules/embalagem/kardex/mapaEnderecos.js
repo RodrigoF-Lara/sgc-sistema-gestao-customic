@@ -36,10 +36,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     return t.slice(0, n - 1) + "…";
   }
 
-  async function apiGet() {
-    const res = await fetch("/api/embalagem/inventory?action=mapa", { headers: authHeaders() });
+  function normEndereco(v) {
+    return String(v || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[.\s]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/(\D)-0+(\d)/g, "$1-$2")
+      .replace(/-0+(\d)/g, "-$1")
+      .replace(/^0+(\d)/, "$1");
+  }
+
+  async function apiGet(action) {
+    const res = await fetch(`/api/embalagem/inventory?action=${action}`, { headers: authHeaders() });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.success === false) throw new Error(json.error || json.message || "Falha ao carregar mapa.");
+    if (res.status === 504) {
+      throw new Error("O servidor demorou demais. Clique em Atualizar saldos.");
+    }
+    if (!res.ok || json.success === false) {
+      throw new Error(json.error || json.message || "Falha ao carregar mapa.");
+    }
     return json;
   }
 
@@ -280,11 +296,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     </form>`;
   }
 
+  function aplicarSaldos(payload) {
+    if (!data) return;
+    const idx = payload.porEndereco || {};
+    for (const est of data.estantes || []) {
+      for (const pos of est.posicoes || []) {
+        const itens = idx[normEndereco(pos.endereco)] || [];
+        pos.itens = itens;
+        pos.ocupado = itens.length > 0;
+        pos.saldoTotal = itens.reduce((s, it) => s + (Number(it.saldo) || 0), 0);
+      }
+    }
+    data.foraDoMapa = payload.foraDoMapa || [];
+    const totalPos = (data.estantes || []).reduce((s, e) => s + e.posicoes.length, 0);
+    const ocupadas = (data.estantes || []).reduce(
+      (s, e) => s + e.posicoes.filter((p) => p.ocupado).length,
+      0
+    );
+    data.resumo = {
+      posicoes: totalPos,
+      ocupadas,
+      vazias: totalPos - ocupadas,
+      foraDoMapa: data.foraDoMapa.length,
+    };
+  }
+
   async function carregar() {
-    setMsg("Carregando mapa…");
-    data = await apiGet();
-    setMsg("");
+    setMsg("Carregando layout…");
+    data = await apiGet("mapa");
     render();
+    setMsg("Carregando saldos do kardex…");
+    try {
+      const saldos = await apiGet("mapaSaldos");
+      aplicarSaldos(saldos);
+      render();
+      setMsg("");
+    } catch (err) {
+      setMsg(err.message || "Layout ok, mas o saldo não carregou. Clique em Atualizar.", true);
+    }
   }
 
   if (window.SGCPermissoes) {
