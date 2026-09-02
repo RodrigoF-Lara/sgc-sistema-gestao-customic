@@ -135,21 +135,26 @@ document.addEventListener('DOMContentLoaded', function() {
         return (data || []).filter(itemElegivelLeadTimeIndicador);
     }
 
+    function minutosProdutivos(inicio, fim) {
+        if (!inicio) return null;
+        const fimEfetivo = fim || new Date();
+        if (window.SGCCalendarioLeadTime && typeof window.SGCCalendarioLeadTime.minutosEntre === "function") {
+            return window.SGCCalendarioLeadTime.minutosEntre(inicio, fimEfetivo);
+        }
+        return Math.max(0, Math.round((fimEfetivo.getTime() - inicio.getTime()) / (1000 * 60)));
+    }
+
     function calcularLeadTimeTotalItemMinutos(item) {
         const inicio = parseDataHoraSemFuso(item.DT_HR_INICIO);
         if (!inicio) return null;
 
         const fluxoFinalizado = processoEhFinalizado(item.PROCESSO);
-        if (!fluxoFinalizado) {
-            return Math.max(0, Math.round((Date.now() - inicio.getTime()) / (1000 * 60)));
+        if (fluxoFinalizado) {
+            const fim = parseDataHoraSemFuso(item.DT_HR_FIM);
+            if (!fim) return null;
+            return minutosProdutivos(inicio, fim);
         }
-
-        const totalInformado = Number(item.LEAD_TIME_TOTAL_MIN);
-        if (Number.isFinite(totalInformado) && totalInformado >= 0) return totalInformado;
-
-        const fim = parseDataHoraSemFuso(item.DT_HR_FIM);
-        if (!fim) return null;
-        return Math.max(0, Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60)));
+        return minutosProdutivos(inicio, new Date());
     }
 
     function calcularLeadTimeMedioMinutos(data) {
@@ -197,12 +202,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const leadTimeCard = document.createElement('div');
         leadTimeCard.className = 'summary-card leadtime-clickable';
         leadTimeCard.id = 'leadTimeMedioCard';
-        leadTimeCard.title = `Indicador considera apenas fluxos iniciados a partir de ${formatarDataCurta(dataCorte)}. Dados anteriores permanecem no histórico, mas não entram na média.`;
+        leadTimeCard.title = `Conta só dias e horário do calendário produtivo. Fluxos iniciados a partir de ${formatarDataCurta(dataCorte)}.`;
         leadTimeCard.innerHTML = `
             <h3>Lead Time Médio</h3>
             <p>${formatarDuracaoMinutos(leadTimeMedioMin)}</p>
             <small style="display:block;margin-top:6px;opacity:.85;font-weight:500;">
                 Desde ${formatarDataCurta(dataCorte)} · ${qtdLeadTime} item(ns)
+                <br>Dias/horas produtivos
             </small>`;
         summaryContainer.appendChild(leadTimeCard);
 
@@ -247,8 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="info-message">
                     Sem dados suficientes para o indicador com os filtros atuais.
                     <br><br>
-                    O lead time médio considera apenas fluxos <strong>iniciados a partir de ${formatarDataCurta(dataCorte)}</strong>,
-                    para não distorcer o indicador com histórico antigo de troca de status.
+                    O lead time médio considera apenas fluxos <strong>iniciados a partir de ${formatarDataCurta(dataCorte)}</strong>
+                    e conta só <strong>dias e horário do calendário produtivo</strong> (sem fim de semana nem fora do expediente).
                 </p>`;
             return;
         }
@@ -263,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <br>
                 <strong>Período do indicador:</strong> a partir de ${formatarDataCurta(dataCorte)}
                 <br>
-                <span style="opacity:.85;">Registros anteriores permanecem no sistema e no histórico da NF, mas não entram nesta média.</span>
+                <span style="opacity:.85;">Conta só dias e horário do calendário produtivo. Registros anteriores ficam no histórico, mas não entram nesta média.</span>
             </div>
             <table id="leadTimeStatusTable">
                 <thead>
@@ -295,9 +301,17 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = `<div class="loader-container"><div class="loader"></div><p>Buscando dados...</p></div>`;
             summaryContainer.innerHTML = ''; // Limpa o resumo durante a carga
 
-            const response = await fetch(`/api/embalagem/statusNF?tipoProduto=${tipoProdutoSelecionado}`);
+            const headers = window.SGCPermissoes && typeof window.SGCPermissoes.authHeaders === "function"
+                ? window.SGCPermissoes.authHeaders()
+                : {};
+            const [response] = await Promise.all([
+                fetch(`/api/embalagem/statusNF?tipoProduto=${tipoProdutoSelecionado}`),
+                window.SGCCalendarioLeadTime
+                    ? window.SGCCalendarioLeadTime.carregar(headers)
+                    : Promise.resolve(),
+            ]);
             if (!response.ok) throw new Error((await response.json()).message || 'Falha ao buscar dados.');
-            
+
             allData = await response.json();
             populateStatusFilter(allData);
             applyFilters(); // Aplica os filtros de texto aos novos dados
@@ -446,9 +460,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 let emAberto = false;
 
                 if (proximo && atual) {
-                    diffMin = Math.max(0, Math.round((proximo.getTime() - atual.getTime()) / (1000 * 60)));
+                    diffMin = minutosProdutivos(atual, proximo);
                 } else if (!fluxoFinalizado && atual) {
-                    diffMin = Math.max(0, Math.round((Date.now() - atual.getTime()) / (1000 * 60)));
+                    diffMin = minutosProdutivos(atual, new Date());
                     emAberto = true;
                 }
 
@@ -463,9 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const ultimoEvento = logData[logData.length - 1];
             const fluxoFinalizado = processoEhFinalizado(ultimoEvento?.PROCESSO);
             const fim = fluxoFinalizado ? parseDataHoraSemFuso(ultimoEvento.DT_HR_EVENTO) : new Date();
-            const totalMin = inicio && fim
-                ? Math.max(0, Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60)))
-                : null;
+            const totalMin = minutosProdutivos(inicio, fim);
 
             logContent.innerHTML = `
                 <div class="info-message" style="margin-bottom: 10px;">
