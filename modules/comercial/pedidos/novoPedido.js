@@ -42,16 +42,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const data = await P.api("obter", { query: { id: String(pedidoId) } });
       const p = data.data;
-      if (p.status !== "RASCUNHO") {
-        setMsg("Só é possível editar rascunho. Abrindo o pedido…", true);
+      if (p.status !== "RASCUNHO" && p.status !== "EM_PRODUCAO") {
+        setMsg("Este pedido não pode mais ser editado. Abrindo o detalhe…", true);
         window.location.href = `./detalhePedido?id=${pedidoId}`;
         return;
       }
       editando = true;
       document.getElementById("pageTitle").innerHTML =
-        `<i class="fa-solid fa-pen-to-square"></i> Editar rascunho ${p.codigoInterno}`;
+        `<i class="fa-solid fa-pen-to-square"></i> Editar ${p.codigoInterno}`;
       document.getElementById("pageSub").textContent =
-        "Ajuste os dados, envie a foto e posicione na faca. Depois salve ou envie para produção.";
+        p.status === "EM_PRODUCAO"
+          ? "Pedido já está em produção. Você pode corrigir dados, arte e print."
+          : "Ajuste os dados, envie a foto e posicione na faca. Depois salve ou envie para produção.";
+      if (p.status === "EM_PRODUCAO") {
+        btnEnviar.style.display = "none";
+      }
       document.getElementById("cliente").value = p.cliente || "";
       document.getElementById("numeroPedido").value = p.numeroPedido || "";
       document.getElementById("contato").value = p.contato || "";
@@ -68,7 +73,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       if (p.modeloId) CapaMockup.setModelById(p.modeloId);
       if (p.hasArte) {
-        const res = await fetch(`/api/comercial/pedidos?acao=anexo&id=${pedidoId}&tipo=ARTE`, {
+        const res = await fetch(`/api/comercial/pedidos?acao=anexo&id=${pedidoId}&tipoAnexo=ARTE`, {
           headers: P.authHeaders(),
         });
         if (res.ok) {

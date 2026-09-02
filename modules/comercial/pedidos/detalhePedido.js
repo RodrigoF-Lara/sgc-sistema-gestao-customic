@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadImg(el, tipo) {
     try {
-      const res = await fetch(`/api/comercial/pedidos?acao=anexo&id=${id}&tipo=${tipo}`, {
+      const res = await fetch(`/api/comercial/pedidos?acao=anexo&id=${id}&tipoAnexo=${tipo}`, {
         headers: P.authHeaders(),
       });
       if (!res.ok) {
@@ -82,21 +82,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       b.addEventListener("click", () => mudar(status));
       acoes.appendChild(b);
     };
-    if (pedido.status === "RASCUNHO" && podeCom) {
+    if ((pedido.status === "RASCUNHO" || pedido.status === "EM_PRODUCAO") && podeCom) {
       const edit = document.createElement("button");
       edit.className = "btn-ok";
-      edit.textContent = "Editar rascunho (arte e print)";
+      edit.textContent = "Editar dados, arte e print";
       edit.addEventListener("click", () => {
         window.location.href = `./novoPedido?id=${pedido.id}`;
       });
       acoes.appendChild(edit);
+    }
+    if (pedido.status === "RASCUNHO" && podeCom) {
       if (pedido.hasPreview) {
         add("btn-prod", "Enviar para produção", "EM_PRODUCAO");
       } else {
         const warn = document.createElement("p");
         warn.className = "meta";
         warn.style.margin = "0";
-        warn.textContent = "Falta o print e a foto. Edite o rascunho para montar a arte antes de enviar.";
+        warn.textContent = "Falta o print e a foto. Edite o pedido para montar a arte antes de enviar.";
         acoes.appendChild(warn);
       }
       add("btn-cancel", "Cancelar", "CANCELADO");

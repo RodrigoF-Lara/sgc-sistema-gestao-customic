@@ -75,7 +75,7 @@ window.PedidosCapa = (() => {
   }
 
   function anexoUrl(id, tipo) {
-    return `${API}?acao=anexo&id=${id}&tipo=${tipo}`;
+    return `${API}?acao=anexo&id=${id}&tipoAnexo=${tipo}`;
   }
 
   return {
