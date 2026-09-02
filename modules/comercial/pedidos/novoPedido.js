@@ -61,6 +61,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("dataNecessidade").value = toInputDate(p.dataNecessidade);
       document.getElementById("prioridade").value = p.prioridade === "URGENTE" ? "URGENTE" : "NORMAL";
       document.getElementById("observacao").value = p.observacao || "";
+      document.getElementById("codPerso").value = p.codPerso || "";
+      document.getElementById("codOrigem").value = p.codOrigem || "";
+      if (p.linhaProduto) {
+        document.getElementById("deparaHint").textContent = `Linha: ${p.linhaProduto}`;
+      }
       if (p.modeloId) CapaMockup.setModelById(p.modeloId);
       if (p.hasArte) {
         const res = await fetch(`/api/comercial/pedidos?acao=anexo&id=${pedidoId}&tipo=ARTE`, {
@@ -88,7 +93,34 @@ document.addEventListener("DOMContentLoaded", async () => {
       prioridade: document.getElementById("prioridade").value,
       observacao: document.getElementById("observacao").value,
       vendedor: localStorage.getItem("userName") || "",
+      codPerso: document.getElementById("codPerso").value,
+      codOrigem: document.getElementById("codOrigem").value,
     };
+  }
+
+  async function resolverDePara() {
+    const perso = document.getElementById("codPerso").value.trim();
+    const hint = document.getElementById("deparaHint");
+    if (!perso) {
+      hint.textContent = "";
+      return;
+    }
+    try {
+      const res = await fetch(`/api/comercial/depara?acao=resolver&perso=${encodeURIComponent(perso)}`, {
+        headers: P.authHeaders(),
+      });
+      const data = await res.json();
+      if (data && data.data) {
+        document.getElementById("codOrigem").value = data.data.codOrigem || "";
+        hint.textContent = data.data.linha
+          ? `Linha ${data.data.linha} · produzir ${data.data.codOrigem}`
+          : `Produzir ${data.data.codOrigem}`;
+      } else {
+        hint.textContent = "Perso sem de/para cadastrado. Informe o origem manualmente.";
+      }
+    } catch (err) {
+      hint.textContent = err.message;
+    }
   }
 
   async function anexos() {
@@ -143,6 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  document.getElementById("codPerso").addEventListener("blur", resolverDePara);
   btnSalvar.addEventListener("click", () => salvar(false));
   btnEnviar.addEventListener("click", () => salvar(true));
 });

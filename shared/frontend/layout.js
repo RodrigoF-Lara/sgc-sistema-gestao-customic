@@ -115,6 +115,7 @@ function inicializarSidebar() {
     'cadastrousuarios': 'nav-usuarios',
     'previewcapa': 'nav-preview-capa',
     'novopedido': 'nav-novo-pedido-capa',
+    'deparacapas': 'nav-capa-depara',
     'pedidos': 'nav-pedidos-capa',
     'detalhepedido': 'nav-pedidos-capa',
     'cadastrooperacoes': 'nav-cadastro-operacoes',

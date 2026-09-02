@@ -236,7 +236,8 @@ GO
         ('configuracoes'),
         ('config-notificacoes'),
         ('config-inventario'),
-        ('calendario-produtivo')
+        ('calendario-produtivo'),
+        ('capa-depara')
     ) v(link_id)
 ),
 niveis AS (

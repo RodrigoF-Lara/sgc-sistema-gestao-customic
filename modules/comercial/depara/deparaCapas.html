@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>De/para de capas personalizadas - SGC</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      .page-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+      .page-head h1 { margin: 0; text-align: left; font-size: 1.35rem; }
+      .page-head p { margin: 4px 0 0; color: #667085; }
+      .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+      .toolbar input, .toolbar select { padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; }
+      .toolbar input { min-width: 220px; }
+      .btn { padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; border: 1px solid #d0d5dd; background: #fff; }
+      .btn-new { background: #1976d2; color: #fff; border: none; }
+      table.depara { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+      table.depara th { text-align: left; background: #f7f9fc; padding: 10px; border-bottom: 1px solid #eee; }
+      table.depara td { padding: 9px 10px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+      table.depara tbody tr:hover { background: #f5f9ff; }
+      .cod { font-weight: 800; font-variant-numeric: tabular-nums; }
+      .linha-tag { display: inline-block; background: #eef2ff; color: #3730a3; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+      .acoes-cell { white-space: nowrap; }
+      .acoes-cell button { margin-right: 4px; padding: 4px 8px; border-radius: 6px; cursor: pointer; border: 1px solid #d0d5dd; background: #fff; }
+      .btn-del { color: #b42318; border-color: #fda29b; }
+      .msg { min-height: 1.2em; margin: 0 0 10px; font-size: 0.9rem; }
+      .msg.ok { color: #067647; }
+      .msg.err { color: #b42318; }
+      .modal-form { display: grid; gap: 10px; }
+      .modal-form label { font-size: 0.82rem; font-weight: 600; color: #344054; }
+      .modal-form input, .modal-form select, .modal-form textarea { width: 100%; padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; }
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .hint { font-size: 0.82rem; color: #667085; }
+      @media (max-width: 700px) { .row2 { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+    <div class="main-content">
+      <div class="container">
+        <div class="page-head">
+          <div>
+            <h1><i class="fa-solid fa-right-left"></i> De/para de capas personalizadas</h1>
+            <p>Código perso = pedido da loja. Código origem = o que a produção baixa e personaliza.</p>
+          </div>
+          <button type="button" class="btn btn-new" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo de/para</button>
+        </div>
+        <div class="toolbar">
+          <input id="busca" type="search" placeholder="Buscar perso, origem, descrição…" />
+          <select id="filtroLinha"><option value="">Todas as linhas</option></select>
+          <button type="button" class="btn" id="btnFiltrar"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
+        </div>
+        <p class="msg" id="msg"></p>
+        <div class="card" style="padding:0; overflow:auto;">
+          <table class="depara">
+            <thead>
+              <tr>
+                <th>Perso (pedido)</th>
+                <th>Origem (produzir)</th>
+                <th>Linha</th>
+                <th>Descrição</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitulo">De/para</h2>
+          <span class="close-btn" id="modalClose">&times;</span>
+        </div>
+        <form class="modal-form" id="formDePara">
+          <input type="hidden" name="id" />
+          <div class="row2">
+            <div>
+              <label>Código perso (vem do pedido) *</label>
+              <input name="codPerso" required placeholder="309475" />
+            </div>
+            <div>
+              <label>Código origem (vamos produzir) *</label>
+              <input name="codOrigem" required placeholder="305774" />
+            </div>
+          </div>
+          <div>
+            <label>Linha</label>
+            <input name="linha" placeholder="CLEAR, SPACE, ANTISHOCK…" list="listaLinhas" />
+            <datalist id="listaLinhas"></datalist>
+          </div>
+          <div>
+            <label>Descrição</label>
+            <textarea name="descricao" rows="2" placeholder="Descrição da capa PERSONEW"></textarea>
+          </div>
+          <p class="hint">O perso precisa ser único. Se o pedido da loja chegar com esse código, a produção usa o origem.</p>
+          <div style="display:flex;gap:8px;">
+            <button type="submit" class="btn btn-new">Salvar</button>
+            <button type="button" class="btn" id="btnCancelar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="/shared/frontend/permissoes.js"></script>
+    <script src="deparaCapas.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
+  </body>
+</html>

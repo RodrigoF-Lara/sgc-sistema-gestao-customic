@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function carregar() {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Carregando…</td></tr>`;
     empty.hidden = true;
     const query = { q: busca.value.trim() };
     if (fila) query.fila = "1";
@@ -58,6 +58,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td>${p.numeroPedido || "—"}</td>
             <td>${escapeHtml(p.cliente)}</td>
             <td>${escapeHtml(p.modeloNome)}</td>
+            <td>${p.codPerso || "—"} → ${p.codOrigem || "—"}</td>
             <td>${p.quantidade}</td>
             <td class="${urgente}">${P.fmtDate(p.dataNecessidade)}</td>
             <td>${P.statusBadge(p.status)}</td>
@@ -66,7 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
         .join("");
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="8" class="empty">${escapeHtml(err.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="empty">${escapeHtml(err.message)}</td></tr>`;
     }
   }
 

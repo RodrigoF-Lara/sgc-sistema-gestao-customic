@@ -15,6 +15,7 @@
     { "source": "/menu", "destination": "/menu.html" },
     { "source": "/index", "destination": "/index.html" },
     { "source": "/api/comercial/pedidos", "destination": "/api/shared/config?tipo=pedidoCapa" },
+    { "source": "/api/comercial/depara", "destination": "/api/shared/config?tipo=capaDePara" },
     { "source": "/widget/capa.js", "destination": "/modules/comercial/widget/loader.js" },
     { "source": "/widget/capa", "destination": "/modules/comercial/widget/embed.html" }
   ]
