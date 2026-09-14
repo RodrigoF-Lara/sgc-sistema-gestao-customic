@@ -9,7 +9,12 @@
       .fake-pdp { border: 1px solid #eee; border-radius: 12px; padding: 20px; }
       .price { color: #c62828; font-size: 1.4rem; font-weight: 700; }
       .sku { color: #666; font-size: 0.9rem; }
-      .buy { background: #111; color: #fff; border: 0; padding: 12px 20px; border-radius: 8px; margin: 12px 0 20px; }
+      .buy { background: #111; color: #fff; border: 0; padding: 12px 20px; border-radius: 8px; margin: 12px 0 8px; cursor: pointer; }
+      .buy:disabled { background: #999; cursor: not-allowed; }
+      .hint { color: #667085; font-size: 0.85rem; margin: 0 0 16px; }
+      .code-box { background: #f4f6f8; border: 1px dashed #d0d5dd; border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, monospace; font-size: 0.9rem; margin: 0 0 16px; }
+      .code-box.empty { color: #98a2b3; }
+      .warn { color: #b42318; font-size: 0.85rem; min-height: 1.2em; margin: 0 0 12px; }
     </style>
   </head>
   <body>
@@ -18,11 +23,51 @@
       <h1>Capa Customic Impactor Clear para iPhone 17</h1>
       <p class="sku">Código identificador (SKU): 307849</p>
       <p class="price">R$ 99,00</p>
-      <button class="buy" type="button">Comprar</button>
+      <form id="buyForm">
+        <input type="hidden" id="capa_codigo" name="capa_codigo" value="" />
+        <button class="buy" id="btnBuy" type="submit">Comprar</button>
+        <p class="hint">Simula a PDP da Convertr: sem arte confirmada o botão não segue.</p>
+        <p class="warn" id="buyWarn"></p>
+        <div class="code-box empty" id="codeBox">capa_codigo: (vazio)</div>
+      </form>
       <p>Abaixo é o widget, como ficaria na página da Convertr:</p>
       <div id="customic-capa-widget"></div>
       <script src="/widget/capa.js" data-sku="307849"></script>
       <!-- equivalente: /modules/comercial/widget/loader.js -->
     </div>
+    <script>
+      (function () {
+        var input = document.getElementById("capa_codigo");
+        var box = document.getElementById("codeBox");
+        var warn = document.getElementById("buyWarn");
+        var btn = document.getElementById("btnBuy");
+
+        function show(code) {
+          var v = String(code || input.value || "").trim();
+          box.textContent = v ? "capa_codigo: " + v : "capa_codigo: (vazio)";
+          box.classList.toggle("empty", !v);
+          btn.disabled = !v;
+        }
+
+        input.addEventListener("input", function () { show(input.value); });
+        input.addEventListener("change", function () { show(input.value); });
+        window.addEventListener("capa_codigo:update", function (ev) {
+          show(ev.detail && ev.detail.code);
+        });
+
+        document.getElementById("buyForm").addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          warn.textContent = "";
+          if (!String(input.value || "").trim()) {
+            warn.textContent = "Confirme a arte da capa antes de comprar.";
+            return;
+          }
+          warn.textContent = "";
+          alert("Pedido simulado com " + input.value);
+        });
+
+        show("");
+      })();
+    </script>
   </body>
 </html>

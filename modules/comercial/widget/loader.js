@@ -4,6 +4,10 @@
  * Exemplo:
  *   <div id="customic-capa-widget"></div>
  *   <script src="https://SEU-SGC/widget/capa.js" data-sku="307849"></script>
+ *
+ * Integração Convertr (campo oculto na PDP):
+ *   ao confirmar a arte, grava o código (CAPA-XXXXX) em #capa_codigo,
+ *   dispara input/change e o CustomEvent capa_codigo:update.
  */
 (function () {
   var script = document.currentScript;
@@ -41,10 +45,70 @@
     "width:100%;min-height:780px;border:0;border-radius:12px;display:block;background:#fff;";
   el.appendChild(iframe);
 
+  var lastCode = "";
+  var pendingObserver = null;
+  var pendingTimer = null;
+
+  function findCapaInput() {
+    return (
+      document.getElementById("capa_codigo") ||
+      document.querySelector('input[name="capa_codigo"]')
+    );
+  }
+
+  function stopPending() {
+    if (pendingObserver) {
+      pendingObserver.disconnect();
+      pendingObserver = null;
+    }
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
+  }
+
+  function applyToInput(code) {
+    var input = findCapaInput();
+    if (!input) return false;
+    input.value = code;
+    input.setAttribute("value", code);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  function waitForInput() {
+    if (pendingObserver || !lastCode) return;
+    pendingObserver = new MutationObserver(function () {
+      if (lastCode && applyToInput(lastCode)) stopPending();
+    });
+    pendingObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+    pendingTimer = setTimeout(stopPending, 20000);
+  }
+
+  function setCapaCodigo(code) {
+    code = String(code || "").trim();
+    if (!code) return;
+    lastCode = code;
+    window.dispatchEvent(
+      new CustomEvent("capa_codigo:update", { detail: { code: code } })
+    );
+    if (applyToInput(code)) stopPending();
+    else waitForInput();
+  }
+
   window.addEventListener("message", function (ev) {
-    if (!ev.data || ev.data.type !== "customic-capa-resize") return;
-    if (ev.source !== iframe.contentWindow) return;
-    var h = Number(ev.data.height);
-    if (h > 400) iframe.style.minHeight = h + "px";
+    if (!ev.data || ev.source !== iframe.contentWindow) return;
+    if (ev.data.type === "customic-capa-resize") {
+      var h = Number(ev.data.height);
+      if (h > 400) iframe.style.minHeight = h + "px";
+      return;
+    }
+    if (ev.data.type === "customic-capa-saved") {
+      setCapaCodigo(ev.data.codigoInterno);
+    }
   });
 })();
