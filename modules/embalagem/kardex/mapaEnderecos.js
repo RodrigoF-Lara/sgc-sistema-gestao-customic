@@ -260,7 +260,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <strong>${it.codigo}</strong> — ${it.descricao || "sem descrição"}<br>
               Saldo: <strong>${fmt(it.saldo)}</strong>
               ${it.armazem ? ` · Arm. ${it.armazem}` : ""}
-              <div><a href="/modules/embalagem/kardex/estoque.html">Abrir em Gerenciar Estoque</a></div>
+              <div><a href="/modules/embalagem/kardex/estoque.html?codigo=${encodeURIComponent(it.codigo || "")}">Abrir em Gerenciar Estoque</a></div>
             </div>`
           )
           .join("")

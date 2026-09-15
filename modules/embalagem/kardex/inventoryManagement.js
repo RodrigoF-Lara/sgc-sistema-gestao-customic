@@ -1251,6 +1251,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  const codigoUrl = (new URLSearchParams(window.location.search).get("codigo") || "").trim();
+  if (codigoUrl) {
+    codigoEl.value = codigoUrl;
+    consultar(codigoUrl);
+  }
+
   btnEntrada.addEventListener("click", () => {
     if (!codigoAtual) return;
     tituloModal.textContent = "📥 Registrar ENTRADA";
