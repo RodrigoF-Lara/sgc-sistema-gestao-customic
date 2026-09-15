@@ -47,6 +47,10 @@
             <i class="fa-solid fa-industry"></i>
             <span>Produção</span>
           </button>
+          <button type="button" class="menu-tab" data-tab="personalizadas" role="tab" aria-selected="false">
+            <i class="fa-solid fa-palette"></i>
+            <span>Personalizadas</span>
+          </button>
           <button type="button" class="menu-tab" data-tab="comercial" role="tab" aria-selected="false">
             <i class="fa-solid fa-handshake"></i>
             <span>Comercial</span>
@@ -207,21 +211,6 @@
           <section class="menu-section menu-module" data-module="producao">
             <div class="menu-group">
               <h3 class="menu-group-title">
-                <i class="fa-solid fa-mobile-screen-button"></i> Capas personalizadas
-              </h3>
-              <div class="menu-options">
-                <a href="/modules/comercial/pedidos/pedidos.html?fila=1" class="menu-option-card" data-link-id="pedido-capa-producao">
-                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-industry"></i></span>
-                  <span class="menu-card-body">
-                    <h2>Fila de Capas</h2>
-                    <p>Produzir e marcar envio</p>
-                  </span>
-                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
-                </a>
-              </div>
-            </div>
-            <div class="menu-group">
-              <h3 class="menu-group-title">
                 <i class="fa-solid fa-road"></i> Roadmap
               </h3>
               <div class="menu-options">
@@ -252,6 +241,29 @@
                     <h2>OEE / Indicadores</h2>
                     <p>Em breve</p>
                   </span>
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- PERSONALIZADAS                                                -->
+        <!-- ============================================================ -->
+        <div class="menu-panel" data-panel="personalizadas" role="tabpanel" hidden>
+          <section class="menu-section menu-module" data-module="personalizadas">
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-mobile-screen-button"></i> Capas
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/comercial/pedidos/pedidos.html?fila=1" class="menu-option-card" data-link-id="pedido-capa-producao">
+                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-industry"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Fila de Capas</h2>
+                    <p>Produzir e marcar envio</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
                 </a>
               </div>
             </div>

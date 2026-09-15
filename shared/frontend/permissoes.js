@@ -371,7 +371,6 @@
       cards.forEach((c) => {
         if (c.getAttribute("data-perm-hidden") === "1") return;
         if (c.style.display === "none") return;
-        if (c.classList.contains("menu-option-disabled")) return;
         visible++;
       });
       if (visible === 0) {
@@ -379,6 +378,15 @@
       } else {
         section.style.display = "";
       }
+    });
+
+    root.querySelectorAll(".menu-tab").forEach((tab) => {
+      const id = tab.getAttribute("data-tab");
+      if (!id) return;
+      const panel = root.querySelector(`.menu-panel[data-panel="${id}"]`);
+      if (!panel) return;
+      const section = panel.querySelector(".menu-section");
+      tab.style.display = section && section.style.display === "none" ? "none" : "";
     });
   }
 
