@@ -51,6 +51,8 @@ export default async function handler(req, res) {
             return await savingResumoMeses(req, res);
         } else if (acao === 'savingListComentarios') {
             return await savingListComentarios(req, res);
+        } else if (acao === 'custoAlvoList') {
+            return await custoAlvoList(req, res);
         }
         return res.status(400).json({ message: "Ação não reconhecida" });
     }
@@ -2153,4 +2155,171 @@ function savingGerarMeses(dtIni, dtFim) {
         cursor.setMonth(cursor.getMonth() + 1);
     }
     return result;
+}
+
+// =====================================================================
+// GET ?acao=custoAlvoList&anoMes=YYYY-MM
+// KPI Custo Alvo (planilha): atingiu / não atingiu / não comprado.
+// Reusa as metas do Saving (TB_SAVING_META). Sem foco em R$ economizado.
+// =====================================================================
+async function custoAlvoList(req, res) {
+    try {
+        const { anoMes } = req.query;
+        if (!anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "Parâmetro 'anoMes' obrigatório no formato YYYY-MM." });
+        }
+        const pool = await getConnection();
+        await seedPermissaoCustoAlvo(pool);
+
+        const [ano, mes] = anoMes.split("-").map(Number);
+        const dtInicio = new Date(ano, mes - 1, 1);
+        const dtFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+
+        const result = await pool.request()
+            .input("anoMes", sql.Char(7), anoMes)
+            .input("dtInicio", sql.DateTime, dtInicio)
+            .input("dtFim", sql.DateTime, dtFim)
+            .query(`
+                ;WITH Itens AS (
+                    SELECT CODIGO, DESCRICAO, CURVA_A_B_C AS CURVA
+                    FROM [dbo].[CAD_PROD]
+                    WHERE CURVA_A_B_C = 'A' AND ATIVO = 1
+                ),
+                Metas AS (
+                    SELECT CODIGO, META_PCT, CUSTO_BASE, ANO_MES_CUSTO_BASE
+                    FROM [dbo].[TB_SAVING_META]
+                    WHERE ANO_MES = @anoMes
+                ),
+                NFBase AS (
+                    SELECT
+                        p.PROD_COD_PROD AS CODIGO,
+                        p.PROD_CUSTO_CONTABIL_MEDIO_NOVO AS CUSTO_CONTABIL,
+                        p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO_FISCAL,
+                        c.CAB_NUM_FORN AS COD_FORNECEDOR,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.PROD_COD_PROD
+                            ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
+                        ) AS rn
+                    FROM Itens i
+                    INNER JOIN [dbo].[NF_PRODUTOS] p ON p.PROD_COD_PROD = i.CODIGO
+                    INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
+                    WHERE c.CAB_DT_EMISSAO < @dtInicio
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                ),
+                NFMes AS (
+                    SELECT
+                        p.PROD_COD_PROD AS CODIGO,
+                        p.PROD_CUSTO_FISCAL_MEDIO_NOVO AS CUSTO,
+                        c.CAB_NUM_FORN AS COD_FORNECEDOR,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.PROD_COD_PROD
+                            ORDER BY c.CAB_DT_EMISSAO DESC, c.CAB_ID_NF DESC
+                        ) AS rn
+                    FROM Itens i
+                    INNER JOIN [dbo].[NF_PRODUTOS] p ON p.PROD_COD_PROD = i.CODIGO
+                    INNER JOIN [dbo].[NF_CABECALHO] c ON c.CAB_ID_NF = p.PROD_ID_NF
+                    WHERE c.CAB_DT_EMISSAO >= @dtInicio
+                      AND c.CAB_DT_EMISSAO <= @dtFim
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO IS NOT NULL
+                      AND p.PROD_CUSTO_FISCAL_MEDIO_NOVO > 0
+                )
+                SELECT
+                    i.CODIGO,
+                    i.DESCRICAO,
+                    i.CURVA,
+                    m.META_PCT,
+                    m.CUSTO_BASE AS CUSTO_BASE_META,
+                    m.ANO_MES_CUSTO_BASE,
+                    b.CUSTO_CONTABIL,
+                    b.CUSTO_FISCAL,
+                    ISNULL(fm.RAZAO_SOCIAL, fb.RAZAO_SOCIAL) AS FORNECEDOR,
+                    nm.CUSTO AS CUSTO_ULTIMA_COMPRA
+                FROM Itens i
+                LEFT JOIN Metas m ON m.CODIGO = i.CODIGO
+                LEFT JOIN NFBase b ON b.CODIGO = i.CODIGO AND b.rn = 1
+                LEFT JOIN NFMes nm ON nm.CODIGO = i.CODIGO AND nm.rn = 1
+                LEFT JOIN [dbo].[CAD_FORNECEDOR] fm ON fm.COD_FORNECEDOR = nm.COD_FORNECEDOR
+                LEFT JOIN [dbo].[CAD_FORNECEDOR] fb ON fb.COD_FORNECEDOR = b.COD_FORNECEDOR
+                ORDER BY i.DESCRICAO
+            `);
+
+        const itens = (result.recordset || []).map((r) => {
+            const metaPct = r.META_PCT != null ? Number(r.META_PCT) : null;
+            const custoFiscal = r.CUSTO_FISCAL != null ? Number(r.CUSTO_FISCAL) : null;
+            const custoContabil = r.CUSTO_CONTABIL != null ? Number(r.CUSTO_CONTABIL) : null;
+            const custoBaseMeta = r.CUSTO_BASE_META != null ? Number(r.CUSTO_BASE_META) : null;
+            const precoUnitUltNf = custoBaseMeta != null ? custoBaseMeta : custoFiscal;
+            const custoAlvo = (precoUnitUltNf != null && metaPct != null)
+                ? +(precoUnitUltNf * (1 - metaPct / 100)).toFixed(4)
+                : null;
+            const custoUltimaCompra = r.CUSTO_ULTIMA_COMPRA != null ? Number(r.CUSTO_ULTIMA_COMPRA) : null;
+            const desvio = (custoUltimaCompra != null && custoAlvo != null)
+                ? +(custoUltimaCompra - custoAlvo).toFixed(4)
+                : null;
+
+            let flag = "SEM_META";
+            if (metaPct != null && custoAlvo != null) {
+                if (custoUltimaCompra == null) flag = "NAO_COMPRADO";
+                else if (custoUltimaCompra <= custoAlvo + 0.00005) flag = "ATINGIDO";
+                else flag = "NAO_ATINGIDO";
+            }
+
+            return {
+                codigo: String(r.CODIGO),
+                descricao: r.DESCRICAO || "",
+                fornecedor: r.FORNECEDOR || "",
+                curva: r.CURVA || "A",
+                custoContabil,
+                custoFiscal,
+                precoUnitUltNf,
+                metaPct,
+                custoAlvo,
+                custoUltimaCompra,
+                desvio,
+                flag,
+            };
+        });
+
+        const totais = itens.reduce((acc, it) => {
+            acc.total += 1;
+            if (it.flag === "ATINGIDO") acc.atingidos += 1;
+            else if (it.flag === "NAO_ATINGIDO") acc.naoAtingidos += 1;
+            else if (it.flag === "NAO_COMPRADO") acc.naoComprados += 1;
+            else acc.semMeta += 1;
+            if (it.flag === "ATINGIDO" || it.flag === "NAO_ATINGIDO") acc.comCompra += 1;
+            return acc;
+        }, { total: 0, atingidos: 0, naoAtingidos: 0, naoComprados: 0, semMeta: 0, comCompra: 0 });
+        totais.pctAtingidos = totais.comCompra > 0
+            ? +((totais.atingidos / totais.comCompra) * 100).toFixed(1)
+            : null;
+
+        return res.status(200).json({ anoMes, itens, totais });
+    } catch (err) {
+        console.error("[custoAlvoList]", err);
+        return res.status(500).json({
+            message: "Erro ao listar custo alvo.",
+            error: err.message,
+        });
+    }
+}
+
+async function seedPermissaoCustoAlvo(pool) {
+    try {
+        await pool.request().query(`
+            IF OBJECT_ID(N'dbo.SHR_PERMISSOES_MENU', N'U') IS NOT NULL
+            BEGIN
+                INSERT INTO dbo.SHR_PERMISSOES_MENU (LINK_ID, NIVEL, PERMITIDO, USUARIO_ATUALIZACAO)
+                SELECT 'custo-alvo', p.NIVEL, p.PERMITIDO, 'SEED-CUSTO-ALVO'
+                FROM dbo.SHR_PERMISSOES_MENU p
+                WHERE p.LINK_ID = 'saving-compras'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dbo.SHR_PERMISSOES_MENU x
+                      WHERE x.LINK_ID = 'custo-alvo' AND x.NIVEL = p.NIVEL
+                  );
+            END
+        `);
+    } catch (_) {
+        /* ok */
+    }
 }

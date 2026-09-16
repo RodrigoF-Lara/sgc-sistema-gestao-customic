@@ -109,6 +109,7 @@ function inicializarSidebar() {
     'relatorioacuracidade': 'nav-relatorios',
     'consumomedio': 'nav-relatorios',
     'savingcompras': 'nav-saving',
+    'custoalvo': 'nav-custo-alvo',
     'cadastros': 'nav-cadastros-group',
     'cadastroprodutos': 'nav-produtos',
     'cadastrofornecedores': 'nav-fornecedores',

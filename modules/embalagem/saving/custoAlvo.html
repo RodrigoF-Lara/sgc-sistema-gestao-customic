@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custo Alvo - Embalagem</title>
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        .filtros-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 16px;
+        }
+        .filtros-bar .form-group { margin: 0; min-width: 160px; }
+        .filtros-bar label { display: block; font-size: 0.85em; margin-bottom: 4px; color: #555; }
+        .filtros-bar input[type="month"],
+        .filtros-bar select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        .btn-primary {
+            background: var(--cor-principal, #1976d2);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+        .btn-success {
+            background: #2e7d32;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+        .btn-success:disabled, .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .search-box {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95em;
+            min-width: 220px;
+        }
+        .toolbar-acoes {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 12px 0;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .flag-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+        .flag-chip {
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 16px;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .flag-chip.active { border-color: #1976d2; background: #e3f2fd; color: #1565c0; font-weight: 600; }
+        .resumo-totais { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+        .card-total {
+            flex: 1;
+            min-width: 140px;
+            background: #fff;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .card-total .label { color: #777; font-size: 0.82em; }
+        .card-total .valor { font-size: 1.35em; font-weight: 700; margin-top: 4px; }
+        .saving-table-wrap {
+            overflow: auto;
+            height: calc(100vh - 320px);
+            min-height: 320px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        table.saving-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.86em;
+            min-width: 1100px;
+        }
+        table.saving-table th, table.saving-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            text-align: right;
+            white-space: nowrap;
+        }
+        table.saving-table thead th {
+            background: #f7f9fc;
+            color: #333;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        table.saving-table th.col-item,
+        table.saving-table td.col-item {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: #fff;
+            z-index: 1;
+            min-width: 280px;
+        }
+        table.saving-table thead th.col-item { background: #f7f9fc; z-index: 3; }
+        table.saving-table thead th.sortable { cursor: pointer; user-select: none; }
+        table.saving-table thead th.sortable:hover { background: #eef3fa; }
+        table.saving-table thead th.sortable::after { content: " \2195"; color: #bbb; font-size: 0.85em; }
+        table.saving-table thead th.sortable.asc::after  { content: " \25B2"; color: #1976d2; }
+        table.saving-table thead th.sortable.desc::after { content: " \25BC"; color: #1976d2; }
+        .col-alvo { font-weight: 700; color: #c62828; }
+        .neg { color: #c62828; font-weight: 600; }
+        .pos { color: #2e7d32; font-weight: 600; }
+        .muted { color: #999; font-style: italic; }
+        .loading, .empty { text-align: center; padding: 40px; color: #777; }
+        .flag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .flag-ATINGIDO { background: #c8e6c9; color: #1b5e20; }
+        .flag-NAO_ATINGIDO { background: #ffcdd2; color: #b71c1c; }
+        .flag-NAO_COMPRADO { background: #eceff1; color: #546e7a; }
+        .flag-SEM_META { background: #fff3e0; color: #e65100; }
+        .hint { color: #666; margin-top: -8px; font-size: 0.92em; }
+        .hint a { color: #1976d2; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+        <div class="container">
+            <h1><i class="fa-solid fa-bullseye"></i> Custo Alvo</h1>
+            <p class="hint">
+                Mesmas metas do <a href="/modules/embalagem/saving/savingCompras.html">Saving de Compras</a>,
+                com foco em <strong>atingiu ou não</strong> o custo alvo — sem R$ economizado.
+            </p>
+
+            <div class="card">
+                <div class="filtros-bar">
+                    <div class="form-group">
+                        <label for="anoMes">Mês da meta</label>
+                        <input type="month" id="anoMes" />
+                    </div>
+                    <label style="display:flex;align-items:center;gap:6px;padding-bottom:6px;">
+                        <input type="checkbox" id="soComMeta" checked />
+                        Só itens com meta
+                    </label>
+                    <button id="btnAplicar" class="btn-primary">
+                        <i class="fa fa-filter"></i> Aplicar
+                    </button>
+                </div>
+
+                <div class="toolbar-acoes">
+                    <div class="flag-filters" id="flagFilters">
+                        <button type="button" class="flag-chip active" data-flag="">Todos</button>
+                        <button type="button" class="flag-chip" data-flag="ATINGIDO">Atingido</button>
+                        <button type="button" class="flag-chip" data-flag="NAO_ATINGIDO">Não atingido</button>
+                        <button type="button" class="flag-chip" data-flag="NAO_COMPRADO">Não comprado</button>
+                        <button type="button" class="flag-chip" data-flag="SEM_META">Sem meta</button>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <input type="search" id="buscaItem" class="search-box"
+                               placeholder="Buscar código, descrição ou fornecedor..." />
+                        <button id="btnExportar" class="btn-success" type="button" disabled>
+                            <i class="fa-solid fa-file-excel"></i> Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="resumo-totais" id="resumoTotais" style="display:none;">
+                    <div class="card-total">
+                        <div class="label">Itens</div>
+                        <div class="valor" id="totItens">0</div>
+                    </div>
+                    <div class="card-total">
+                        <div class="label">Atingido</div>
+                        <div class="valor pos" id="totAtingidos">0</div>
+                    </div>
+                    <div class="card-total">
+                        <div class="label">Não atingido</div>
+                        <div class="valor neg" id="totNaoAtingidos">0</div>
+                    </div>
+                    <div class="card-total">
+                        <div class="label">Não comprado</div>
+                        <div class="valor" id="totNaoComprados">0</div>
+                    </div>
+                    <div class="card-total">
+                        <div class="label">% atingido (quem comprou)</div>
+                        <div class="valor" id="totPct">—</div>
+                    </div>
+                </div>
+
+                <div class="saving-table-wrap">
+                    <table class="saving-table">
+                        <thead id="theadAlvo"></thead>
+                        <tbody id="tbodyAlvo">
+                            <tr><td class="loading" colspan="11">Selecione o mês e clique em Aplicar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="/modules/embalagem/saving/custoAlvo.js"></script>
+</body>
+</html>

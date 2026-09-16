@@ -231,6 +231,7 @@ GO
         ('relatorio-saldo'),
         ('relatorio-acuracidade'),
         ('saving-compras'),
+        ('custo-alvo'),
         ('cadastro-produtos'),
         ('cadastro-fornecedores'),
         ('configuracoes'),
