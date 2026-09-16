@@ -127,7 +127,8 @@ function inicializarSidebar() {
     'confignotificacoes': 'nav-config-notificacoes',
     'calendarioprodutivo': 'nav-configuracoes',
     'niveis': 'nav-niveis',
-    'permissoes': 'nav-permissoes'
+    'permissoes': 'nav-permissoes',
+    'mockups': 'nav-design-mockups'
   };
   let navId = idMap[pageKey] || `nav-${pageKey}`;
   if (pageKey === 'pedidos' && /fila=1/.test(window.location.search)) {

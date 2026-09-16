@@ -9,6 +9,9 @@
     },
     "api/embalagem/inventory.js": {
       "maxDuration": 60
+    },
+    "api/design/mockups.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

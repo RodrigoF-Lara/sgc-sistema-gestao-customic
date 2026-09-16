@@ -82,6 +82,7 @@ GO
         ('relatorio-acuracidade'),
         ('saving-compras'),
         ('custo-alvo'),
+        ('design-mockups'),
         ('cadastro-produtos'),
         ('cadastro-fornecedores'),
         ('configuracoes'),

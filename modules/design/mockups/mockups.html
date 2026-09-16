@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockups - Design</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    .req-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dee2e6; margin-bottom: 20px; }
+    .req-tab {
+      padding: 10px 22px; border: none; background: none; font-size: 15px; font-weight: 600;
+      color: #6c757d; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
+    }
+    .req-tab.active { color: var(--cor-principal); border-bottom-color: var(--cor-principal); }
+    .req-panel { display: none; }
+    .req-panel.active { display: block; }
+    .kpis { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .kpi {
+      min-width: 140px; flex: 1; border-radius: 10px; padding: 14px 18px; color: #fff;
+    }
+    .kpi .lbl { font-size: 0.82em; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi .num { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+    .kpi-feitas { background: #43a047; }
+    .kpi-total { background: #ef6c00; }
+    .kpi-fazer { background: #e53935; }
+    .kpi-and { background: #f9a825; color: #3e2723; }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .toolbar input, .toolbar select {
+      padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; color: #222;
+    }
+    .btn-chip {
+      background: #fff !important; color: #263238 !important; border: 1px solid #b0bec5 !important;
+      padding: 7px 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
+    }
+    .btn-chip:hover { background: #f5f5f5 !important; }
+    .wrap-table {
+      overflow: auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      max-height: calc(100vh - 320px); min-height: 280px;
+    }
+    table.ctrl { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+    table.ctrl th, table.ctrl td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    table.ctrl thead th { background: #b3e5fc; color: #01579b; font-weight: 700; position: sticky; top: 0; z-index: 2; }
+    table.ctrl td.cod { font-weight: 700; white-space: nowrap; }
+    .st {
+      display: inline-block; min-width: 118px; padding: 4px 8px; border-radius: 4px;
+      font-weight: 800; font-size: 0.78em; text-align: center; letter-spacing: 0.02em;
+    }
+    .st-A-FAZER { background: #ffcdd2; color: #b71c1c; }
+    .st-EM-ANDAMENTO { background: #ffe082; color: #e65100; }
+    .st-UPADO { background: #ffe082; color: #f57f17; }
+    select.status-sel {
+      padding: 4px 6px; border-radius: 4px; font-weight: 700; font-size: 0.82em; color: #222; background: #fff;
+    }
+    .fotos { display: flex; gap: 6px; }
+    .foto-slot {
+      width: 44px; height: 44px; border: 2px dashed #cfd8dc; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      background: #fafafa; color: #90a4ae; font-size: 0.75em; overflow: hidden; position: relative;
+    }
+    .foto-slot.has { border-style: solid; border-color: #43a047; background: #e8f5e9; }
+    .foto-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foto-slot input { display: none; }
+    .file-dropzone {
+      display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+      border: 2px dashed #b0bec5; border-radius: 8px; background: #fafbfc; cursor: pointer;
+    }
+    .file-dropzone.has-file { border-color: #43a047; background: #e8f5e9; }
+    .nova-req-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+    @media (max-width: 800px) { .nova-req-grid { grid-template-columns: 1fr; } }
+    .hint { color: #546e7a; margin-top: -6px; }
+    .lightbox {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+    .empty { text-align: center; padding: 36px; color: #78909c; }
+  </style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <div class="main-content">
+    <div class="container">
+      <h1><i class="fa-solid fa-images"></i> Mockups</h1>
+      <p class="hint">Controle de criação: CSV com código e descrição, status por SKU e 4 fotos cada.</p>
+
+      <div class="req-tabs">
+        <button type="button" class="req-tab active" data-tab="controle" id="tabControle">
+          <i class="fa fa-table"></i> Controle
+        </button>
+        <button type="button" class="req-tab" data-tab="nova" id="tabNova">
+          <i class="fa fa-file-csv"></i> Nova lista (CSV)
+        </button>
+      </div>
+
+      <div class="req-panel active" id="panelControle">
+        <div class="kpis">
+          <div class="kpi kpi-feitas"><div class="lbl">Feitas</div><div class="num" id="kpiFeitas">0</div></div>
+          <div class="kpi kpi-total"><div class="lbl">Total</div><div class="num" id="kpiTotal">0</div></div>
+          <div class="kpi kpi-fazer"><div class="lbl">A fazer</div><div class="num" id="kpiFazer">0</div></div>
+          <div class="kpi kpi-and"><div class="lbl">Em andamento</div><div class="num" id="kpiAnd">0</div></div>
+        </div>
+        <div class="toolbar">
+          <input type="search" id="busca" placeholder="Buscar código ou descrição..." />
+          <select id="filtroStatus">
+            <option value="">Todos os status</option>
+            <option value="A FAZER">A FAZER</option>
+            <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+            <option value="UPADO">UPADO</option>
+          </select>
+          <select id="filtroLote">
+            <option value="">Todas as listas</option>
+          </select>
+          <select id="bulkStatus">
+            <option value="">Alterar selecionados…</option>
+            <option value="A FAZER">A FAZER</option>
+            <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+            <option value="UPADO">UPADO</option>
+          </select>
+          <button type="button" class="btn-chip" id="btnBulk">Aplicar</button>
+          <button type="button" class="btn-chip" id="btnReload"><i class="fa fa-rotate"></i> Atualizar</button>
+        </div>
+        <div class="wrap-table">
+          <table class="ctrl">
+            <thead>
+              <tr>
+                <th style="width:32px;"><input type="checkbox" id="chkAll" /></th>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Linha</th>
+                <th>Status</th>
+                <th>Fotos (4)</th>
+                <th>Lista</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="req-panel" id="panelNova">
+        <div class="card">
+          <h2 style="margin-top:0;">Nova lista via CSV</h2>
+          <p class="hint">Colunas: <strong>codigo</strong> e <strong>descricao</strong> (opcional: linha). Separador vírgula ou ponto-e-vírgula.</p>
+          <form id="csvForm">
+            <div class="nova-req-grid">
+              <div class="form-group">
+                <label for="nomeLista">Nome da lista</label>
+                <input type="text" id="nomeLista" placeholder="Ex.: iPhone 18 Pro Max — setembro" required />
+              </div>
+              <div class="form-group">
+                <label>Arquivo CSV</label>
+                <label for="csvFile" class="file-dropzone" id="fileDropzone">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <span id="fileDropzoneTitle">Clique ou arraste o .csv</span>
+                  <input type="file" id="csvFile" accept=".csv,text/csv" hidden required />
+                </label>
+              </div>
+            </div>
+            <div style="margin-top:16px;text-align:right;">
+              <button type="submit" class="btn-destaque">Gerar lista</button>
+            </div>
+          </form>
+          <p id="csvStatus"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox"><img id="lightboxImg" alt="Foto do mockup" /></div>
+
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/modules/design/mockups/mockups.js"></script>
+</body>
+</html>
