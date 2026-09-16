@@ -259,6 +259,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  function baixarModeloCsv(e) {
+    if (e) e.preventDefault();
+    const linhas = [
+      "codigo;descricao;linha",
+      "309174;CAPA OVVI APPLE IPHONE 18 PRO MAX SILICONE MAGSAFE AZUL CLARO;liquid",
+      "309359;CAPA CUSTOMIC IPHONE 17/18 PRO IMPACTOR SPACE MAGSAFE DARK PURPLE;space",
+    ];
+    const blob = new Blob(["\uFEFF" + linhas.join("\r\n") + "\r\n"], {
+      type: "text/csv;charset=utf-8",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "modelo-mockups.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  const btnModelo = document.getElementById("btnModeloCsv");
+  const btnModelo2 = document.getElementById("btnModeloCsv2");
+  if (btnModelo) btnModelo.addEventListener("click", baixarModeloCsv);
+  if (btnModelo2) btnModelo2.addEventListener("click", baixarModeloCsv);
+
   document.getElementById("csvForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const file = csvFile.files[0];

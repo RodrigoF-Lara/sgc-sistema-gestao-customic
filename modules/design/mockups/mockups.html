@@ -142,7 +142,11 @@
       <div class="req-panel" id="panelNova">
         <div class="card">
           <h2 style="margin-top:0;">Nova lista via CSV</h2>
-          <p class="hint">Colunas: <strong>codigo</strong> e <strong>descricao</strong> (opcional: linha). Separador vírgula ou ponto-e-vírgula.</p>
+          <p class="hint">
+            Colunas: <strong>codigo</strong> e <strong>descricao</strong> (opcional: <strong>linha</strong>).
+            Separador ponto-e-vírgula (Excel Brasil).
+            <a href="#" id="btnModeloCsv" style="color:#1976d2;font-weight:600;">Baixar modelo CSV</a>
+          </p>
           <form id="csvForm">
             <div class="nova-req-grid">
               <div class="form-group">
@@ -158,7 +162,10 @@
                 </label>
               </div>
             </div>
-            <div style="margin-top:16px;text-align:right;">
+            <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+              <button type="button" class="btn-chip" id="btnModeloCsv2">
+                <i class="fa-solid fa-download"></i> Baixar modelo CSV
+              </button>
               <button type="submit" class="btn-destaque">Gerar lista</button>
             </div>
           </form>
