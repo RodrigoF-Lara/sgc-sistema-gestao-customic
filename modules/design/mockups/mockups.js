@@ -27,8 +27,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
     if (window.SGCPermissoes) Object.assign(h, window.SGCPermissoes.authHeaders());
+    const nivel = localStorage.getItem("userLevel");
     const nome = localStorage.getItem("userName");
     const code = localStorage.getItem("userCode");
+    if (nivel) h["x-user-level"] = nivel;
     if (nome) h["x-user-name"] = nome;
     if (code) h["x-user-code"] = code;
     return h;
@@ -70,10 +72,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function api(method, acao, opts) {
     const q = new URLSearchParams({ acao, ...((opts && opts.query) || {}) });
+    const nivel = localStorage.getItem("userLevel");
+    if (nivel) q.set("userLevel", nivel);
     const res = await fetch(`${API}?${q}`, {
       method,
       headers: authHeaders(),
-      body: method === "GET" ? undefined : JSON.stringify({ acao, usuario: usuario(), ...(opts && opts.body) }),
+      body: method === "GET" ? undefined : JSON.stringify({
+        acao,
+        usuario: usuario(),
+        userLevel: localStorage.getItem("userLevel") || undefined,
+        ...(opts && opts.body),
+      }),
     });
     if (acao === "foto" && method === "GET") return res;
     const data = await res.json().catch(() => ({}));
