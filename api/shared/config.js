@@ -3,6 +3,7 @@ import { handleNiveis } from "../../lib/niveisApi.js";
 import { handlePermissoes } from "../../lib/permissoesApi.js";
 import { handlePedidoCapa } from "../../lib/pedidoCapaApi.js";
 import { handleCapaDePara } from "../../lib/capaDeParaApi.js";
+import { handleMockups } from "../../lib/mockupsApi.js";
 
 /**
  * API unificada de Configurações (+ cargos/permissões)
@@ -39,9 +40,11 @@ export default async function handler(req, res) {
       return await handlePedidoCapa(req, res);
     } else if (tipo === "capaDePara") {
       return await handleCapaDePara(req, res, pool);
+    } else if (tipo === "mockups") {
+      return await handleMockups(req, res);
     } else {
       return res.status(400).json({
-        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis, permissoes, pedidoCapa ou capaDePara)"
+        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis, permissoes, pedidoCapa, capaDePara ou mockups)"
       });
     }
   } catch (error) {

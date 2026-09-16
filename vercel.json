@@ -10,7 +10,7 @@
     "api/embalagem/inventory.js": {
       "maxDuration": 60
     },
-    "api/design/mockups.js": {
+    "api/shared/config.js": {
       "maxDuration": 60
     }
   },
@@ -19,6 +19,7 @@
     { "source": "/index", "destination": "/index.html" },
     { "source": "/api/comercial/pedidos", "destination": "/api/shared/config?tipo=pedidoCapa" },
     { "source": "/api/comercial/depara", "destination": "/api/shared/config?tipo=capaDePara" },
+    { "source": "/api/design/mockups", "destination": "/api/shared/config?tipo=mockups" },
     { "source": "/widget/capa.js", "destination": "/modules/comercial/widget/loader.js" },
     { "source": "/widget/capa", "destination": "/modules/comercial/widget/embed.html" }
   ]
