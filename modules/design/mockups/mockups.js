@@ -262,9 +262,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   function baixarModeloCsv(e) {
     if (e) e.preventDefault();
     const linhas = [
-      "codigo;descricao;linha",
-      "309174;CAPA OVVI APPLE IPHONE 18 PRO MAX SILICONE MAGSAFE AZUL CLARO;liquid",
-      "309359;CAPA CUSTOMIC IPHONE 17/18 PRO IMPACTOR SPACE MAGSAFE DARK PURPLE;space",
+      "codigo",
+      "309174",
+      "309359",
     ];
     const blob = new Blob(["\uFEFF" + linhas.join("\r\n") + "\r\n"], {
       type: "text/csv;charset=utf-8",
@@ -290,7 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const texto = await file.text();
       const itensCsv = parseCsv(texto);
-      if (!itensCsv.length) throw new Error("Nenhum item. Use colunas codigo e descricao.");
+      if (!itensCsv.length) throw new Error("Nenhum código no arquivo. Use a coluna codigo.");
       csvStatus.textContent = `Enviando ${itensCsv.length} SKU(s)…`;
       const data = await api("POST", "criar-csv", { body: { nome, itens: itensCsv } });
       csvStatus.style.color = "#2e7d32";
@@ -345,13 +345,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       return -1;
     };
-    const iCod = idx(["CODIGO", "COD", "CODE", "SKU", "PRODUTO"]);
-    const iDesc = idx(["DESCRICAO", "DESC", "NOME"]);
+    let iCod = idx(["CODIGO", "COD", "CODE", "SKU", "PRODUTO"]);
     const iLinha = idx(["LINHA", "COLECAO", "COLLECTION"]);
-    if (iCod < 0) return [];
+    let start = 1;
+    if (iCod < 0) {
+      iCod = 0;
+      start = 0;
+    }
     const itensOut = [];
     const seen = new Set();
-    for (let r = 1; r < lines.length; r++) {
+    for (let r = start; r < lines.length; r++) {
       const cols = split(lines[r]);
       const codigo = (cols[iCod] || "").trim();
       if (!codigo) continue;
@@ -360,7 +363,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       seen.add(key);
       itensOut.push({
         codigo,
-        descricao: iDesc >= 0 ? cols[iDesc] || "" : "",
         linha: iLinha >= 0 ? cols[iLinha] || "" : "",
       });
     }
