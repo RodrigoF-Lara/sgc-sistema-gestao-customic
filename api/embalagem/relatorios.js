@@ -61,6 +61,7 @@ export default async function handler(req, res) {
         if (acao === 'savingSaveMeta')        return await savingSaveMeta(req, res);
         if (acao === 'savingSaveMetasBatch')  return await savingSaveMetasBatch(req, res);
         if (acao === 'savingAddComentario')   return await savingAddComentario(req, res);
+        if (acao === 'custoAlvoSaveBatch')    return await custoAlvoSaveBatch(req, res);
         return res.status(400).json({ message: "Ação POST não reconhecida" });
     }
 
@@ -2158,10 +2159,35 @@ function savingGerarMeses(dtIni, dtFim) {
 }
 
 // =====================================================================
-// GET ?acao=custoAlvoList&anoMes=YYYY-MM
-// KPI Custo Alvo (planilha): atingiu / não atingiu / não comprado.
-// Reusa as metas do Saving (TB_SAVING_META). Sem foco em R$ economizado.
+// Custo Alvo — tabela própria (TB_CUSTO_ALVO), independente do Saving.
+// GET  ?acao=custoAlvoList&anoMes=YYYY-MM
+// POST ?acao=custoAlvoSaveBatch  body: { anoMes, usuario, itens: [{codigo, custoAlvo}] }
 // =====================================================================
+async function ensureCustoAlvoTable(pool) {
+    await pool.request().query(`
+        IF OBJECT_ID(N'dbo.TB_CUSTO_ALVO', N'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.TB_CUSTO_ALVO (
+                CODIGO NVARCHAR(50) NOT NULL,
+                ANO_MES CHAR(7) NOT NULL,
+                CUSTO_ALVO DECIMAL(18,6) NOT NULL,
+                USUARIO NVARCHAR(100) NULL,
+                DT_CADASTRO DATETIME NOT NULL CONSTRAINT DF_CUSTO_ALVO_CAD DEFAULT (GETDATE()),
+                DT_ATUALIZACAO DATETIME NULL,
+                CONSTRAINT PK_TB_CUSTO_ALVO PRIMARY KEY CLUSTERED (CODIGO, ANO_MES)
+            );
+            CREATE INDEX IX_TB_CUSTO_ALVO_MES ON dbo.TB_CUSTO_ALVO (ANO_MES);
+        END
+    `);
+}
+
+function flagCustoAlvo(custoAlvo, custoUltimaCompra) {
+    if (custoAlvo == null) return "SEM_ALVO";
+    if (custoUltimaCompra == null) return "NAO_COMPRADO";
+    if (custoUltimaCompra <= custoAlvo + 0.00005) return "ATINGIDO";
+    return "NAO_ATINGIDO";
+}
+
 async function custoAlvoList(req, res) {
     try {
         const { anoMes } = req.query;
@@ -2170,6 +2196,7 @@ async function custoAlvoList(req, res) {
         }
         const pool = await getConnection();
         await seedPermissaoCustoAlvo(pool);
+        await ensureCustoAlvoTable(pool);
 
         const [ano, mes] = anoMes.split("-").map(Number);
         const dtInicio = new Date(ano, mes - 1, 1);
@@ -2185,9 +2212,9 @@ async function custoAlvoList(req, res) {
                     FROM [dbo].[CAD_PROD]
                     WHERE CURVA_A_B_C = 'A' AND ATIVO = 1
                 ),
-                Metas AS (
-                    SELECT CODIGO, META_PCT, CUSTO_BASE, ANO_MES_CUSTO_BASE
-                    FROM [dbo].[TB_SAVING_META]
+                Alvos AS (
+                    SELECT CODIGO, CUSTO_ALVO
+                    FROM [dbo].[TB_CUSTO_ALVO]
                     WHERE ANO_MES = @anoMes
                 ),
                 NFBase AS (
@@ -2228,15 +2255,13 @@ async function custoAlvoList(req, res) {
                     i.CODIGO,
                     i.DESCRICAO,
                     i.CURVA,
-                    m.META_PCT,
-                    m.CUSTO_BASE AS CUSTO_BASE_META,
-                    m.ANO_MES_CUSTO_BASE,
+                    a.CUSTO_ALVO,
                     b.CUSTO_CONTABIL,
                     b.CUSTO_FISCAL,
                     ISNULL(fm.RAZAO_SOCIAL, fb.RAZAO_SOCIAL) AS FORNECEDOR,
                     nm.CUSTO AS CUSTO_ULTIMA_COMPRA
                 FROM Itens i
-                LEFT JOIN Metas m ON m.CODIGO = i.CODIGO
+                LEFT JOIN Alvos a ON a.CODIGO = i.CODIGO
                 LEFT JOIN NFBase b ON b.CODIGO = i.CODIGO AND b.rn = 1
                 LEFT JOIN NFMes nm ON nm.CODIGO = i.CODIGO AND nm.rn = 1
                 LEFT JOIN [dbo].[CAD_FORNECEDOR] fm ON fm.COD_FORNECEDOR = nm.COD_FORNECEDOR
@@ -2245,25 +2270,15 @@ async function custoAlvoList(req, res) {
             `);
 
         const itens = (result.recordset || []).map((r) => {
-            const metaPct = r.META_PCT != null ? Number(r.META_PCT) : null;
             const custoFiscal = r.CUSTO_FISCAL != null ? Number(r.CUSTO_FISCAL) : null;
             const custoContabil = r.CUSTO_CONTABIL != null ? Number(r.CUSTO_CONTABIL) : null;
-            const custoBaseMeta = r.CUSTO_BASE_META != null ? Number(r.CUSTO_BASE_META) : null;
-            const precoUnitUltNf = custoBaseMeta != null ? custoBaseMeta : custoFiscal;
-            const custoAlvo = (precoUnitUltNf != null && metaPct != null)
-                ? +(precoUnitUltNf * (1 - metaPct / 100)).toFixed(4)
-                : null;
+            const precoUnitUltNf = custoFiscal;
+            const custoAlvo = r.CUSTO_ALVO != null ? Number(r.CUSTO_ALVO) : null;
             const custoUltimaCompra = r.CUSTO_ULTIMA_COMPRA != null ? Number(r.CUSTO_ULTIMA_COMPRA) : null;
+            const sugeridoAlvo = precoUnitUltNf != null ? +(precoUnitUltNf * 0.95).toFixed(4) : null;
             const desvio = (custoUltimaCompra != null && custoAlvo != null)
                 ? +(custoUltimaCompra - custoAlvo).toFixed(4)
                 : null;
-
-            let flag = "SEM_META";
-            if (metaPct != null && custoAlvo != null) {
-                if (custoUltimaCompra == null) flag = "NAO_COMPRADO";
-                else if (custoUltimaCompra <= custoAlvo + 0.00005) flag = "ATINGIDO";
-                else flag = "NAO_ATINGIDO";
-            }
 
             return {
                 codigo: String(r.CODIGO),
@@ -2273,11 +2288,11 @@ async function custoAlvoList(req, res) {
                 custoContabil,
                 custoFiscal,
                 precoUnitUltNf,
-                metaPct,
                 custoAlvo,
+                sugeridoAlvo,
                 custoUltimaCompra,
                 desvio,
-                flag,
+                flag: flagCustoAlvo(custoAlvo, custoUltimaCompra),
             };
         });
 
@@ -2286,10 +2301,10 @@ async function custoAlvoList(req, res) {
             if (it.flag === "ATINGIDO") acc.atingidos += 1;
             else if (it.flag === "NAO_ATINGIDO") acc.naoAtingidos += 1;
             else if (it.flag === "NAO_COMPRADO") acc.naoComprados += 1;
-            else acc.semMeta += 1;
+            else acc.semAlvo += 1;
             if (it.flag === "ATINGIDO" || it.flag === "NAO_ATINGIDO") acc.comCompra += 1;
             return acc;
-        }, { total: 0, atingidos: 0, naoAtingidos: 0, naoComprados: 0, semMeta: 0, comCompra: 0 });
+        }, { total: 0, atingidos: 0, naoAtingidos: 0, naoComprados: 0, semAlvo: 0, comCompra: 0 });
         totais.pctAtingidos = totais.comCompra > 0
             ? +((totais.atingidos / totais.comCompra) * 100).toFixed(1)
             : null;
@@ -2301,6 +2316,57 @@ async function custoAlvoList(req, res) {
             message: "Erro ao listar custo alvo.",
             error: err.message,
         });
+    }
+}
+
+async function custoAlvoSaveBatch(req, res) {
+    try {
+        const { anoMes, usuario, itens } = req.body || {};
+        if (!anoMes || !/^\d{4}-\d{2}$/.test(anoMes)) {
+            return res.status(400).json({ message: "anoMes obrigatório (YYYY-MM)." });
+        }
+        if (!Array.isArray(itens) || itens.length === 0) {
+            return res.status(400).json({ message: "Informe os itens." });
+        }
+        const pool = await getConnection();
+        await ensureCustoAlvoTable(pool);
+
+        let salvos = 0;
+        let removidos = 0;
+        for (const it of itens) {
+            const codigo = String(it.codigo || "").trim();
+            if (!codigo) continue;
+            const raw = it.custoAlvo;
+            const alvo = raw === "" || raw == null ? null : Number(raw);
+            if (alvo == null || !Number.isFinite(alvo) || alvo <= 0) {
+                await pool.request()
+                    .input("codigo", sql.NVarChar(50), codigo)
+                    .input("anoMes", sql.Char(7), anoMes)
+                    .query(`DELETE FROM dbo.TB_CUSTO_ALVO WHERE CODIGO=@codigo AND ANO_MES=@anoMes`);
+                removidos += 1;
+                continue;
+            }
+            await pool.request()
+                .input("codigo", sql.NVarChar(50), codigo)
+                .input("anoMes", sql.Char(7), anoMes)
+                .input("alvo", sql.Decimal(18, 6), alvo)
+                .input("usuario", sql.NVarChar(100), usuario || null)
+                .query(`
+                    MERGE dbo.TB_CUSTO_ALVO AS t
+                    USING (SELECT @codigo AS CODIGO, @anoMes AS ANO_MES) AS s
+                       ON t.CODIGO = s.CODIGO AND t.ANO_MES = s.ANO_MES
+                    WHEN MATCHED THEN
+                        UPDATE SET CUSTO_ALVO=@alvo, USUARIO=@usuario, DT_ATUALIZACAO=GETDATE()
+                    WHEN NOT MATCHED THEN
+                        INSERT (CODIGO, ANO_MES, CUSTO_ALVO, USUARIO)
+                        VALUES (@codigo, @anoMes, @alvo, @usuario);
+                `);
+            salvos += 1;
+        }
+        return res.status(200).json({ success: true, salvos, removidos });
+    } catch (err) {
+        console.error("[custoAlvoSaveBatch]", err);
+        return res.status(500).json({ message: "Erro ao salvar custo alvo.", error: err.message });
     }
 }
 
