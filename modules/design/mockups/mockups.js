@@ -126,21 +126,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         const opts = ["A FAZER", "EM ANDAMENTO", "UPADO"]
           .map((s) => `<option value="${s}" ${it.status === s ? "selected" : ""}>${s}</option>`)
           .join("");
-        const slots = [1, 2, 3, 4]
-          .map((slot) => {
-            const has = it.fotos && it.fotos[slot];
-            if (has) {
-              return `<div class="foto-slot has" data-view="${it.id}:${slot}" title="Clique para ver · duplo clique para trocar">
-                <i class="fa-solid fa-check"></i>
-                <input type="file" accept="image/*" data-foto="${it.id}:${slot}" />
-              </div>`;
-            }
-            return `<label class="foto-slot" title="Enviar foto ${slot}">
-              ${slot}
-              <input type="file" accept="image/*" data-foto="${it.id}:${slot}" />
-            </label>`;
-          })
+        const fotos = Array.isArray(it.fotos) ? it.fotos : [];
+        const slots = fotos
+          .map((f, i) => `<div class="foto-slot has" data-view-id="${f.id}" title="${escapeHtml(f.nome || "Foto " + (i + 1))} — clique para ver">
+                ${i + 1}
+                <button type="button" class="foto-del" data-del-id="${f.id}" title="Excluir foto" aria-label="Excluir foto">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>`)
           .join("");
+        const addBtn = `<label class="foto-slot add" title="Adicionar fotos (pode selecionar várias)">
+              <i class="fa-solid fa-plus"></i>
+              <input type="file" accept="image/*" multiple data-foto-add="${it.id}" />
+            </label>`;
+        const nLabel = fotos.length ? `<span class="fotos-n">${fotos.length} foto${fotos.length === 1 ? "" : "s"}</span>` : "";
         return `<tr data-id="${it.id}">
           <td><input type="checkbox" class="chk-item" data-id="${it.id}" /></td>
           <td class="cod">${escapeHtml(it.codigo)}</td>
@@ -149,7 +148,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td>
             <select class="status-sel ${stClass(it.status)}" data-id="${it.id}">${opts}</select>
           </td>
-          <td><div class="fotos">${slots}</div></td>
+          <td><div class="fotos">${slots}${addBtn}${nLabel}</div></td>
           <td>${escapeHtml(it.loteNome)}</td>
         </tr>`;
       })
@@ -168,42 +167,56 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       return;
     }
-    const fileInp = e.target.matches("input[type=file][data-foto]") ? e.target : null;
-    if (fileInp && fileInp.files[0]) {
-      const [itemId, slot] = fileInp.dataset.foto.split(":");
+    const fileInp = e.target.matches("input[type=file][data-foto-add]") ? e.target : null;
+    if (fileInp && fileInp.files.length) {
+      const itemId = Number(fileInp.dataset.fotoAdd);
+      const files = [...fileInp.files];
+      const row = fileInp.closest("tr");
+      if (row) row.classList.add("uploading");
       try {
-        const packed = await compactarImagem(fileInp.files[0]);
-        await api("POST", "foto", {
-          body: { itemId: Number(itemId), slot: Number(slot), nome: fileInp.files[0].name, mime: packed.mime, data: packed.data },
-        });
+        for (const file of files) {
+          const packed = await compactarImagem(file);
+          await api("POST", "foto", {
+            body: { itemId, nome: file.name, mime: packed.mime, data: packed.data },
+          });
+        }
         await carregarItens();
       } catch (err) {
         alert(err.message);
+        await carregarItens().catch(() => {});
       }
     }
   });
 
   tbody.addEventListener("click", async (e) => {
-    const view = e.target.closest("[data-view]");
+    const del = e.target.closest("[data-del-id]");
+    if (del) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = Number(del.getAttribute("data-del-id"));
+      if (!id || !confirm("Excluir esta foto?")) return;
+      try {
+        await api("DELETE", "foto", { query: { id: String(id) } });
+        await carregarItens();
+      } catch (err) {
+        alert(err.message);
+      }
+      return;
+    }
+    const view = e.target.closest("[data-view-id]");
     if (!view || e.target.closest("input")) return;
     e.preventDefault();
-    const [itemId, slot] = view.getAttribute("data-view").split(":");
+    const id = view.getAttribute("data-view-id");
     try {
-      const res = await fetch(`${API}?acao=foto&itemId=${itemId}&slot=${slot}`, { headers: authHeaders() });
+      const res = await fetch(`${API}?acao=foto&id=${id}`, { headers: authHeaders() });
       if (!res.ok) throw new Error("Foto não encontrada.");
       const blob = await res.blob();
+      if (lightboxImg.src && lightboxImg.src.startsWith("blob:")) URL.revokeObjectURL(lightboxImg.src);
       lightboxImg.src = URL.createObjectURL(blob);
       lightbox.classList.add("open");
     } catch (err) {
       alert(err.message);
     }
-  });
-  tbody.addEventListener("dblclick", (e) => {
-    const view = e.target.closest("[data-view]");
-    if (!view) return;
-    e.preventDefault();
-    const inp = view.querySelector("input[type=file]");
-    if (inp) inp.click();
   });
   lightbox.addEventListener("click", () => lightbox.classList.remove("open"));
 
@@ -289,12 +302,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     csvStatus.textContent = "Lendo CSV…";
     try {
       const texto = await file.text();
-      const itensCsv = parseCsv(texto);
+      const parsed = parseCsv(texto);
+      const itensCsv = parsed.itens;
+      const duplicadosCsv = parsed.duplicados;
       if (!itensCsv.length) throw new Error("Nenhum código no arquivo. Use a coluna codigo.");
       csvStatus.textContent = `Enviando ${itensCsv.length} SKU(s)…`;
       const data = await api("POST", "criar-csv", { body: { nome, itens: itensCsv } });
-      csvStatus.style.color = "#2e7d32";
-      csvStatus.textContent = data.message;
+      const duplicados = (duplicadosCsv.length ? duplicadosCsv : (data.duplicados || []));
+      let msg = data.message || "";
+      if (duplicados.length) {
+        const lista = duplicados.slice(0, 12).join(", ");
+        const extra = duplicados.length > 12 ? "…" : "";
+        const aviso = `Atenção: ${duplicados.length} código(s) repetido(s) no CSV (mantida 1 ocorrência): ${lista}${extra}.`;
+        if (!msg.includes("repetido")) msg = `${msg} ${aviso}`.trim();
+        csvStatus.style.color = "#e65100";
+        csvStatus.textContent = msg;
+        alert(aviso);
+      } else {
+        csvStatus.style.color = "#2e7d32";
+        csvStatus.textContent = msg;
+      }
       csvFile.value = "";
       dropTitle.textContent = "Clique ou arraste o .csv";
       dropzone.classList.remove("has-file");
@@ -354,19 +381,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const itensOut = [];
     const seen = new Set();
+    const duplicadosSet = new Set();
+    const duplicados = [];
     for (let r = start; r < lines.length; r++) {
       const cols = split(lines[r]);
       const codigo = (cols[iCod] || "").trim();
       if (!codigo) continue;
       const key = codigo.toUpperCase();
-      if (seen.has(key)) continue;
+      if (seen.has(key)) {
+        if (!duplicadosSet.has(key)) {
+          duplicadosSet.add(key);
+          duplicados.push(codigo);
+        }
+        continue;
+      }
       seen.add(key);
       itensOut.push({
         codigo,
         linha: iLinha >= 0 ? cols[iLinha] || "" : "",
       });
     }
-    return itensOut;
+    return { itens: itensOut, duplicados };
   }
 
   function compactarImagem(file) {

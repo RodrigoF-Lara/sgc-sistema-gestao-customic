@@ -52,15 +52,27 @@
     select.status-sel {
       padding: 4px 6px; border-radius: 4px; font-weight: 700; font-size: 0.82em; color: #222; background: #fff;
     }
-    .fotos { display: flex; gap: 6px; }
+    .fotos { display: flex; gap: 6px; flex-wrap: wrap; max-width: 320px; align-items: center; padding: 8px 8px 4px 2px; }
     .foto-slot {
       width: 44px; height: 44px; border: 2px dashed #cfd8dc; border-radius: 6px;
       display: flex; align-items: center; justify-content: center; cursor: pointer;
-      background: #fafafa; color: #90a4ae; font-size: 0.75em; overflow: hidden; position: relative;
+      background: #fafafa; color: #90a4ae; font-size: 0.75em; overflow: visible; position: relative;
+      flex-shrink: 0;
     }
-    .foto-slot.has { border-style: solid; border-color: #43a047; background: #e8f5e9; }
+    .foto-slot.has { border-style: solid; border-color: #43a047; background: #e8f5e9; color: #2e7d32; }
+    .foto-slot.add { border-color: #90caf9; color: #1565c0; background: #e3f2fd; }
+    .foto-slot.add:hover { background: #bbdefb; }
     .foto-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .foto-slot input { display: none; }
+    .foto-del {
+      position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0;
+      border: 0; border-radius: 50%; background: #c62828; color: #fff; cursor: pointer;
+      font-size: 10px; z-index: 2;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .foto-del:hover { background: #b71c1c; }
+    .fotos-n { font-size: 0.75em; color: #607d8b; white-space: nowrap; }
+    tr.uploading { opacity: 0.55; pointer-events: none; }
     .file-dropzone {
       display: flex; align-items: center; gap: 14px; padding: 14px 18px;
       border: 2px dashed #b0bec5; border-radius: 8px; background: #fafbfc; cursor: pointer;
@@ -83,7 +95,7 @@
   <div class="main-content">
     <div class="container">
       <h1><i class="fa-solid fa-images"></i> Mockups</h1>
-      <p class="hint">Controle de criação: CSV com código e descrição, status por SKU e 4 fotos cada.</p>
+      <p class="hint">Controle de criação: CSV com código e descrição, status por SKU e quantas fotos precisar.</p>
 
       <div class="req-tabs">
         <button type="button" class="req-tab active" data-tab="controle" id="tabControle">
@@ -130,7 +142,7 @@
                 <th>Descrição</th>
                 <th>Linha</th>
                 <th>Status</th>
-                <th>Fotos (4)</th>
+                <th>Fotos</th>
                 <th>Lista</th>
               </tr>
             </thead>
