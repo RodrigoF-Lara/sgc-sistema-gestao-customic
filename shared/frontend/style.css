@@ -288,7 +288,7 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
 /* SIDEBAR — hamburger toggle (desktop = mini-sidebar; mobile = slide)  */
 /* =================================================================== */
 .sidebar {
-    transition: width 0.25s ease, transform 0.28s ease;
+    transition: width 0.25s ease, min-width 0.25s ease, max-width 0.25s ease, transform 0.28s ease;
 }
 
 .sidebar-toggle-btn {
@@ -327,12 +327,28 @@ h2 { margin-bottom: 20px; font-size: 1.4em; border-bottom: 2px solid var(--cor-c
 }
 
 /* ----- DESKTOP: mini-sidebar (só ícones) ----- */
-body.sidebar-collapsed .sidebar { width: 64px; padding: 20px 0; overflow: hidden; }
+/* #sidebar-container (id) vence .sidebar; sem o id a largura fica presa em 268px. */
+body.sidebar-collapsed #sidebar-container,
+body.sidebar-collapsed .sidebar {
+    width: 76px;
+    min-width: 76px;
+    max-width: 76px;
+    padding: 16px 0 12px;
+    overflow: hidden;
+}
 body.sidebar-collapsed .sidebar-header { padding: 0 4px; margin-bottom: 12px; }
 body.sidebar-collapsed .sidebar-header h3 { display: none; }
-body.sidebar-collapsed .sidebar-user-info { justify-content: center; padding: 12px 4px; gap: 0; }
+body.sidebar-collapsed .sidebar-brand { gap: 0; justify-content: center; }
+body.sidebar-collapsed .sidebar-user-info {
+    justify-content: center;
+    margin-left: 8px;
+    margin-right: 8px;
+    padding: 12px 4px;
+    gap: 0;
+}
 body.sidebar-collapsed .sidebar-user-info span { display: none; }
 body.sidebar-collapsed .sidebar-user-info i { font-size: 1.6em; }
+body.sidebar-collapsed .sidebar-nav { padding-left: 6px; padding-right: 6px; }
 
 body.sidebar-collapsed .sidebar-nav a,
 body.sidebar-collapsed .nav-group-toggle {
@@ -371,12 +387,14 @@ body.sidebar-collapsed .sidebar-toggle-btn {
         height: auto;
     }
 
+    #sidebar-container,
     .sidebar {
         position: fixed;
         top: 0;
         left: 0;
         height: 100vh;
         width: 270px;
+        min-width: 0;
         max-width: 85vw;
         z-index: 1050;
         transform: translateX(-100%);
@@ -385,7 +403,14 @@ body.sidebar-collapsed .sidebar-toggle-btn {
     body.sidebar-open .sidebar { transform: translateX(0); }
 
     /* No mobile o "colapsado" não existe — sempre slide-out */
-    body.sidebar-collapsed .sidebar { width: 270px; padding: 20px 0; overflow: visible; }
+    body.sidebar-collapsed #sidebar-container,
+    body.sidebar-collapsed .sidebar {
+        width: 270px;
+        min-width: 0;
+        max-width: 85vw;
+        padding: 20px 0;
+        overflow: visible;
+    }
     body.sidebar-collapsed .sidebar-header h3,
     body.sidebar-collapsed .sidebar-user-info span,
     body.sidebar-collapsed .sidebar-nav a > span,
@@ -676,6 +701,12 @@ tbody tr:hover {
     margin: 0 auto;
     position: relative;
     z-index: 1;
+}
+/* Com a barra recolhida o miolo encosta nela e usa a largura liberada. */
+body.sidebar-collapsed .menu-home {
+    max-width: none;
+    width: 100%;
+    margin: 0;
 }
 
 .menu-hero {
