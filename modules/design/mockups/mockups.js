@@ -98,6 +98,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       `<option value="">Todas as listas</option>` +
       lotes.map((l) => `<option value="${l.id}">#${l.id} ${escapeHtml(l.nome)} (${l.feitas}/${l.total})</option>`).join("");
     if (cur) filtroLote.value = cur;
+    atualizarBtnExcluir();
+  }
+
+  function atualizarBtnExcluir() {
+    const btn = document.getElementById("btnExcluirLista");
+    const lote = lotes.find((l) => String(l.id) === String(filtroLote.value));
+    btn.disabled = !lote;
+    btn.title = lote
+      ? `Excluir a lista ${lote.nome} (${lote.total} SKU)`
+      : "Selecione uma lista no filtro para excluir o CSV inteiro";
   }
 
   async function carregarItens() {
@@ -243,8 +253,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("btnReload").addEventListener("click", () => carregarItens().catch((e) => alert(e.message)));
+  document.getElementById("btnExcluirLista").addEventListener("click", async () => {
+    const id = Number(filtroLote.value);
+    const lote = lotes.find((l) => Number(l.id) === id);
+    if (!id || !lote) {
+      alert("Selecione a lista no filtro antes de excluir.");
+      return;
+    }
+    const ok = confirm(
+      `Excluir a lista "${lote.nome}"?\n\nIsso apaga ${lote.total} SKU(s), os status e as fotos. Não dá para desfazer.`
+    );
+    if (!ok) return;
+    try {
+      const data = await api("DELETE", "lote", { query: { loteId: String(id) } });
+      filtroLote.value = "";
+      await carregarLotes();
+      await carregarItens();
+      alert(data.message || "Lista excluída.");
+    } catch (err) {
+      alert(err.message);
+    }
+  });
   filtroStatus.addEventListener("change", () => carregarItens().catch((e) => alert(e.message)));
-  filtroLote.addEventListener("change", () => carregarItens().catch((e) => alert(e.message)));
+  filtroLote.addEventListener("change", () => {
+    atualizarBtnExcluir();
+    carregarItens().catch((e) => alert(e.message));
+  });
   let tBusca;
   busca.addEventListener("input", () => {
     clearTimeout(tBusca);
