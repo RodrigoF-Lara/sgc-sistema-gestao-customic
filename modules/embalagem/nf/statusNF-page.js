@@ -544,7 +544,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 SGCNotifications.add(
                     'nf-armazenada',
                     `NF ${nf} armazenada`,
-                    `Código: ${codigo} | Por: ${usuario || 'Sistema'}`
+                    `Código: ${codigo} | Por: ${usuario || 'Sistema'}`,
+                    '/modules/embalagem/nf/statusNF.html?' + new URLSearchParams({
+                        nf: String(nf || ''),
+                        codigo: String(codigo || '')
+                    }).toString()
                 );
             }
 
@@ -615,5 +619,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
 
     // --- Carga Inicial ---
+    const qsNotif = new URLSearchParams(window.location.search);
+    if (qsNotif.get('nf') && filters.nf) filters.nf.value = qsNotif.get('nf');
+    if (qsNotif.get('codigo') && filters.codigo) filters.codigo.value = qsNotif.get('codigo');
     fetchDataAndRender();
 });

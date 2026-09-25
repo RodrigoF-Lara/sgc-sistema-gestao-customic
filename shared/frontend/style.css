@@ -2235,6 +2235,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     transition: background 0.12s;
     cursor: default;
 }
+.sgc-notif-item.sgc-notif-abre,
+.sgc-toast-body.sgc-notif-abre { cursor: pointer; }
 .sgc-notif-item:last-child { border-bottom: none; }
 .sgc-notif-item:hover { background: #f8f9fa; }
 .sgc-notif-item.nao-lido { background: #f0f6ff; }

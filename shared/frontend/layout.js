@@ -294,6 +294,60 @@ function inicializarSidebarMobile() {
     'nf-armazenada':         { icon: 'fa fa-building',         cor: '#059669', label: 'NF Armazenada'          },
   };
 
+  function linkInterno(url) {
+    var s = String(url || '').trim();
+    if (!s.startsWith('/') || s.startsWith('//') || s.indexOf('\\') >= 0 || /\s/.test(s)) return '';
+    return s;
+  }
+
+  function linkDaNotificacao(evt) {
+    var salvo = linkInterno(evt && evt.link);
+    if (salvo) return salvo;
+    var msg = String((evt && evt.message) || '');
+    var det = String((evt && evt.detail) || '');
+    var tipo = evt && evt.type;
+    var id = (msg.match(/#(\d+)/) || [])[1];
+    if ((tipo === 'requisicao-criada' || tipo === 'requisicao-finalizada') && id) {
+      return '/modules/embalagem/requisicoes/detalhes.html?id=' + id;
+    }
+    if ((tipo === 'inventario-criado' || tipo === 'inventario-finalizado') && id) {
+      return '/modules/embalagem/inventario/inventarioCiclico.html?id=' + id;
+    }
+    if (tipo === 'nf-lancada') {
+      var nfLanc = msg.match(/^NF\s+(.+?)\s+lan[cç]ada/i);
+      if (nfLanc) return '/modules/embalagem/nf/lancamentoNF.html?nf=' + encodeURIComponent(nfLanc[1].trim());
+    }
+    if (tipo === 'nf-armazenada') {
+      var nfArm = msg.match(/^NF\s+(.+?)\s+armazenada/i);
+      var cod = det.match(/C[oó]digo:\s*([^|]+)/i);
+      var q = new URLSearchParams();
+      if (nfArm) q.set('nf', nfArm[1].trim());
+      if (cod) q.set('codigo', cod[1].trim());
+      if (q.toString()) return '/modules/embalagem/nf/statusNF.html?' + q.toString();
+    }
+    return '';
+  }
+
+  function marcarLida(idNotif) {
+    var usuario = localStorage.getItem('userName');
+    var id = Number(idNotif);
+    if (!usuario || !Number.isInteger(id) || id <= 0) return;
+    fetch('/api/shared/notificacoes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({ action: 'marcarLida', usuario: usuario, idNotif: id })
+    }).catch(function () {});
+  }
+
+  function irParaRegistro(evt) {
+    var url = linkDaNotificacao(evt);
+    if (!url) return false;
+    marcarLida(evt && evt.id);
+    window.location.href = url;
+    return true;
+  }
+
   // Busca notificações do servidor
   async function getHistory() {
     const usuario = localStorage.getItem('userName');
@@ -361,6 +415,17 @@ function inicializarSidebarMobile() {
     document.getElementById('sgc-notif-panel-close').addEventListener('click', closePanel);
     document.getElementById('sgc-notif-clear-all').addEventListener('click', clearAll);
     document.getElementById('sgc-notif-mark-read').addEventListener('click', markAllRead);
+    document.getElementById('sgc-notif-list').addEventListener('click', function (e) {
+      var item = e.target.closest('.sgc-notif-item');
+      if (!item || !item.dataset.link) return;
+      irParaRegistro({
+        id: item.dataset.id,
+        link: item.dataset.link,
+        type: item.dataset.type,
+        message: item.dataset.message || '',
+        detail: item.dataset.detail || ''
+      });
+    });
 
     updateBadge();
   }
@@ -408,13 +473,19 @@ function inicializarSidebarMobile() {
     list.innerHTML = history.map(function(evt) {
       var tipo = TIPOS[evt.type] || { icon: 'fa fa-bell', cor: '#666', label: evt.type };
       var data = new Date(evt.timestamp).toLocaleString('pt-BR');
-      return '<div class="sgc-notif-item ' + (evt.lido ? 'lido' : 'nao-lido') + '">' +
+      var url = linkDaNotificacao(evt);
+      return '<div class="sgc-notif-item ' + (evt.lido ? 'lido' : 'nao-lido') + (url ? ' sgc-notif-abre' : '') + '"' +
+        ' data-id="' + escapeHtml(evt.id) + '"' +
+        ' data-type="' + escapeHtml(evt.type) + '"' +
+        ' data-message="' + escapeHtml(evt.message) + '"' +
+        ' data-detail="' + escapeHtml(evt.detail) + '"' +
+        (url ? ' data-link="' + escapeHtml(url) + '" title="Abrir este registro"' : '') + '>' +
         '<div class="sgc-notif-item-icon" style="color:' + tipo.cor + '"><i class="' + tipo.icon + '"></i></div>' +
         '<div class="sgc-notif-item-body">' +
           '<div class="sgc-notif-item-title">' + tipo.label + '</div>' +
           '<div class="sgc-notif-item-msg">' + escapeHtml(evt.message) + '</div>' +
           (evt.detail ? '<div class="sgc-notif-item-detail">' + escapeHtml(evt.detail) + '</div>' : '') +
-          '<div class="sgc-notif-item-time">' + data + '</div>' +
+          '<div class="sgc-notif-item-time">' + data + (url ? ' · abrir' : '') + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -484,8 +555,10 @@ function inicializarSidebarMobile() {
       e.stopPropagation();
       dismissToast(toast);
     });
-    toast.querySelector('.sgc-toast-body').addEventListener('click', function() {
-      openPanel();
+    var corpo = toast.querySelector('.sgc-toast-body');
+    if (linkDaNotificacao(evt)) corpo.classList.add('sgc-notif-abre');
+    corpo.addEventListener('click', function() {
+      if (!irParaRegistro(evt)) openPanel();
     });
 
     // Anima entrada (duplo requestAnimationFrame garante que o CSS já foi aplicado)
@@ -511,8 +584,9 @@ function inicializarSidebarMobile() {
 
   // API pública global
   window.SGCNotifications = {
-    add: async function(type, message, detail) {
+    add: async function(type, message, detail, link) {
       detail = detail || '';
+      link = linkInterno(link) || linkDaNotificacao({ type: type, message: message, detail: detail });
       const usuario = localStorage.getItem('userName');
       if (!usuario) {
         console.warn('Usuário não logado - notificação não será salva');
@@ -528,6 +602,7 @@ function inicializarSidebarMobile() {
             tipo: type,
             mensagem: message,
             detalhe: detail,
+            link: link || null,
             usuarioOrigem: usuario,
             usuarioDestino: null  // null = todos veem
           })
@@ -536,13 +611,15 @@ function inicializarSidebarMobile() {
         if (!response.ok) {
           throw new Error('Erro ao criar notificação');
         }
+        const criada = await response.json().catch(function () { return {}; });
 
         // Criar evento local para o toast (imediato)
         var evt = {
-          id: Date.now() + Math.random(),
+          id: criada.idNotif || 0,
           type: type,
           message: message,
           detail: detail,
+          link: link,
           timestamp: Date.now(),
           lido: false
         };

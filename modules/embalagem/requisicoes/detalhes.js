@@ -407,7 +407,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         SGCNotifications.add(
                             'requisicao-finalizada',
                             `Requisição #${idReq} — item finalizado`,
-                            `Por: ${usuario || 'Sistema'}`
+                            `Por: ${usuario || 'Sistema'}`,
+                            `/modules/embalagem/requisicoes/detalhes.html?id=${idReq}`
                         );
                     }
                     await carregarDetalhes();
@@ -448,7 +449,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     SGCNotifications.add(
                         'requisicao-finalizada',
                         `Requisição #${idReq} finalizada (${itemIds.length} item(ns))`,
-                        `Por: ${usuario || 'Sistema'}`
+                        `Por: ${usuario || 'Sistema'}`,
+                        `/modules/embalagem/requisicoes/detalhes.html?id=${idReq}`
                     );
                 }
                 await carregarDetalhes();

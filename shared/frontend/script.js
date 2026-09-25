@@ -161,7 +161,8 @@ if (!csvForm) {
             SGCNotifications.add(
                 "requisicao-criada",
                 `Requisição #${idReq} criada com ${itens.length} item(ns)`,
-                `Solicitante: ${userName} | Prioridade: ${prioridade}`
+                `Solicitante: ${userName} | Prioridade: ${prioridade}`,
+                `/modules/embalagem/requisicoes/detalhes.html?id=${idReq}`
             );
         }
 

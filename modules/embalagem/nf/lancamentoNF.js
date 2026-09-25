@@ -571,7 +571,8 @@ $("btn-finalizar-nf").addEventListener("click", async () => {
                 SGCNotifications.add(
                     'nf-lancada',
                     `NF ${state.numNF} lançada`,
-                    `Fornecedor: ${state.razaoSocial || state.codForn || '—'}`
+                    `Fornecedor: ${state.razaoSocial || state.codForn || '—'}`,
+                    `/modules/embalagem/nf/lancamentoNF.html?nf=${encodeURIComponent(state.numNF)}`
                 );
             }
         } else {
@@ -813,3 +814,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const uEl = document.getElementById("sidebar-username");
     if (uEl) uEl.textContent = usuario();
 });
+
+(async function abrirNfDaUrl() {
+    const nf = new URLSearchParams(location.search).get("nf");
+    if (!nf) return;
+    const input = $("pesq-num-nf");
+    if (input) input.value = nf;
+    const aba = document.querySelector('.nf-tab-btn[data-tab="pesquisa"]');
+    if (aba) aba.click();
+    await pesquisarNF();
+    const botoes = document.querySelectorAll("#tbPesqBody .btn-abrir-pesq");
+    if (botoes.length === 1) botoes[0].click();
+})();

@@ -225,7 +225,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 SGCNotifications.add(
                     'inventario-criado',
                     `Inventário #${data.idInventario} criado`,
-                    `Por: ${usuario}`
+                    `Por: ${usuario}`,
+                    `/modules/embalagem/inventario/inventarioCiclico.html?id=${data.idInventario}`
                 );
             }
 
@@ -940,7 +941,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 SGCNotifications.add(
                     'inventario-finalizado',
                     `Inventário #${inventarioAtual.id} finalizado`,
-                    `Acuracidade: ${data.acuracidadeGeral.toFixed(2)}% | Por: ${usuario}`
+                    `Acuracidade: ${data.acuracidadeGeral.toFixed(2)}% | Por: ${usuario}`,
+                    `/modules/embalagem/inventario/inventarioCiclico.html?id=${inventarioAtual.id}`
                 );
             }
 
@@ -1271,4 +1273,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
         return 0;
     }
+
+    const idDaUrl = new URLSearchParams(window.location.search).get('id');
+    if (idDaUrl) await window.abrirInventario(idDaUrl);
 });

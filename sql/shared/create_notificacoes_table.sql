@@ -14,7 +14,8 @@ BEGIN
         LIDO BIT DEFAULT 0,
         USUARIO_LEITURA VARCHAR(100),  -- Quem marcou como lida (para rastrear leituras individuais)
         TIMESTAMP_LEITURA DATETIME,
-        ATIVO BIT DEFAULT 1            -- Permite "deletar" logicamente
+        ATIVO BIT DEFAULT 1,           -- Permite "deletar" logicamente
+        LINK VARCHAR(300) NULL         -- Página do registro (caminho interno)
     );
 
     -- Índice para consultas rápidas por usuário
@@ -23,6 +24,10 @@ BEGIN
     -- Índice para consultas de notificações não lidas
     CREATE INDEX IDX_NOTIF_NAO_LIDAS ON TB_NOTIFICACOES(USUARIO_DESTINO, LIDO, ATIVO);
 END
+GO
+
+IF COL_LENGTH('TB_NOTIFICACOES', 'LINK') IS NULL
+    ALTER TABLE TB_NOTIFICACOES ADD LINK VARCHAR(300) NULL;
 GO
 
 PRINT 'Tabela TB_NOTIFICACOES criada com sucesso!';

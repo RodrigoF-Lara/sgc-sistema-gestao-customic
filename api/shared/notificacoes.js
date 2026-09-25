@@ -8,11 +8,37 @@ import { getConnection, sql } from "../../db.js";
  * - POST: Criar nova notificação
  * - PUT: Atualizar notificação (marcar como lida/limpar)
  */
+let colunaLink = null;
+
+function linkSeguro(link) {
+  const s = String(link || "").trim();
+  if (!s.startsWith("/") || s.startsWith("//") || s.includes("\\") || /\s/.test(s)) return null;
+  return s.slice(0, 300);
+}
+
+async function garantirColunaLink(pool) {
+  if (colunaLink !== null) return colunaLink;
+  const existe = await pool.request().query(`SELECT COL_LENGTH('TB_NOTIFICACOES', 'LINK') AS L`);
+  if (existe.recordset[0] && existe.recordset[0].L != null) {
+    colunaLink = true;
+    return true;
+  }
+  try {
+    await pool.request().query(`ALTER TABLE TB_NOTIFICACOES ADD LINK VARCHAR(300) NULL`);
+    colunaLink = true;
+  } catch (err) {
+    console.error("Não foi possível criar TB_NOTIFICACOES.LINK:", err);
+    colunaLink = false;
+  }
+  return colunaLink;
+}
+
 export default async function handler(req, res) {
   const { method } = req;
 
   try {
     const pool = await getConnection();
+    await garantirColunaLink(pool);
 
     switch (method) {
       case "GET":
@@ -63,6 +89,7 @@ async function buscarNotificacoes(req, res, pool) {
         LIDO,
         USUARIO_LEITURA,
         TIMESTAMP_LEITURA
+        ${colunaLink ? ", LINK" : ""}
       FROM TB_NOTIFICACOES
       WHERE 
         ATIVO = 1
@@ -85,7 +112,8 @@ async function buscarNotificacoes(req, res, pool) {
       timestamp: new Date(n.TIMESTAMP_CRIACAO).getTime(),
       lido: n.LIDO,
       usuarioOrigem: n.USUARIO_ORIGEM,
-      usuarioDestino: n.USUARIO_DESTINO
+      usuarioDestino: n.USUARIO_DESTINO,
+      link: linkSeguro(n.LINK) || ""
     }));
 
     return res.status(200).json({ 
@@ -112,7 +140,7 @@ async function buscarNotificacoes(req, res, pool) {
  *   - usuarioDestino: destinatário específico (opcional, null = todos)
  */
 async function criarNotificacao(req, res, pool) {
-  const { tipo, mensagem, detalhe = '', usuarioOrigem, usuarioDestino = null } = req.body;
+  const { tipo, mensagem, detalhe = '', usuarioOrigem, usuarioDestino = null, link = null } = req.body;
 
   if (!tipo || !mensagem || !usuarioOrigem) {
     return res.status(400).json({ 
@@ -121,7 +149,15 @@ async function criarNotificacao(req, res, pool) {
   }
 
   try {
-    const query = `
+    const linkOk = linkSeguro(link);
+    const query = colunaLink ? `
+      INSERT INTO TB_NOTIFICACOES 
+        (TIPO, MENSAGEM, DETALHE, USUARIO_ORIGEM, USUARIO_DESTINO, LINK)
+      VALUES 
+        (@tipo, @mensagem, @detalhe, @usuarioOrigem, @usuarioDestino, @link);
+      
+      SELECT SCOPE_IDENTITY() AS ID_NOTIF;
+    ` : `
       INSERT INTO TB_NOTIFICACOES 
         (TIPO, MENSAGEM, DETALHE, USUARIO_ORIGEM, USUARIO_DESTINO)
       VALUES 
@@ -130,13 +166,14 @@ async function criarNotificacao(req, res, pool) {
       SELECT SCOPE_IDENTITY() AS ID_NOTIF;
     `;
 
-    const result = await pool.request()
+    const request = pool.request()
       .input('tipo', sql.VarChar(50), tipo)
       .input('mensagem', sql.VarChar(500), mensagem)
       .input('detalhe', sql.VarChar(500), detalhe)
       .input('usuarioOrigem', sql.VarChar(100), usuarioOrigem)
-      .input('usuarioDestino', sql.VarChar(100), usuarioDestino)
-      .query(query);
+      .input('usuarioDestino', sql.VarChar(100), usuarioDestino);
+    if (colunaLink) request.input('link', sql.VarChar(300), linkOk);
+    const result = await request.query(query);
 
     const idNotif = result.recordset[0].ID_NOTIF;
 
