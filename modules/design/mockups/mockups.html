@@ -189,6 +189,20 @@
             </div>
           </form>
           <p id="csvStatus"></p>
+          <div id="csvErros" hidden>
+            <p id="csvErrosResumo" class="hint"></p>
+            <button type="button" class="btn-chip" id="btnBaixarErros">
+              <i class="fa-solid fa-file-csv"></i> Baixar relatório dos erros
+            </button>
+            <div class="wrap-table" style="margin-top:12px;max-height:320px;">
+              <table class="ctrl">
+                <thead>
+                  <tr><th>Código</th><th>Descrição</th><th>Motivo</th></tr>
+                </thead>
+                <tbody id="csvErrosBody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

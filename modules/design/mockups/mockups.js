@@ -86,7 +86,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     if (acao === "foto" && method === "GET") return res;
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.success === false) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    if (!res.ok || data.success === false) {
+      const err = new Error(data.error || data.message || `HTTP ${res.status}`);
+      err.data = data;
+      throw err;
+    }
     return data;
   }
 
@@ -327,6 +331,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnModelo) btnModelo.addEventListener("click", baixarModeloCsv);
   if (btnModelo2) btnModelo2.addEventListener("click", baixarModeloCsv);
 
+  let errosCsvAtuais = [];
+
+  function celulaCsv(valor) {
+    const s = String(valor ?? "");
+    if (/[;"\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  function baixarRelatorioErros(erros) {
+    if (!erros.length) return;
+    const linhas = ["codigo;descricao;motivo"];
+    for (const e of erros) linhas.push([e.codigo, e.descricao, e.motivo].map(celulaCsv).join(";"));
+    const blob = new Blob(["\uFEFF" + linhas.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    const agora = new Date();
+    const selo = agora.toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    a.href = URL.createObjectURL(blob);
+    a.download = `mockups-erros-${selo}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  }
+
+  function mostrarRelatorioErros(erros, descPorCodigo) {
+    const box = document.getElementById("csvErros");
+    const body = document.getElementById("csvErrosBody");
+    const resumo = document.getElementById("csvErrosResumo");
+    const completos = (erros || []).map((e) => ({
+      codigo: e.codigo,
+      descricao: descPorCodigo[String(e.codigo).toUpperCase()] || e.descricao || "",
+      motivo: e.motivo || "Não entrou",
+    }));
+    errosCsvAtuais = completos;
+    if (!completos.length) {
+      box.hidden = true;
+      body.innerHTML = "";
+      return;
+    }
+    resumo.textContent = `${completos.length} código(s) não entraram. O relatório CSV foi gerado.`;
+    body.innerHTML = completos
+      .map((e) => `<tr><td class="cod">${escapeHtml(e.codigo)}</td><td>${escapeHtml(e.descricao)}</td><td>${escapeHtml(e.motivo)}</td></tr>`)
+      .join("");
+    box.hidden = false;
+    baixarRelatorioErros(completos);
+  }
+
+  document.getElementById("btnBaixarErros").addEventListener("click", () => baixarRelatorioErros(errosCsvAtuais));
+
   document.getElementById("csvForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const file = csvFile.files[0];
@@ -334,34 +385,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!file || !nome) return;
     csvStatus.style.color = "#333";
     csvStatus.textContent = "Lendo CSV…";
+    mostrarRelatorioErros([], {});
     try {
       const texto = await file.text();
       const parsed = parseCsv(texto);
       const itensCsv = parsed.itens;
       const duplicadosCsv = parsed.duplicados;
       if (!itensCsv.length) throw new Error("Nenhum código no arquivo. Use a coluna codigo.");
+      const descPorCodigo = {};
+      for (const it of itensCsv) descPorCodigo[String(it.codigo).toUpperCase()] = it.descricao || "";
       csvStatus.textContent = `Enviando ${itensCsv.length} SKU(s)…`;
-      const data = await api("POST", "criar-csv", { body: { nome, itens: itensCsv } });
-      const duplicados = (duplicadosCsv.length ? duplicadosCsv : (data.duplicados || []));
-      let msg = data.message || "";
-      if (duplicados.length) {
-        const lista = duplicados.slice(0, 12).join(", ");
-        const extra = duplicados.length > 12 ? "…" : "";
-        const aviso = `Atenção: ${duplicados.length} código(s) repetido(s) no CSV (mantida 1 ocorrência): ${lista}${extra}.`;
-        if (!msg.includes("repetido")) msg = `${msg} ${aviso}`.trim();
-        csvStatus.style.color = "#e65100";
-        csvStatus.textContent = msg;
-        alert(aviso);
-      } else {
-        csvStatus.style.color = "#2e7d32";
-        csvStatus.textContent = msg;
+      let data;
+      try {
+        data = await api("POST", "criar-csv", { body: { nome, itens: itensCsv } });
+      } catch (err) {
+        data = err.data || {};
+        if (!Array.isArray(data.erros)) throw err;
+        csvStatus.style.color = "#c62828";
+        csvStatus.textContent = err.message;
+        mostrarRelatorioErros(data.erros, descPorCodigo);
+        return;
       }
+      const erros = Array.isArray(data.erros) ? data.erros : [];
+      if (!erros.length && duplicadosCsv.length) {
+        duplicadosCsv.forEach((codigo) => erros.push({ codigo, motivo: "Repetido no CSV (mantida 1 ocorrência)" }));
+      }
+      csvStatus.style.color = erros.length ? "#e65100" : "#2e7d32";
+      csvStatus.textContent = data.message || "";
+      mostrarRelatorioErros(erros, descPorCodigo);
       csvFile.value = "";
       dropTitle.textContent = "Clique ou arraste o .csv";
       dropzone.classList.remove("has-file");
       await carregarLotes();
       await carregarItens();
-      document.getElementById("tabControle").click();
+      if (!erros.length) document.getElementById("tabControle").click();
     } catch (err) {
       csvStatus.style.color = "#c62828";
       csvStatus.textContent = err.message;
@@ -371,7 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function parseCsv(texto) {
     const raw = String(texto || "").replace(/^\uFEFF/, "");
     const lines = raw.split(/\r?\n/).filter((l) => l.trim());
-    if (!lines.length) return [];
+    if (!lines.length) return { itens: [], duplicados: [] };
     const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ";" : ",";
     const split = (line) => {
       const out = [];
@@ -407,6 +464,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return -1;
     };
     let iCod = idx(["CODIGO", "COD", "CODE", "SKU", "PRODUTO"]);
+    const iDesc = idx(["DESCRICAO", "DESCRICAO_PRODUTO", "DESC", "DESCR"]);
     const iLinha = idx(["LINHA", "COLECAO", "COLLECTION"]);
     let start = 1;
     if (iCod < 0) {
@@ -432,6 +490,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       seen.add(key);
       itensOut.push({
         codigo,
+        descricao: iDesc >= 0 ? cols[iDesc] || "" : "",
         linha: iLinha >= 0 ? cols[iLinha] || "" : "",
       });
     }
