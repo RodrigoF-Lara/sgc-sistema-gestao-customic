@@ -206,6 +206,7 @@
     "nav-capa-depara": ["capa-depara", "pedido-capa"],
     "nav-fila-capas": "pedido-capa-producao",
     "nav-design-mockups": "design-mockups",
+    "nav-design-mockups-finalizados": "design-mockups",
     "nav-cadastro-operacoes": "cadastro-operacoes",
     "nav-cadastro-estrutura-produto": "cadastro-estrutura-produto",
     "nav-cadastro-recursos": "cadastro-recursos",

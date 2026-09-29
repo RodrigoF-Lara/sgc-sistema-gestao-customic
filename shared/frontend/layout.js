@@ -134,6 +134,9 @@ function inicializarSidebar() {
   if (pageKey === 'pedidos' && /fila=1/.test(window.location.search)) {
     navId = 'nav-fila-capas';
   }
+  if (pageKey === 'mockups' && /(?:^|[?&])finalizados=1(?:&|$)/.test(window.location.search)) {
+    navId = 'nav-design-mockups-finalizados';
+  }
   const navLink = document.getElementById(navId);
   if (navLink) navLink.classList.add('active');
 

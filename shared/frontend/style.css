@@ -400,6 +400,7 @@ body.sidebar-collapsed .sidebar-toggle-btn {
         transform: translateX(-100%);
         box-shadow: 4px 0 18px rgba(0,0,0,0.25);
     }
+    body.sidebar-open #sidebar-container,
     body.sidebar-open .sidebar { transform: translateX(0); }
 
     /* No mobile o "colapsado" não existe — sempre slide-out */

@@ -17,6 +17,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const busca = document.getElementById("busca");
   const filtroStatus = document.getElementById("filtroStatus");
   const filtroLote = document.getElementById("filtroLote");
+  const soFinalizados = new URLSearchParams(window.location.search).get("finalizados") === "1";
+  if (soFinalizados) {
+    document.title = "Mockups Finalizados - Design";
+    const titulo = document.querySelector("h1");
+    if (titulo) titulo.innerHTML = `<i class="fa-solid fa-circle-check"></i> Mockups Finalizados`;
+    const hint = document.querySelector(".hint");
+    if (hint) hint.textContent = "Somente os SKUs com status finalizada.";
+    filtroStatus.value = "FINALIZADA";
+  }
   const csvStatus = document.getElementById("csvStatus");
   const lightbox = document.getElementById("lightbox");
   const lightboxImg = document.getElementById("lightboxImg");
