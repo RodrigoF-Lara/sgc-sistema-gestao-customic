@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     tbody.innerHTML = itens
       .map((it) => {
-        const opts = ["A FAZER", "EM ANDAMENTO", "UPADO"]
+        const opts = ["A FAZER", "EM ANDAMENTO", "FINALIZADA"]
           .map((s) => `<option value="${s}" ${it.status === s ? "selected" : ""}>${s}</option>`)
           .join("");
         const fotos = Array.isArray(it.fotos) ? it.fotos : [];

@@ -52,7 +52,7 @@
     }
     .st-A-FAZER { background: #ffcdd2; color: #b71c1c; }
     .st-EM-ANDAMENTO { background: #ffe082; color: #e65100; }
-    .st-UPADO { background: #ffe082; color: #f57f17; }
+    .st-FINALIZADA, .st-UPADO { background: #ffe082; color: #f57f17; }
     select.status-sel {
       padding: 4px 6px; border-radius: 4px; font-weight: 700; font-size: 0.82em; color: #222; background: #fff;
     }
@@ -123,7 +123,7 @@
             <option value="">Todos os status</option>
             <option value="A FAZER">A FAZER</option>
             <option value="EM ANDAMENTO">EM ANDAMENTO</option>
-            <option value="UPADO">UPADO</option>
+            <option value="FINALIZADA">FINALIZADA</option>
           </select>
           <select id="filtroLote">
             <option value="">Todas as listas</option>
@@ -135,7 +135,7 @@
             <option value="">Alterar selecionados…</option>
             <option value="A FAZER">A FAZER</option>
             <option value="EM ANDAMENTO">EM ANDAMENTO</option>
-            <option value="UPADO">UPADO</option>
+            <option value="FINALIZADA">FINALIZADA</option>
           </select>
           <button type="button" class="btn-chip" id="btnBulk">Aplicar</button>
           <button type="button" class="btn-chip" id="btnReload"><i class="fa fa-rotate"></i> Atualizar</button>
