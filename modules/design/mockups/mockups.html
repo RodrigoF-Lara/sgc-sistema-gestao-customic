@@ -56,17 +56,24 @@
     select.status-sel {
       padding: 4px 6px; border-radius: 4px; font-weight: 700; font-size: 0.82em; color: #222; background: #fff;
     }
-    .fotos { display: flex; gap: 6px; flex-wrap: wrap; max-width: 320px; align-items: center; padding: 8px 8px 4px 2px; }
+    .fotos { display: flex; gap: 6px; flex-wrap: wrap; max-width: 420px; align-items: center; padding: 8px 8px 4px 2px; }
     .foto-slot {
-      width: 44px; height: 44px; border: 2px dashed #cfd8dc; border-radius: 6px;
+      width: 64px; height: 64px; border: 2px dashed #cfd8dc; border-radius: 6px;
       display: flex; align-items: center; justify-content: center; cursor: pointer;
       background: #fafafa; color: #90a4ae; font-size: 0.75em; overflow: visible; position: relative;
       flex-shrink: 0;
     }
-    .foto-slot.has { border-style: solid; border-color: #43a047; background: #e8f5e9; color: #2e7d32; }
+    .foto-slot.has { border-style: solid; border-color: #43a047; background: #e8f5e9; color: #2e7d32; padding: 0; }
     .foto-slot.add { border-color: #90caf9; color: #1565c0; background: #e3f2fd; }
     .foto-slot.add:hover { background: #bbdefb; }
-    .foto-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foto-slot img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      border-radius: 4px; pointer-events: none; position: relative; z-index: 1;
+    }
+    .foto-fallback {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
     .foto-slot input { display: none; }
     .foto-del {
       position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0;

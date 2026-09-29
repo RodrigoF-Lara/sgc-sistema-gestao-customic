@@ -61,6 +61,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     return "st-" + String(st || "").replace(/\s+/g, "-");
   }
 
+  function urlFoto(id) {
+    const q = new URLSearchParams({ acao: "foto", id: String(id) });
+    const nivel = localStorage.getItem("userLevel");
+    if (nivel) q.set("userLevel", nivel);
+    return `${API}?${q}`;
+  }
+
   document.querySelectorAll(".req-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
       document.querySelectorAll(".req-tab").forEach((t) => t.classList.toggle("active", t === tab));
@@ -151,12 +158,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           .join("");
         const fotos = Array.isArray(it.fotos) ? it.fotos : [];
         const slots = fotos
-          .map((f, i) => `<div class="foto-slot has" data-view-id="${f.id}" title="${escapeHtml(f.nome || "Foto " + (i + 1))} — clique para ver">
-                ${i + 1}
+          .map((f, i) => {
+            const nome = f.nome || "Foto " + (i + 1);
+            return `<div class="foto-slot has" data-view-id="${f.id}" title="${escapeHtml(nome)} — clique para ampliar">
+                <img src="${escapeHtml(urlFoto(f.id))}" alt="${escapeHtml(nome)}" loading="lazy" decoding="async" onerror="this.remove()" />
+                <span class="foto-fallback">${i + 1}</span>
                 <button type="button" class="foto-del" data-del-id="${f.id}" title="Excluir foto" aria-label="Excluir foto">
                   <i class="fa-solid fa-xmark"></i>
                 </button>
-              </div>`)
+              </div>`;
+          })
           .join("");
         const addBtn = `<label class="foto-slot add" title="Adicionar fotos (pode selecionar várias)">
               <i class="fa-solid fa-plus"></i>
