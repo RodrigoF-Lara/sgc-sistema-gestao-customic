@@ -22,9 +22,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.title = "Mockups Finalizados - Design";
     const titulo = document.querySelector("h1");
     if (titulo) titulo.innerHTML = `<i class="fa-solid fa-circle-check"></i> Mockups Finalizados`;
-    const hint = document.querySelector(".hint");
+    const hint = document.querySelector("h1 + .hint");
     if (hint) hint.textContent = "Somente os SKUs com status finalizada.";
     filtroStatus.value = "FINALIZADA";
+    document.body.classList.add("mockups-leitura");
+    document.querySelector(".req-tabs").hidden = true;
+    document.getElementById("btnExcluirLista").hidden = true;
+    document.getElementById("bulkStatus").hidden = true;
+    document.getElementById("btnBulk").hidden = true;
+    document.getElementById("chkAll").closest("th").hidden = true;
   }
   const csvStatus = document.getElementById("csvStatus");
   const lightbox = document.getElementById("lightbox");
@@ -148,7 +154,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderTabela() {
     if (!itens.length) {
-      tbody.innerHTML = `<tr><td class="empty" colspan="7">Nenhum SKU. Envie um CSV na aba Nova lista.</td></tr>`;
+      const msg = soFinalizados
+        ? "Nenhum SKU finalizado."
+        : "Nenhum SKU. Envie um CSV na aba Nova lista.";
+      tbody.innerHTML = `<tr><td class="empty" colspan="7">${msg}</td></tr>`;
       return;
     }
     tbody.innerHTML = itens
@@ -160,28 +169,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         const slots = fotos
           .map((f, i) => {
             const nome = f.nome || "Foto " + (i + 1);
+            const apagar = soFinalizados
+              ? ""
+              : `<button type="button" class="foto-del" data-del-id="${f.id}" title="Excluir foto" aria-label="Excluir foto">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>`;
             return `<div class="foto-slot has" data-view-id="${f.id}" title="${escapeHtml(nome)} — clique para ampliar">
                 <img src="${escapeHtml(urlFoto(f.id))}" alt="${escapeHtml(nome)}" loading="lazy" decoding="async" onerror="this.remove()" />
                 <span class="foto-fallback">${i + 1}</span>
-                <button type="button" class="foto-del" data-del-id="${f.id}" title="Excluir foto" aria-label="Excluir foto">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
+                ${apagar}
               </div>`;
           })
           .join("");
-        const addBtn = `<label class="foto-slot add" title="Adicionar fotos (pode selecionar várias)">
+        const addBtn = soFinalizados
+          ? ""
+          : `<label class="foto-slot add" title="Adicionar fotos (pode selecionar várias)">
               <i class="fa-solid fa-plus"></i>
               <input type="file" accept="image/*" multiple data-foto-add="${it.id}" />
             </label>`;
         const nLabel = fotos.length ? `<span class="fotos-n">${fotos.length} foto${fotos.length === 1 ? "" : "s"}</span>` : "";
+        const chk = soFinalizados
+          ? ""
+          : `<td><input type="checkbox" class="chk-item" data-id="${it.id}" /></td>`;
+        const status = soFinalizados
+          ? `<span class="st ${stClass(it.status)}">${escapeHtml(it.status)}</span>`
+          : `<select class="status-sel ${stClass(it.status)}" data-id="${it.id}">${opts}</select>`;
         return `<tr data-id="${it.id}">
-          <td><input type="checkbox" class="chk-item" data-id="${it.id}" /></td>
+          ${chk}
           <td class="cod">${escapeHtml(it.codigo)}</td>
           <td>${escapeHtml(it.descricao)}</td>
           <td>${escapeHtml(it.linha)}</td>
-          <td>
-            <select class="status-sel ${stClass(it.status)}" data-id="${it.id}">${opts}</select>
-          </td>
+          <td>${status}</td>
           <td><div class="fotos">${slots}${addBtn}${nLabel}</div></td>
           <td>${escapeHtml(it.loteNome)}</td>
         </tr>`;
@@ -190,6 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   tbody.addEventListener("change", async (e) => {
+    if (soFinalizados) return;
     const sel = e.target.closest(".status-sel");
     if (sel) {
       try {
@@ -223,7 +242,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   tbody.addEventListener("click", async (e) => {
-    const del = e.target.closest("[data-del-id]");
+    const del = !soFinalizados && e.target.closest("[data-del-id]");
     if (del) {
       e.preventDefault();
       e.stopPropagation();
@@ -261,6 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("btnBulk").addEventListener("click", async () => {
+    if (soFinalizados) return;
     const st = document.getElementById("bulkStatus").value;
     const ids = [...tbody.querySelectorAll(".chk-item:checked")].map((c) => Number(c.dataset.id));
     if (!st || !ids.length) {
@@ -278,6 +298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("btnReload").addEventListener("click", () => carregarItens().catch((e) => alert(e.message)));
   document.getElementById("btnExcluirLista").addEventListener("click", async () => {
+    if (soFinalizados) return;
     const id = Number(filtroLote.value);
     const lote = lotes.find((l) => Number(l.id) === id);
     if (!id || !lote) {

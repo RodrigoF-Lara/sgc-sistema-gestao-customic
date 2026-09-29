@@ -8,6 +8,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
     .req-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dee2e6; margin-bottom: 20px; }
+    body.mockups-leitura .req-tabs,
+    body.mockups-leitura #btnExcluirLista,
+    body.mockups-leitura #bulkStatus,
+    body.mockups-leitura #btnBulk,
+    body.mockups-leitura .chk-col { display: none !important; }
     .req-tab {
       padding: 10px 22px; border: none; background: none; font-size: 15px; font-weight: 600;
       color: #6c757d; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
@@ -151,7 +156,7 @@
           <table class="ctrl">
             <thead>
               <tr>
-                <th style="width:32px;"><input type="checkbox" id="chkAll" /></th>
+                <th class="chk-col" style="width:32px;"><input type="checkbox" id="chkAll" /></th>
                 <th>Código</th>
                 <th>Descrição</th>
                 <th>Linha</th>
