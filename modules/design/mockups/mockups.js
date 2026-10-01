@@ -241,17 +241,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  function tirarFotoDaLinha(fotoId) {
+    for (const it of itens) {
+      if (!Array.isArray(it.fotos)) continue;
+      const idx = it.fotos.findIndex((f) => Number(f.id) === fotoId);
+      if (idx >= 0) {
+        it.fotos.splice(idx, 1);
+        break;
+      }
+    }
+    const slot = tbody.querySelector(`[data-view-id="${fotoId}"]`);
+    if (!slot) return;
+    const box = slot.closest(".fotos");
+    slot.remove();
+    const restantes = box.querySelectorAll(".foto-slot.has");
+    restantes.forEach((el, i) => {
+      const fb = el.querySelector(".foto-fallback");
+      if (fb) fb.textContent = String(i + 1);
+    });
+    const label = box.querySelector(".fotos-n");
+    if (!restantes.length) {
+      if (label) label.remove();
+    } else if (label) {
+      label.textContent = `${restantes.length} foto${restantes.length === 1 ? "" : "s"}`;
+    }
+  }
+
   tbody.addEventListener("click", async (e) => {
     const del = !soFinalizados && e.target.closest("[data-del-id]");
     if (del) {
       e.preventDefault();
       e.stopPropagation();
       const id = Number(del.getAttribute("data-del-id"));
-      if (!id || !confirm("Excluir esta foto?")) return;
+      if (!id || del.disabled || !confirm("Excluir esta foto?")) return;
+      del.disabled = true;
       try {
         await api("DELETE", "foto", { query: { id: String(id) } });
-        await carregarItens();
+        tirarFotoDaLinha(id);
       } catch (err) {
+        del.disabled = false;
         alert(err.message);
       }
       return;
