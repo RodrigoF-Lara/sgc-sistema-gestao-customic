@@ -195,7 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           : `<select class="status-sel ${stClass(it.status)}" data-id="${it.id}">${opts}</select>`;
         return `<tr data-id="${it.id}">
           ${chk}
-          <td class="cod">${escapeHtml(it.codigo)}</td>
+          <td class="cod">${escapeHtml(it.codigo)}${soFinalizados ? "" : `<button type="button" class="btn-excluir-item" data-del-item="${it.id}" title="Excluir este código" aria-label="Excluir ${escapeHtml(it.codigo)}"><i class="fa-solid fa-trash"></i></button>`}</td>
           <td>${escapeHtml(it.descricao)}</td>
           <td>${escapeHtml(it.linha)}</td>
           <td>${status}</td>
@@ -240,6 +240,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  function baixarContagem(idEl) {
+    const el = document.getElementById(idEl);
+    if (!el) return;
+    el.textContent = String(Math.max(0, (Number(el.textContent) || 0) - 1));
+  }
+
+  function tirarItemDaTabela(it) {
+    const itemId = Number(it.id);
+    itens = itens.filter((x) => Number(x.id) !== itemId);
+    const row = tbody.querySelector(`tr[data-id="${itemId}"]`);
+    if (row) row.remove();
+    baixarContagem("kpiTotal");
+    if (it.status === "FINALIZADA" || it.status === "UPADO") baixarContagem("kpiFeitas");
+    else if (it.status === "EM ANDAMENTO") baixarContagem("kpiAnd");
+    else baixarContagem("kpiFazer");
+    const lote = lotes.find((l) => Number(l.id) === Number(it.loteId));
+    if (lote) {
+      lote.total = Math.max(0, Number(lote.total) - 1);
+      if (it.status === "FINALIZADA" || it.status === "UPADO") {
+        lote.feitas = Math.max(0, Number(lote.feitas) - 1);
+      }
+      const opt = filtroLote.querySelector(`option[value="${lote.id}"]`);
+      if (opt) opt.textContent = `#${lote.id} ${lote.nome} (${lote.feitas}/${lote.total})`;
+      atualizarBtnExcluir();
+    }
+    if (!tbody.querySelector("tr[data-id]")) renderTabela();
+  }
+
   function tirarFotoDaLinha(fotoId) {
     for (const it of itens) {
       if (!Array.isArray(it.fotos)) continue;
@@ -279,6 +307,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         tirarFotoDaLinha(id);
       } catch (err) {
         del.disabled = false;
+        alert(err.message);
+      }
+      return;
+    }
+    const delItem = !soFinalizados && e.target.closest("[data-del-item]");
+    if (delItem) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = Number(delItem.getAttribute("data-del-item"));
+      const it = itens.find((x) => Number(x.id) === id);
+      if (!id || !it || delItem.disabled) return;
+      const ok = confirm(
+        `Excluir o código ${it.codigo}?\n\nSome esta linha, o status e as fotos. A lista continua e o código pode ser enviado de novo. Não dá para desfazer.`
+      );
+      if (!ok) return;
+      delItem.disabled = true;
+      try {
+        await api("DELETE", "item", { query: { itemId: String(id) } });
+        tirarItemDaTabela(it);
+      } catch (err) {
+        delItem.disabled = false;
         alert(err.message);
       }
       return;
