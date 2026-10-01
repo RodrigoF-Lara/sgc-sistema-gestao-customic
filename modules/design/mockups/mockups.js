@@ -167,21 +167,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           .map((s) => `<option value="${s}" ${it.status === s ? "selected" : ""}>${s}</option>`)
           .join("");
         const fotos = Array.isArray(it.fotos) ? it.fotos : [];
-        const slots = fotos
-          .map((f, i) => {
-            const nome = f.nome || "Foto " + (i + 1);
-            const apagar = soFinalizados
-              ? ""
-              : `<button type="button" class="foto-del" data-del-id="${f.id}" title="Excluir foto" aria-label="Excluir foto">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>`;
-            return `<div class="foto-slot has" data-view-id="${f.id}" title="${escapeHtml(nome)} — clique para ampliar">
-                <img src="${escapeHtml(urlFoto(f.id))}" alt="${escapeHtml(nome)}" loading="lazy" decoding="async" onerror="this.remove()" />
-                <span class="foto-fallback">${i + 1}</span>
-                ${apagar}
-              </div>`;
-          })
-          .join("");
+        const slots = fotos.map((f, i) => slotFotoHtml(f, i)).join("");
         const addBtn = soFinalizados
           ? ""
           : `<label class="foto-slot add" title="Adicionar fotos (pode selecionar várias)">
@@ -210,12 +196,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (soFinalizados) return;
     const sel = e.target.closest(".status-sel");
     if (sel) {
+      const id = Number(sel.dataset.id);
+      const it = itens.find((x) => Number(x.id) === id);
+      const anterior = it ? it.status : "";
+      sel.disabled = true;
       try {
-        await api("POST", "status", { body: { itemId: Number(sel.dataset.id), status: sel.value } });
-        await carregarItens();
-        await carregarLotes();
+        const data = await api("POST", "status", { body: { itemId: id, status: sel.value } });
+        if (it) aplicarStatusNaLinha(it, data.status || sel.value);
       } catch (err) {
+        if (anterior) sel.value = anterior;
         alert(err.message);
+      } finally {
+        sel.disabled = false;
       }
       return;
     }
@@ -224,18 +216,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       const itemId = Number(fileInp.dataset.fotoAdd);
       const files = [...fileInp.files];
       const row = fileInp.closest("tr");
+      fileInp.value = "";
       if (row) row.classList.add("uploading");
       try {
         for (const file of files) {
           const packed = await compactarImagem(file);
-          await api("POST", "foto", {
+          const data = await api("POST", "foto", {
             body: { itemId, nome: file.name, mime: packed.mime, data: packed.data },
           });
+          colocarFotoNaLinha(itemId, { id: data.id, slot: data.slot, nome: file.name });
         }
-        await carregarItens();
       } catch (err) {
         alert(err.message);
-        await carregarItens().catch(() => {});
+      } finally {
+        if (row) row.classList.remove("uploading");
       }
     }
   });
@@ -244,6 +238,94 @@ document.addEventListener("DOMContentLoaded", async () => {
     const el = document.getElementById(idEl);
     if (!el) return;
     el.textContent = String(Math.max(0, (Number(el.textContent) || 0) - 1));
+  }
+
+  function somarContagem(idEl) {
+    const el = document.getElementById(idEl);
+    if (!el) return;
+    el.textContent = String((Number(el.textContent) || 0) + 1);
+  }
+
+  function ehFeita(status) {
+    return status === "FINALIZADA" || status === "UPADO";
+  }
+
+  function kpiDoStatus(status) {
+    if (ehFeita(status)) return "kpiFeitas";
+    if (status === "EM ANDAMENTO") return "kpiAnd";
+    return "kpiFazer";
+  }
+
+  function atualizarOpcaoLote(lote) {
+    const opt = filtroLote.querySelector(`option[value="${lote.id}"]`);
+    if (opt) opt.textContent = `#${lote.id} ${lote.nome} (${lote.feitas}/${lote.total})`;
+  }
+
+  function statusPassaNoFiltro(status) {
+    const filtro = filtroStatus.value;
+    if (!filtro) return true;
+    if (filtro === "FINALIZADA") return ehFeita(status);
+    return status === filtro;
+  }
+
+  function aplicarStatusNaLinha(it, novo) {
+    const anterior = it.status;
+    if (!anterior || anterior === novo) return;
+    it.status = novo;
+    baixarContagem(kpiDoStatus(anterior));
+    somarContagem(kpiDoStatus(novo));
+    const lote = lotes.find((l) => Number(l.id) === Number(it.loteId));
+    if (lote && ehFeita(anterior) !== ehFeita(novo)) {
+      lote.feitas = Math.max(0, Number(lote.feitas) + (ehFeita(novo) ? 1 : -1));
+      atualizarOpcaoLote(lote);
+    }
+    const row = tbody.querySelector(`tr[data-id="${it.id}"]`);
+    if (!statusPassaNoFiltro(novo)) {
+      itens = itens.filter((x) => Number(x.id) !== Number(it.id));
+      if (row) row.remove();
+      if (!tbody.querySelector("tr[data-id]")) renderTabela();
+      return;
+    }
+    const sel = row && row.querySelector(".status-sel");
+    if (sel) {
+      sel.value = novo;
+      sel.className = `status-sel ${stClass(novo)}`;
+    }
+  }
+
+  function slotFotoHtml(f, i) {
+    const nome = f.nome || "Foto " + (i + 1);
+    const apagar = soFinalizados
+      ? ""
+      : `<button type="button" class="foto-del" data-del-id="${f.id}" title="Excluir foto" aria-label="Excluir foto">
+          <i class="fa-solid fa-xmark"></i>
+        </button>`;
+    return `<div class="foto-slot has" data-view-id="${f.id}" title="${escapeHtml(nome)} — clique para ampliar">
+        <img src="${escapeHtml(urlFoto(f.id))}" alt="${escapeHtml(nome)}" loading="lazy" decoding="async" onerror="this.remove()" />
+        <span class="foto-fallback">${i + 1}</span>
+        ${apagar}
+      </div>`;
+  }
+
+  function colocarFotoNaLinha(itemId, foto) {
+    const it = itens.find((x) => Number(x.id) === Number(itemId));
+    if (!it || !foto || !foto.id) return;
+    if (!Array.isArray(it.fotos)) it.fotos = [];
+    it.fotos.push({ id: foto.id, slot: foto.slot, nome: foto.nome || "" });
+    const box = tbody.querySelector(`tr[data-id="${itemId}"] .fotos`);
+    if (!box) return;
+    const html = slotFotoHtml(foto, it.fotos.length - 1);
+    const add = box.querySelector(".foto-slot.add");
+    if (add) add.insertAdjacentHTML("beforebegin", html);
+    else box.insertAdjacentHTML("beforeend", html);
+    let label = box.querySelector(".fotos-n");
+    const n = it.fotos.length;
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "fotos-n";
+      box.appendChild(label);
+    }
+    label.textContent = `${n} foto${n === 1 ? "" : "s"}`;
   }
 
   function tirarItemDaTabela(it) {
@@ -261,8 +343,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (it.status === "FINALIZADA" || it.status === "UPADO") {
         lote.feitas = Math.max(0, Number(lote.feitas) - 1);
       }
-      const opt = filtroLote.querySelector(`option[value="${lote.id}"]`);
-      if (opt) opt.textContent = `#${lote.id} ${lote.nome} (${lote.feitas}/${lote.total})`;
+      atualizarOpcaoLote(lote);
       atualizarBtnExcluir();
     }
     if (!tbody.querySelector("tr[data-id]")) renderTabela();
@@ -365,8 +446,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     try {
       await api("POST", "status-lote", { body: { itemIds: ids, status: st } });
-      await carregarItens();
-      await carregarLotes();
+      for (const id of ids) {
+        const it = itens.find((x) => Number(x.id) === id);
+        if (it) aplicarStatusNaLinha(it, st);
+      }
+      document.getElementById("chkAll").checked = false;
     } catch (err) {
       alert(err.message);
     }
