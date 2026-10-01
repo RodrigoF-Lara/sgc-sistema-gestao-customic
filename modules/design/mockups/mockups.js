@@ -23,14 +23,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const titulo = document.querySelector("h1");
     if (titulo) titulo.innerHTML = `<i class="fa-solid fa-circle-check"></i> Mockups Finalizados`;
     const hint = document.querySelector("h1 + .hint");
-    if (hint) hint.textContent = "Somente os SKUs com status finalizada.";
+    if (hint) hint.textContent = "Somente os SKUs com status finalizada. Marque as linhas para baixar só elas.";
     filtroStatus.value = "FINALIZADA";
     document.body.classList.add("mockups-leitura");
     document.querySelector(".req-tabs").hidden = true;
     document.getElementById("btnExcluirLista").hidden = true;
     document.getElementById("bulkStatus").hidden = true;
     document.getElementById("btnBulk").hidden = true;
-    document.getElementById("chkAll").closest("th").hidden = true;
+    document.getElementById("chkAll").title = "Marcar todas para baixar";
     document.getElementById("btnBaixarFotos").hidden = false;
   }
   const csvStatus = document.getElementById("csvStatus");
@@ -189,9 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <input type="file" accept="image/*" multiple data-foto-add="${it.id}" />
             </label>`;
         const nLabel = fotos.length ? `<span class="fotos-n">${fotos.length} foto${fotos.length === 1 ? "" : "s"}</span>` : "";
-        const chk = soFinalizados
-          ? ""
-          : `<td><input type="checkbox" class="chk-item" data-id="${it.id}" /></td>`;
+        const chk = `<td><input type="checkbox" class="chk-item" data-id="${it.id}"${soFinalizados ? ` title="Incluir no download"` : ""} /></td>`;
         const status = soFinalizados
           ? `<span class="st ${stClass(it.status)}">${escapeHtml(it.status)}</span>`
           : `<select class="status-sel ${stClass(it.status)}" data-id="${it.id}">${opts}</select>`;
@@ -430,16 +428,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("btnBaixarFotos").addEventListener("click", async () => {
     const btn = document.getElementById("btnBaixarFotos");
+    const marcados = new Set(
+      [...tbody.querySelectorAll(".chk-item:checked")].map((c) => Number(c.dataset.id))
+    );
+    const origem = marcados.size ? itens.filter((it) => marcados.has(Number(it.id))) : itens;
     const fila = [];
     const usados = new Set();
-    for (const it of itens) {
+    for (const it of origem) {
       const fotos = Array.isArray(it.fotos) ? it.fotos : [];
       fotos.forEach((f, i) => {
         fila.push({ it, f, nome: nomeFotoZip(it, i + 1, f.nome, usados) });
       });
     }
     if (!fila.length) {
-      alert("Nenhuma foto para baixar nesta lista.");
+      alert(marcados.size ? "As linhas marcadas não têm foto." : "Nenhuma foto para baixar nesta lista.");
       return;
     }
     const rotulo = btn.innerHTML;

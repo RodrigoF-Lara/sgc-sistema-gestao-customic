@@ -11,8 +11,7 @@
     body.mockups-leitura .req-tabs,
     body.mockups-leitura #btnExcluirLista,
     body.mockups-leitura #bulkStatus,
-    body.mockups-leitura #btnBulk,
-    body.mockups-leitura .chk-col { display: none !important; }
+    body.mockups-leitura #btnBulk { display: none !important; }
     .req-tab {
       padding: 10px 22px; border: none; background: none; font-size: 15px; font-weight: 600;
       color: #6c757d; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
@@ -150,7 +149,7 @@
             <option value="FINALIZADA">FINALIZADA</option>
           </select>
           <button type="button" class="btn-chip" id="btnBulk">Aplicar</button>
-          <button type="button" class="btn-chip" id="btnBaixarFotos" hidden title="Baixa as fotos desta lista em um zip, todas na mesma pasta">
+          <button type="button" class="btn-chip" id="btnBaixarFotos" hidden title="Baixa as fotos das linhas marcadas. Sem marcação, baixa todas desta lista.">
             <i class="fa fa-download"></i> Baixar fotos
           </button>
           <button type="button" class="btn-chip" id="btnReload"><i class="fa fa-rotate"></i> Atualizar</button>
