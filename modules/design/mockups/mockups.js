@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const titulo = document.querySelector("h1");
     if (titulo) titulo.innerHTML = `<i class="fa-solid fa-circle-check"></i> Mockups Finalizados`;
     const hint = document.querySelector("h1 + .hint");
-    if (hint) hint.textContent = "Somente os SKUs com status finalizada. Marque as linhas para baixar só elas.";
+    if (hint) hint.textContent = "Somente os SKUs com status finalizada. Marque as linhas que quer baixar.";
     filtroStatus.value = "FINALIZADA";
     document.body.classList.add("mockups-leitura");
     document.querySelector(".req-tabs").hidden = true;
@@ -480,7 +480,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const marcados = new Set(
       [...tbody.querySelectorAll(".chk-item:checked")].map((c) => Number(c.dataset.id))
     );
-    const origem = marcados.size ? itens.filter((it) => marcados.has(Number(it.id))) : itens;
+    if (!marcados.size) {
+      alert("Marque as linhas que quer baixar.");
+      return;
+    }
+    const origem = itens.filter((it) => marcados.has(Number(it.id)));
     const fila = [];
     const usados = new Set();
     for (const it of origem) {
@@ -490,7 +494,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
     if (!fila.length) {
-      alert(marcados.size ? "As linhas marcadas não têm foto." : "Nenhuma foto para baixar nesta lista.");
+      alert("As linhas marcadas não têm foto.");
       return;
     }
     const rotulo = btn.innerHTML;
