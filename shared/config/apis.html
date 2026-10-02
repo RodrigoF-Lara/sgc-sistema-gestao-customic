@@ -46,7 +46,7 @@
 
       <article class="card" id="cardMockups">
         <h2>Mockups finalizados</h2>
-        <p>Devolve só os SKUs finalizados. Cada foto vem no campo <code>url</code>. A chave vai no cabeçalho <code>x-api-key</code>, em <code>Authorization: Bearer</code> ou no parâmetro <code>chave</code>.</p>
+        <p>Devolve só os SKUs finalizados, 100 por página (<code>limite</code> até 200 e <code>offset</code> para a seguinte). Dá para filtrar por <code>id</code>, <code>codigo</code>, <code>q</code>, <code>loteId</code>, <code>desde</code> e <code>ate</code> (<code>AAAA-MM-DD</code>). Com <code>fotos=0</code> a lista vem sem as fotos. A chave vai no cabeçalho <code>x-api-key</code>, em <code>Authorization: Bearer</code> ou no parâmetro <code>chave</code>.</p>
         <label for="apiListaUrl">Endereço da lista</label>
         <input id="apiListaUrl" readonly />
         <p class="modelo" id="apiFotoModelo"></p>
