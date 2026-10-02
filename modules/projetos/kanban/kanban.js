@@ -9,12 +9,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     { id: "A FAZER", titulo: "A fazer", tom: "fazer" },
     { id: "EM ANDAMENTO", titulo: "Em andamento", tom: "andamento" },
     { id: "CONCLUIDO", titulo: "Concluído", tom: "feito" },
+    { id: "PAUSADO", titulo: "Pausado", tom: "pausado", recolhida: true },
+    { id: "CANCELADO", titulo: "Cancelado", tom: "cancelado", recolhida: true },
   ];
-  const ROTULO = {
-    "A FAZER": "A fazer",
-    "EM ANDAMENTO": "Em andamento",
-    CONCLUIDO: "Concluído",
-  };
+  const colunasAbertas = new Set();
 
   const board = document.getElementById("board");
   const tbody = document.getElementById("tbody");
@@ -86,7 +84,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function atrasado(p) {
-    return !!(p.prazo && p.status !== "CONCLUIDO" && p.prazo < hojeIso());
+    if (!p.prazo || p.prazo >= hojeIso()) return false;
+    return p.status !== "CONCLUIDO" && p.status !== "CANCELADO";
   }
 
   function visiveis() {
@@ -148,12 +147,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
+  function colunaVisivel(col, qtd) {
+    if (!col.recolhida) return true;
+    if (colunasAbertas.has(col.id)) return true;
+    if (filtroStatus.value === col.id) return true;
+    return !!(busca.value.trim() && qtd);
+  }
+
   function renderKanban() {
     const itens = visiveis();
     board.innerHTML = COLUNAS.map((col) => {
       const cards = itens
         .filter((p) => p.status === col.id)
         .sort((a, b) => a.ordem - b.ordem || a.id - b.id);
+      const aberta = colunaVisivel(col, cards.length);
       const html = cards.map((p) => `
         <article class="kb-card" data-id="${p.id}">
           <button type="button" class="kb-handle" draggable="true" title="Arrastar" aria-label="Arrastar ${escapeHtml(p.nome)}">
@@ -171,9 +178,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
         </article>
       `).join("");
+      const head = col.recolhida
+        ? `<button type="button" class="kb-col-head" data-toggle="${col.id}" aria-expanded="${aberta ? "true" : "false"}" title="${aberta ? "Recolher" : "Mostrar"}">
+            <h2>${col.titulo}</h2>
+            <span class="kb-head-side"><span class="kb-count">${cards.length}</span><i class="fa-solid fa-chevron-down kb-chevron" aria-hidden="true"></i></span>
+          </button>`
+        : `<div class="kb-col-head"><h2>${col.titulo}</h2><span class="kb-count">${cards.length}</span></div>`;
       return `
-        <section class="kb-col ${col.tom}" data-col="${col.id}">
-          <div class="kb-col-head"><h2>${col.titulo}</h2><span class="kb-count">${cards.length}</span></div>
+        <section class="kb-col ${col.tom}${col.recolhida ? " recolhida" : ""}${col.recolhida && aberta ? " aberta" : ""}" data-col="${col.id}">
+          ${head}
           <div class="kb-cards">${html || `<div class="empty">Nenhum projeto</div>`}</div>
         </section>
       `;
@@ -515,9 +528,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     const card = handle.closest(".kb-card");
     dragId = Number(card.dataset.id);
     card.classList.add("dragging");
-    e.dataTransfer.effectAllowed = "move";
-    try { e.dataTransfer.setData("text/plain", String(dragId)); } catch (_) { /* ignore */ }
-    try { e.dataTransfer.setDragImage(card, 24, 24); } catch (_) { /* ignore */ }
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", String(dragId)); } catch (_) { /* ignore */ }
+      try { e.dataTransfer.setDragImage(card, 24, 24); } catch (_) { /* ignore */ }
+    }
+  });
+
+  function abrirParaArraste(col) {
+    board.querySelectorAll(".kb-col.recolhida").forEach((el) => {
+      if (el === col) return;
+      if (el.dataset.dragAberta === "1" && !colunasAbertas.has(el.dataset.col)) {
+        el.classList.remove("aberta");
+        delete el.dataset.dragAberta;
+        const btn = el.querySelector("[data-toggle]");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      }
+    });
+    if (!col.classList.contains("recolhida") || col.classList.contains("aberta")) return;
+    col.classList.add("aberta");
+    col.dataset.dragAberta = "1";
+    const btn = col.querySelector("[data-toggle]");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+  }
+
+  board.addEventListener("click", (e) => {
+    const toggle = e.target.closest("[data-toggle]");
+    if (!toggle || !board.contains(toggle)) return;
+    const col = toggle.closest(".kb-col");
+    if (!col) return;
+    const aberta = col.classList.toggle("aberta");
+    if (aberta) colunasAbertas.add(col.dataset.col);
+    else colunasAbertas.delete(col.dataset.col);
+    toggle.setAttribute("aria-expanded", aberta ? "true" : "false");
+    toggle.title = aberta ? "Recolher" : "Mostrar";
   });
 
   board.addEventListener("dragover", (e) => {
@@ -529,6 +573,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (el !== col) el.classList.remove("over");
     });
     col.classList.add("over");
+    abrirParaArraste(col);
     const lista = col.querySelector(".kb-cards");
     const card = board.querySelector(`.kb-card[data-id="${dragId}"]`);
     if (!card || !lista) return;
@@ -541,6 +586,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!dragId) return;
     e.preventDefault();
     salvandoArraste = true;
+    const card = board.querySelector(`.kb-card[data-id="${dragId}"]`);
+    const dest = card && card.closest(".kb-col");
+    if (dest && dest.classList.contains("recolhida")) {
+      colunasAbertas.add(dest.dataset.col);
+      delete dest.dataset.dragAberta;
+    }
     const layout = lerQuadro();
     dragId = null;
     board.querySelectorAll(".dragging, .over").forEach((el) => el.classList.remove("dragging", "over"));

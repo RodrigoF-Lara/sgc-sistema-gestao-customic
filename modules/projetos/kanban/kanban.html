@@ -54,6 +54,20 @@
     .kb-col.fazer { border-top: 4px solid #ef6c00; }
     .kb-col.andamento { border-top: 4px solid #1976d2; }
     .kb-col.feito { border-top: 4px solid #43a047; }
+    .kb-col.pausado { border-top: 4px solid #f9a825; }
+    .kb-col.cancelado { border-top: 4px solid #90a4ae; }
+    .kb-col.recolhida { flex: 0 0 auto; width: auto; max-width: none; min-height: 0; }
+    .kb-col.recolhida:not(.aberta) .kb-cards { display: none; }
+    .kb-col.recolhida:not(.aberta) .kb-col-head { margin: 0; }
+    .kb-col.recolhida.aberta { flex: 1 0 280px; max-width: 420px; min-height: 280px; }
+    .kb-head-side { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+    button.kb-col-head {
+      width: 100%; border: none; background: transparent; color: inherit; font: inherit;
+      padding: 2px 4px; cursor: pointer; text-align: left; gap: 8px; border-radius: 8px;
+    }
+    button.kb-col-head:hover { background: transparent; color: inherit; }
+    .kb-chevron { color: #90a4ae; font-size: 0.75rem; transition: transform 0.15s ease; }
+    .kb-col.recolhida.aberta .kb-chevron { transform: rotate(180deg); }
     .kb-cards { display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
     .kb-card {
       background: #fff; border-radius: 10px; padding: 10px 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -112,6 +126,8 @@
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
     @media (max-width: 800px) {
       .kb-col { flex-basis: 86vw; max-width: none; }
+      .kb-col.recolhida:not(.aberta) { flex-basis: auto; width: auto; }
+      .kb-col.recolhida.aberta { flex-basis: 86vw; max-width: none; }
       .toolbar input[type="search"] { min-width: 0; width: 100%; }
     }
   </style>
@@ -121,7 +137,7 @@
   <div class="main-content">
     <div class="container">
       <h1><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
-      <p class="hint">Os mesmos projetos na lista e no quadro. Cada projeto tem ações em níveis, como um checklist. Arraste o cartão para mudar a coluna.</p>
+      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Pausado e Cancelado ficam recolhidos: clique no título para abrir. Arraste o cartão para mudar a coluna.</p>
 
       <div class="toolbar">
         <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
@@ -130,6 +146,8 @@
           <option value="A FAZER">A fazer</option>
           <option value="EM ANDAMENTO">Em andamento</option>
           <option value="CONCLUIDO">Concluído</option>
+          <option value="PAUSADO">Pausado</option>
+          <option value="CANCELADO">Cancelado</option>
         </select>
         <button type="button" class="btn primary" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo projeto</button>
       </div>
@@ -180,6 +198,8 @@
         <option value="A FAZER">A fazer</option>
         <option value="EM ANDAMENTO">Em andamento</option>
         <option value="CONCLUIDO">Concluído</option>
+        <option value="PAUSADO">Pausado</option>
+        <option value="CANCELADO">Cancelado</option>
       </select>
       <div class="acoes-editor">
         <div class="acoes-head">
