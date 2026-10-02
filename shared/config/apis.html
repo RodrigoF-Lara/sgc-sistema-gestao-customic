@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/shared/frontend/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
-    .page-wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+    .page-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
     .page-header h1 { text-align: left; margin-bottom: 8px; color: var(--cor-principal); }
     .page-header p { color: #546e7a; }
     .card {
@@ -33,6 +33,15 @@
     .aviso { color: #6d4c41; }
     #statusCopia { min-height: 1.2em; color: #2e7d32; font-size: 0.9rem; }
     .erro { color: #c62828; }
+    .guia h3 { margin: 0 0 6px; font-size: 1.05rem; text-align: left; }
+    .exemplo { margin: 0 0 14px; }
+    .exemplo strong { display: block; color: #263238; font-size: 0.92rem; }
+    .exemplo span { display: block; color: #607d8b; font-size: 0.86rem; margin-top: 2px; }
+    .exemplo code {
+      display: block; margin-top: 4px; padding: 8px 10px; background: #f8fafc;
+      border: 1px solid #eceff1; border-radius: 8px; word-break: break-all;
+      font-size: 0.82rem; color: #37474f;
+    }
   </style>
 </head>
 <body>
@@ -46,7 +55,7 @@
 
       <article class="card" id="cardMockups">
         <h2>Mockups finalizados</h2>
-        <p>Devolve só os SKUs finalizados, 100 por página (<code>limite</code> até 200 e <code>offset</code> para a seguinte). Dá para filtrar por <code>id</code>, <code>codigo</code>, <code>q</code>, <code>loteId</code>, <code>desde</code> e <code>ate</code> (<code>AAAA-MM-DD</code>). Com <code>fotos=0</code> a lista vem sem as fotos. A chave vai no cabeçalho <code>x-api-key</code>, em <code>Authorization: Bearer</code> ou no parâmetro <code>chave</code>.</p>
+        <p>Devolve só os SKUs finalizados. Cada foto vem no campo <code>url</code>. A chave vai no cabeçalho <code>x-api-key</code>, em <code>Authorization: Bearer</code> ou no parâmetro <code>chave</code>.</p>
         <label for="apiListaUrl">Endereço da lista</label>
         <input id="apiListaUrl" readonly />
         <p class="modelo" id="apiFotoModelo"></p>
@@ -60,6 +69,13 @@
         </div>
         <p id="statusCopia"></p>
         <p id="erroApi" class="erro" hidden></p>
+      </article>
+
+      <article class="card guia" id="guiaFiltrosCard">
+        <h3>Como filtrar</h3>
+        <p>Cada exemplo já usa o endereço desta tela. Troque os valores. A chave fica fora da URL.</p>
+        <div id="guiaFiltros"></div>
+        <p>A data usa o formato AAAA-MM-DD e olha a última alteração do SKU. O dia de <code>ate</code> entra inteiro. <code>limite</code> vai de 1 a 200. Um SKU sem data de alteração fica de fora quando a URL tem <code>desde</code> ou <code>ate</code>.</p>
       </article>
     </div>
   </main>
