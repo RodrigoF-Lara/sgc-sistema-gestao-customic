@@ -211,10 +211,11 @@
     "nav-cadastro-operacoes": "cadastro-operacoes",
     "nav-cadastro-estrutura-produto": "cadastro-estrutura-produto",
     "nav-cadastro-recursos": "cadastro-recursos",
-    "nav-configuracoes": ["configuracoes", "config-inventario", "calendario-produtivo", "niveis", "permissoes"],
+    "nav-configuracoes": ["configuracoes", "config-inventario", "calendario-produtivo", "niveis", "permissoes", "apis"],
     "nav-config-notificacoes": "config-notificacoes",
     "nav-niveis": "niveis",
     "nav-permissoes": "permissoes",
+    "nav-apis": "apis",
   };
 
   function podeQualquer(linkIds) {
@@ -261,6 +262,7 @@
     "/shared/config/calendarioProdutivo.html": "calendario-produtivo",
     "/shared/config/niveis.html": "niveis",
     "/shared/config/permissoes.html": "permissoes",
+    "/shared/config/apis.html": "apis",
     "/modules/embalagem/inventario/configInventario.html": "config-inventario",
   };
 

@@ -128,6 +128,7 @@ function inicializarSidebar() {
     'calendarioprodutivo': 'nav-configuracoes',
     'niveis': 'nav-niveis',
     'permissoes': 'nav-permissoes',
+    'apis': 'nav-apis',
     'mockups': 'nav-design-mockups',
     'kanban': 'nav-projetos-kanban'
   };

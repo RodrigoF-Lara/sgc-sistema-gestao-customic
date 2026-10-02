@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API's - SGC</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    .page-wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+    .page-header h1 { text-align: left; margin-bottom: 8px; color: var(--cor-principal); }
+    .page-header p { color: #546e7a; }
+    .card {
+      background: #fff; border-radius: 12px; padding: 20px 22px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-top: 18px;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1.15rem; text-align: left; }
+    .card p { color: #546e7a; margin: 0 0 12px; }
+    label { display: block; margin-top: 12px; font-size: 0.82rem; font-weight: 700; color: #455a64; }
+    input[readonly] {
+      width: 100%; box-sizing: border-box; margin-top: 4px;
+      border: 1px solid #cfd8dc; border-radius: 8px; padding: 10px 12px; font: inherit; background: #f8fafc;
+    }
+    .modelo { margin-top: 8px; color: #607d8b; font-size: 0.9rem; word-break: break-all; }
+    .acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .btn {
+      border: 1px solid #cfd8dc; background: #fff; color: #263238; border-radius: 8px;
+      padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .btn.primary { background: var(--cor-principal, #1976d2); border-color: transparent; color: #fff; }
+    .btn.danger { color: #c62828; border-color: #ffcdd2; }
+    .btn:disabled { opacity: 0.55; cursor: wait; }
+    .aviso { color: #6d4c41; }
+    #statusCopia { min-height: 1.2em; color: #2e7d32; font-size: 0.9rem; }
+    .erro { color: #c62828; }
+  </style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <main class="main-content">
+    <div class="page-wrap">
+      <header class="page-header">
+        <h1><i class="fa-solid fa-plug"></i> API's</h1>
+        <p>Chaves para outros programas lerem dados do SGC. Só administrador vê esta tela.</p>
+      </header>
+
+      <article class="card" id="cardMockups">
+        <h2>Mockups finalizados</h2>
+        <p>Devolve só os SKUs finalizados. Cada foto vem no campo <code>url</code>. A chave vai no cabeçalho <code>x-api-key</code>, em <code>Authorization: Bearer</code> ou no parâmetro <code>chave</code>.</p>
+        <label for="apiListaUrl">Endereço da lista</label>
+        <input id="apiListaUrl" readonly />
+        <p class="modelo" id="apiFotoModelo"></p>
+        <label for="apiChave">Chave</label>
+        <input id="apiChave" readonly />
+        <p id="apiAmbiente" class="aviso" hidden>A chave está definida no servidor (MOCKUPS_API_TOKEN) e não aparece aqui.</p>
+        <div class="acoes">
+          <button type="button" class="btn" id="btnCopiarUrl">Copiar endereço</button>
+          <button type="button" class="btn" id="btnCopiarChave">Copiar chave</button>
+          <button type="button" class="btn danger" id="btnNovaChave">Gerar nova chave</button>
+        </div>
+        <p id="statusCopia"></p>
+        <p id="erroApi" class="erro" hidden></p>
+      </article>
+    </div>
+  </main>
+  <script src="/shared/frontend/permissoes.js"></script>
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/shared/config/apis.js"></script>
+</body>
+</html>

@@ -898,63 +898,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  async function copiarCampo(id) {
-    const el = document.getElementById(id);
-    const texto = el.value;
-    if (!texto) return;
-    try {
-      await navigator.clipboard.writeText(texto);
-    } catch (_) {
-      el.focus();
-      el.select();
-      document.execCommand("copy");
-    }
-  }
-
-  function mostrarChaveApi(data) {
-    const box = document.getElementById("apiExterna");
-    box.hidden = false;
-    document.getElementById("apiListaUrl").value = data.listaUrl || "";
-    document.getElementById("apiFotoModelo").textContent = data.fotoUrl || "";
-    const ambiente = data.origem === "ambiente";
-    document.getElementById("apiAmbiente").hidden = !ambiente;
-    document.getElementById("apiChave").hidden = ambiente;
-    document.getElementById("apiChave").value = ambiente ? "" : (data.chave || "");
-    document.querySelector("label[for='apiChave']").hidden = ambiente;
-    document.getElementById("btnCopiarChave").hidden = ambiente;
-    document.getElementById("btnNovaChave").hidden = ambiente;
-  }
-
-  async function carregarApiExterna() {
-    if (!soFinalizados || !window.SGCPermissoes || !window.SGCPermissoes.isAdmin()) return;
-    const data = await api("GET", "chave-api");
-    mostrarChaveApi(data);
-  }
-
-  document.getElementById("btnCopiarUrl").addEventListener("click", () => copiarCampo("apiListaUrl"));
-  document.getElementById("btnCopiarChave").addEventListener("click", () => copiarCampo("apiChave"));
-  document.getElementById("btnNovaChave").addEventListener("click", async () => {
-    if (!confirm("A chave atual para de funcionar nos outros programas. Gerar outra?")) return;
-    const btn = document.getElementById("btnNovaChave");
-    btn.disabled = true;
-    try {
-      mostrarChaveApi(await api("POST", "chave-api"));
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
   try {
     await carregarLotes();
     await carregarItens();
   } catch (err) {
     tbody.innerHTML = `<tr><td class="empty" colspan="7" style="color:#c62828;">${escapeHtml(err.message)}</td></tr>`;
-  }
-  try {
-    await carregarApiExterna();
-  } catch (err) {
-    console.warn(err);
   }
 });
