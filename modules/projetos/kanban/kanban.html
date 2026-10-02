@@ -81,13 +81,21 @@
     .kb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
     .kb-card h3 { margin: 0; font-size: 0.95rem; }
     .kb-card h3 .nome-btn { display: block; width: 100%; text-align: left; white-space: normal; }
+    .kb-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+    .kb-badge {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 1px 7px;
+      font-size: 0.68rem; font-weight: 700; line-height: 1.45; letter-spacing: 0.01em;
+    }
+    .kb-badge.alta { background: #fff3e0; color: #e65100; }
+    .kb-badge.atraso { background: #ffebee; color: #c62828; }
     .kb-card p { margin: 0; color: #546e7a; font-size: 0.85rem; line-height: 1.35; overflow-wrap: anywhere; }
     .kb-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 0.78rem; color: #607d8b; }
     .kb-card .status-sel { width: 100%; max-width: 100%; box-sizing: border-box; }
     .acoes-box { margin: 0; }
     .acoes-resumo { font-size: 0.75rem; font-weight: 700; color: #607d8b; }
     .acoes { list-style: none; margin: 2px 0 0; padding: 0; }
-    .acoes li label { display: flex; align-items: flex-start; gap: 6px; padding: 2px 0; cursor: pointer; }
+    .acoes li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+    .acoes li label { display: flex; flex: 1 1 120px; align-items: flex-start; gap: 6px; padding: 2px 0; cursor: pointer; min-width: 0; }
     .acoes .nv-2 { margin-left: 16px; }
     .acoes .nv-3 { margin-left: 32px; }
     .acoes .nv-num { flex: 0 0 auto; width: 0.9rem; font-size: 0.72rem; font-weight: 700; color: #90a4ae; }
@@ -108,6 +116,19 @@
     .acao-row input[type="text"] { flex: 1 1 140px; min-width: 0; width: auto; padding: 8px 10px; }
     .acao-row input[type="checkbox"],
     .acoes input[type="checkbox"] { width: 16px; height: 16px; margin-top: 2px; padding: 0; }
+    .acao-row button.marca {
+      flex: 0 0 auto; width: auto; height: auto; border: 1px solid #cfd8dc; background: #fff; color: #607d8b;
+      border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 0.72rem; font-weight: 700;
+      line-height: 1.2; cursor: pointer;
+    }
+    .acao-row button.marca:hover { background: #f4f7f8; color: #455a64; }
+    .acao-row button.marca.on.alta,
+    .acao-row button.marca.on.alta:hover { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
+    .acao-row button.marca.on.atraso,
+    .acao-row button.marca.on.atraso:hover { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
+    .marca-projeto { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+    .marca-projeto label { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; }
+    .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal[hidden] { display: none !important; }
     .modal {
       position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 80;
@@ -123,6 +144,7 @@
     .modal input, .modal textarea, .modal select {
       border: 1px solid #cfd8dc; border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%;
     }
+    .modal .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
     @media (max-width: 800px) {
       .kb-col { flex-basis: 86vw; max-width: none; }
@@ -137,7 +159,7 @@
   <div class="main-content">
     <div class="container">
       <h1><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
-      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Pausado e Cancelado ficam recolhidos: clique no título para abrir. Arraste o cartão para mudar a coluna.</p>
+      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Pausado e Cancelado ficam recolhidos: clique no título para abrir. Prioridade alta e atrasado aparecem como selos no cartão.</p>
 
       <div class="toolbar">
         <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
@@ -201,12 +223,16 @@
         <option value="PAUSADO">Pausado</option>
         <option value="CANCELADO">Cancelado</option>
       </select>
+      <div class="marca-projeto">
+        <label><input type="checkbox" id="campoPrioridade" /> Prioridade alta</label>
+        <label><input type="checkbox" id="campoAtrasado" /> Atrasado</label>
+      </div>
       <div class="acoes-editor">
         <div class="acoes-head">
           <label>Ações</label>
           <button type="button" class="btn" id="btnAddAcao"><i class="fa-solid fa-plus"></i> Adicionar ação</button>
         </div>
-        <p class="hint">Checklist em níveis. A seta da direita desce um nível (até o 3) e a da esquerda sobe.</p>
+        <p class="hint">Checklist em níveis. A seta da direita desce um nível (até o 3) e a da esquerda sobe. Alta e Atrasado marcam a ação.</p>
         <div id="listaAcoes"></div>
       </div>
       <div class="modal-actions">

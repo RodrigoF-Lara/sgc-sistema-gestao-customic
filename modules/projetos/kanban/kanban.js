@@ -83,9 +83,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${d}/${m}/${y}`;
   }
 
-  function atrasado(p) {
+  function prazoVencido(p) {
     if (!p.prazo || p.prazo >= hojeIso()) return false;
     return p.status !== "CONCLUIDO" && p.status !== "CANCELADO";
+  }
+
+  function htmlBadges(item, curto) {
+    const partes = [];
+    if (item.prioridadeAlta) {
+      partes.push(`<span class="kb-badge alta">${curto ? "Alta" : "Prioridade alta"}</span>`);
+    }
+    if (item.atrasado) partes.push(`<span class="kb-badge atraso">Atrasado</span>`);
+    if (!partes.length) return "";
+    return `<span class="kb-badges">${partes.join("")}</span>`;
   }
 
   function visiveis() {
@@ -118,6 +128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="nv-num">${nivel}</span>
             <span class="nv-txt">${escapeHtml(a.texto)}</span>
           </label>
+          ${htmlBadges(a, true)}
         </li>`;
     }).join("");
     return `
@@ -137,11 +148,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       <tr data-id="${p.id}">
         <td>
           <button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button>
+          ${htmlBadges(p)}
           ${p.descricao ? `<div class="muted">${escapeHtml(p.descricao)}</div>` : ""}
           ${htmlAcoes(p)}
         </td>
         <td>${escapeHtml(p.responsavel)}</td>
-        <td class="${atrasado(p) ? "atrasado" : ""}">${fmtData(p.prazo) || "—"}</td>
+        <td class="${prazoVencido(p) ? "atrasado" : ""}">${fmtData(p.prazo) || "—"}</td>
         <td><select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select></td>
       </tr>
     `).join("");
@@ -168,11 +180,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           </button>
           <div class="kb-main">
             <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
+            ${htmlBadges(p)}
             ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
             ${htmlAcoes(p)}
             <div class="kb-meta">
               ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
-              ${p.prazo ? `<span class="${atrasado(p) ? "atrasado" : ""}"><i class="fa-solid fa-calendar"></i> ${fmtData(p.prazo)}</span>` : ""}
+              ${p.prazo ? `<span class="${prazoVencido(p) ? "atrasado" : ""}"><i class="fa-solid fa-calendar"></i> ${fmtData(p.prazo)}</span>` : ""}
             </div>
             <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
           </div>
@@ -208,12 +221,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("campoStatus").value = projeto
       ? projeto.status
       : (filtroStatus.value || "A FAZER");
+    document.getElementById("campoPrioridade").checked = !!(projeto && projeto.prioridadeAlta);
+    document.getElementById("campoAtrasado").checked = !!(projeto && projeto.atrasado);
     btnExcluir.hidden = !projeto;
     acoesEdit = (projeto && Array.isArray(projeto.acoes) ? projeto.acoes : []).map((a) => ({
       id: a.id,
       texto: a.texto || "",
       nivel: Math.min(3, Math.max(1, Number(a.nivel) || 1)),
       feito: !!a.feito,
+      prioridadeAlta: !!a.prioridadeAlta,
+      atrasado: !!a.atrasado,
     }));
     renderAcoesEditor();
     modal.hidden = false;
@@ -253,6 +270,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           </button>
           <input type="checkbox" data-feito="${i}" ${a.feito ? "checked" : ""} aria-label="Concluir ação ${i + 1}" />
           <input type="text" data-texto="${i}" maxlength="300" value="${escapeHtml(a.texto)}" placeholder="Descreva a ação" />
+          <button type="button" class="marca${a.prioridadeAlta ? " on alta" : ""}" data-prioridade="${i}" aria-pressed="${a.prioridadeAlta ? "true" : "false"}">Alta</button>
+          <button type="button" class="marca${a.atrasado ? " on atraso" : ""}" data-atraso="${i}" aria-pressed="${a.atrasado ? "true" : "false"}">Atrasado</button>
           <button type="button" class="ico" data-remover="${i}" title="Remover ação" aria-label="Remover ação">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -272,7 +291,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
     const nivel = depoisDe >= 0 && acoesEdit[depoisDe] ? acoesEdit[depoisDe].nivel : 1;
-    const item = { texto: "", nivel, feito: false };
+    const item = { texto: "", nivel, feito: false, prioridadeAlta: false, atrasado: false };
     const idx = depoisDe >= 0 ? depoisDe + 1 : acoesEdit.length;
     acoesEdit.splice(idx, 0, item);
     ajustarNiveis(acoesEdit);
@@ -398,9 +417,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const descer = e.target.closest("[data-descer]");
     const subir = e.target.closest("[data-subir]");
     const remover = e.target.closest("[data-remover]");
-    if (!descer && !subir && !remover) return;
+    const prioridade = e.target.closest("[data-prioridade]");
+    const atraso = e.target.closest("[data-atraso]");
+    if (!descer && !subir && !remover && !prioridade && !atraso) return;
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
-    if (descer) {
+    if (prioridade) {
+      const i = Number(prioridade.dataset.prioridade);
+      if (acoesEdit[i]) acoesEdit[i].prioridadeAlta = !acoesEdit[i].prioridadeAlta;
+    } else if (atraso) {
+      const i = Number(atraso.dataset.atraso);
+      if (acoesEdit[i]) acoesEdit[i].atrasado = !acoesEdit[i].atrasado;
+    } else if (descer) {
       const i = Number(descer.dataset.descer);
       const prev = acoesEdit[i - 1] ? acoesEdit[i - 1].nivel : 1;
       const teto = Math.min(3, prev + 1);
@@ -435,12 +462,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       responsavel: document.getElementById("campoResp").value,
       prazo: document.getElementById("campoPrazo").value,
       status: document.getElementById("campoStatus").value,
+      prioridadeAlta: document.getElementById("campoPrioridade").checked,
+      atrasado: document.getElementById("campoAtrasado").checked,
       acoes: acoesEdit
         .map((a) => ({
           id: a.id || undefined,
           texto: a.texto,
           nivel: a.nivel,
           feito: !!a.feito,
+          prioridadeAlta: !!a.prioridadeAlta,
+          atrasado: !!a.atrasado,
         }))
         .filter((a) => String(a.texto || "").trim()),
     };
