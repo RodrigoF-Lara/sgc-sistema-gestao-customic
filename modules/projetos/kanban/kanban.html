@@ -147,6 +147,10 @@
     .modal input, .modal textarea, .modal select {
       border: 1px solid #cfd8dc; border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%;
     }
+    .modal textarea {
+      flex: 0 0 auto; min-height: 140px; height: 140px; max-height: 320px;
+      line-height: 1.45; resize: vertical; overflow: auto; box-sizing: border-box;
+    }
     .modal .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
     @media (max-width: 800px) {
@@ -216,7 +220,7 @@
       <label for="campoNome">Nome</label>
       <input id="campoNome" required maxlength="160" />
       <label for="campoDesc">Descrição</label>
-      <textarea id="campoDesc" rows="3" maxlength="1000"></textarea>
+      <textarea id="campoDesc" rows="6" maxlength="1000"></textarea>
       <label for="campoResp">Responsável</label>
       <input id="campoResp" maxlength="100" />
       <div class="datas-projeto">
