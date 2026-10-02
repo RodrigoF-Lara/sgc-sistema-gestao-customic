@@ -56,23 +56,28 @@
     .kb-col.feito { border-top: 4px solid #43a047; }
     .kb-cards { display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
     .kb-card {
-      background: #fff; border-radius: 10px; padding: 10px 10px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      display: grid; grid-template-columns: 22px 1fr; gap: 4px 8px;
+      background: #fff; border-radius: 10px; padding: 10px 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      display: flex; align-items: flex-start; gap: 8px;
     }
     .kb-card.dragging { opacity: 0.45; }
-    .kb-handle { grid-row: 1 / -1; align-self: start; margin-top: 2px; border: none; background: none; color: #90a4ae; cursor: grab; padding: 0; }
+    .kb-handle {
+      flex: 0 0 16px; margin-top: 3px; border: none; background: none; color: #90a4ae;
+      cursor: grab; padding: 0;
+    }
+    .kb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
     .kb-card h3 { margin: 0; font-size: 0.95rem; }
-    .kb-card p { margin: 0; color: #546e7a; font-size: 0.85rem; }
-    .kb-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem; color: #607d8b; }
-    .kb-card .status-sel { grid-column: 2; width: 100%; }
-    .acoes-box { grid-column: 2; margin-top: 4px; }
+    .kb-card h3 .nome-btn { display: block; width: 100%; text-align: left; white-space: normal; }
+    .kb-card p { margin: 0; color: #546e7a; font-size: 0.85rem; line-height: 1.35; overflow-wrap: anywhere; }
+    .kb-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 0.78rem; color: #607d8b; }
+    .kb-card .status-sel { width: 100%; max-width: 100%; box-sizing: border-box; }
+    .acoes-box { margin: 0; }
     .acoes-resumo { font-size: 0.75rem; font-weight: 700; color: #607d8b; }
     .acoes { list-style: none; margin: 2px 0 0; padding: 0; }
     .acoes li label { display: flex; align-items: flex-start; gap: 6px; padding: 2px 0; cursor: pointer; }
     .acoes .nv-2 { margin-left: 16px; }
     .acoes .nv-3 { margin-left: 32px; }
     .acoes .nv-num { flex: 0 0 auto; width: 0.9rem; font-size: 0.72rem; font-weight: 700; color: #90a4ae; }
-    .acoes .nv-txt { font-size: 0.84rem; color: #37474f; }
+    .acoes .nv-txt { flex: 1; min-width: 0; font-size: 0.84rem; line-height: 1.3; color: #37474f; overflow-wrap: anywhere; }
     .acoes .feita .nv-txt { text-decoration: line-through; color: #90a4ae; }
     .kb-card .acoes-box { max-height: 168px; overflow: auto; }
     .acoes-editor { margin-top: 4px; }

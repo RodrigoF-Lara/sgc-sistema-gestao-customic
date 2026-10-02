@@ -159,14 +159,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           <button type="button" class="kb-handle" draggable="true" title="Arrastar" aria-label="Arrastar ${escapeHtml(p.nome)}">
             <i class="fa-solid fa-grip-vertical"></i>
           </button>
-          <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
-          ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
-          ${htmlAcoes(p)}
-          <div class="kb-meta">
-            ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
-            ${p.prazo ? `<span class="${atrasado(p) ? "atrasado" : ""}"><i class="fa-solid fa-calendar"></i> ${fmtData(p.prazo)}</span>` : ""}
+          <div class="kb-main">
+            <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
+            ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
+            ${htmlAcoes(p)}
+            <div class="kb-meta">
+              ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
+              ${p.prazo ? `<span class="${atrasado(p) ? "atrasado" : ""}"><i class="fa-solid fa-calendar"></i> ${fmtData(p.prazo)}</span>` : ""}
+            </div>
+            <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
           </div>
-          <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
         </article>
       `).join("");
       return `
