@@ -90,6 +90,9 @@
     .kb-badge.atraso { background: #ffebee; color: #c62828; }
     .kb-card p { margin: 0; color: #546e7a; font-size: 0.85rem; line-height: 1.35; overflow-wrap: anywhere; }
     .kb-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 0.78rem; color: #607d8b; }
+    .kb-meta span { white-space: nowrap; }
+    .datas-projeto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .datas-projeto label { display: block; margin-bottom: 4px; }
     .kb-card .status-sel { width: 100%; max-width: 100%; box-sizing: border-box; }
     .acoes-box { margin: 0; }
     .acoes-resumo { font-size: 0.75rem; font-weight: 700; color: #607d8b; }
@@ -150,6 +153,7 @@
       .kb-col { flex-basis: 86vw; max-width: none; }
       .kb-col.recolhida:not(.aberta) { flex-basis: auto; width: auto; }
       .kb-col.recolhida.aberta { flex-basis: 86vw; max-width: none; }
+      .datas-projeto { grid-template-columns: 1fr; }
       .toolbar input[type="search"] { min-width: 0; width: 100%; }
     }
   </style>
@@ -159,7 +163,7 @@
   <div class="main-content">
     <div class="container">
       <h1><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
-      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Pausado e Cancelado ficam recolhidos: clique no título para abrir. Prioridade alta e atrasado aparecem como selos no cartão.</p>
+      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer.</p>
 
       <div class="toolbar">
         <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
@@ -193,7 +197,9 @@
               <tr>
                 <th>Projeto</th>
                 <th>Responsável</th>
-                <th>Prazo</th>
+                <th>Cadastro</th>
+                <th>Início</th>
+                <th>Fim</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -213,8 +219,20 @@
       <textarea id="campoDesc" rows="3" maxlength="1000"></textarea>
       <label for="campoResp">Responsável</label>
       <input id="campoResp" maxlength="100" />
-      <label for="campoPrazo">Prazo</label>
-      <input id="campoPrazo" type="date" />
+      <div class="datas-projeto">
+        <div>
+          <label for="campoCadastro">Data de cadastro</label>
+          <input id="campoCadastro" type="date" />
+        </div>
+        <div>
+          <label for="campoInicio">Data de início</label>
+          <input id="campoInicio" type="date" />
+        </div>
+        <div>
+          <label for="campoFim">Data de fim</label>
+          <input id="campoFim" type="date" />
+        </div>
+      </div>
       <label for="campoStatus">Status</label>
       <select id="campoStatus">
         <option value="A FAZER">A fazer</option>
@@ -225,14 +243,13 @@
       </select>
       <div class="marca-projeto">
         <label><input type="checkbox" id="campoPrioridade" /> Prioridade alta</label>
-        <label><input type="checkbox" id="campoAtrasado" /> Atrasado</label>
       </div>
       <div class="acoes-editor">
         <div class="acoes-head">
           <label>Ações</label>
           <button type="button" class="btn" id="btnAddAcao"><i class="fa-solid fa-plus"></i> Adicionar ação</button>
         </div>
-        <p class="hint">Checklist em níveis. A seta da direita desce um nível (até o 3) e a da esquerda sobe. Alta e Atrasado marcam a ação.</p>
+        <p class="hint">Checklist em níveis. A seta da direita desce um nível (até o 3) e a da esquerda sobe. Alta e Atrasado marcam a ação, separado das datas do projeto.</p>
         <div id="listaAcoes"></div>
       </div>
       <div class="modal-actions">

@@ -83,9 +83,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${d}/${m}/${y}`;
   }
 
-  function prazoVencido(p) {
-    if (!p.prazo || p.prazo >= hojeIso()) return false;
-    return p.status !== "CONCLUIDO" && p.status !== "CANCELADO";
+  function fimDe(p) {
+    return p.fim || p.prazo || "";
+  }
+
+  function atrasoFim(p) {
+    if (p.status === "CONCLUIDO" || p.status === "CANCELADO") return false;
+    const fim = fimDe(p);
+    return !!(fim && fim < hojeIso());
+  }
+
+  function atrasoInicio(p) {
+    if (p.status !== "A FAZER") return false;
+    return !!(p.inicio && p.inicio < hojeIso());
+  }
+
+  function estaAtrasado(p) {
+    return atrasoFim(p) || atrasoInicio(p);
+  }
+
+  function htmlDatas(p) {
+    const partes = [];
+    if (p.cadastro) {
+      partes.push(`<span title="Cadastro"><i class="fa-solid fa-calendar-plus"></i> Cadastro ${fmtData(p.cadastro)}</span>`);
+    }
+    if (p.inicio) {
+      partes.push(`<span class="${atrasoInicio(p) ? "atrasado" : ""}" title="Início"><i class="fa-solid fa-play"></i> Início ${fmtData(p.inicio)}</span>`);
+    }
+    const fim = fimDe(p);
+    if (fim) {
+      partes.push(`<span class="${atrasoFim(p) ? "atrasado" : ""}" title="Fim"><i class="fa-solid fa-flag-checkered"></i> Fim ${fmtData(fim)}</span>`);
+    }
+    return partes.join("");
   }
 
   function htmlBadges(item, curto) {
@@ -141,19 +170,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderLista() {
     const linhas = visiveis();
     if (!linhas.length) {
-      tbody.innerHTML = `<tr><td class="empty" colspan="4">Nenhum projeto para mostrar.</td></tr>`;
+      tbody.innerHTML = `<tr><td class="empty" colspan="6">Nenhum projeto para mostrar.</td></tr>`;
       return;
     }
     tbody.innerHTML = linhas.map((p) => `
       <tr data-id="${p.id}">
         <td>
           <button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button>
-          ${htmlBadges(p)}
+          ${htmlBadges({ prioridadeAlta: p.prioridadeAlta, atrasado: estaAtrasado(p) })}
           ${p.descricao ? `<div class="muted">${escapeHtml(p.descricao)}</div>` : ""}
           ${htmlAcoes(p)}
         </td>
         <td>${escapeHtml(p.responsavel)}</td>
-        <td class="${prazoVencido(p) ? "atrasado" : ""}">${fmtData(p.prazo) || "—"}</td>
+        <td>${fmtData(p.cadastro) || "—"}</td>
+        <td class="${atrasoInicio(p) ? "atrasado" : ""}">${fmtData(p.inicio) || "—"}</td>
+        <td class="${atrasoFim(p) ? "atrasado" : ""}">${fmtData(fimDe(p)) || "—"}</td>
         <td><select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select></td>
       </tr>
     `).join("");
@@ -180,12 +211,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           </button>
           <div class="kb-main">
             <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
-            ${htmlBadges(p)}
+            ${htmlBadges({ prioridadeAlta: p.prioridadeAlta, atrasado: estaAtrasado(p) })}
             ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
             ${htmlAcoes(p)}
             <div class="kb-meta">
               ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
-              ${p.prazo ? `<span class="${prazoVencido(p) ? "atrasado" : ""}"><i class="fa-solid fa-calendar"></i> ${fmtData(p.prazo)}</span>` : ""}
+              ${htmlDatas(p)}
             </div>
             <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
           </div>
@@ -217,12 +248,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("campoNome").value = projeto ? projeto.nome : "";
     document.getElementById("campoDesc").value = projeto ? projeto.descricao || "" : "";
     document.getElementById("campoResp").value = projeto ? projeto.responsavel || "" : "";
-    document.getElementById("campoPrazo").value = projeto ? projeto.prazo || "" : "";
+    document.getElementById("campoCadastro").value = projeto ? (projeto.cadastro || "") : hojeIso();
+    document.getElementById("campoInicio").value = projeto ? (projeto.inicio || "") : "";
+    document.getElementById("campoFim").value = projeto ? (fimDe(projeto) || "") : "";
     document.getElementById("campoStatus").value = projeto
       ? projeto.status
       : (filtroStatus.value || "A FAZER");
     document.getElementById("campoPrioridade").checked = !!(projeto && projeto.prioridadeAlta);
-    document.getElementById("campoAtrasado").checked = !!(projeto && projeto.atrasado);
     btnExcluir.hidden = !projeto;
     acoesEdit = (projeto && Array.isArray(projeto.acoes) ? projeto.acoes : []).map((a) => ({
       id: a.id,
@@ -452,6 +484,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const inicio = document.getElementById("campoInicio").value;
+    const fim = document.getElementById("campoFim").value;
+    if (inicio && fim && inicio > fim) {
+      alert("A data de início é maior que a de fim.");
+      return;
+    }
     const btn = document.getElementById("btnSalvar");
     btn.disabled = true;
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
@@ -460,10 +498,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       nome: document.getElementById("campoNome").value,
       descricao: document.getElementById("campoDesc").value,
       responsavel: document.getElementById("campoResp").value,
-      prazo: document.getElementById("campoPrazo").value,
+      cadastro: document.getElementById("campoCadastro").value,
+      inicio,
+      fim,
       status: document.getElementById("campoStatus").value,
       prioridadeAlta: document.getElementById("campoPrioridade").checked,
-      atrasado: document.getElementById("campoAtrasado").checked,
       acoes: acoesEdit
         .map((a) => ({
           id: a.id || undefined,
@@ -640,7 +679,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     projetos = data.projetos || [];
     render();
   } catch (err) {
-    tbody.innerHTML = `<tr><td class="empty" colspan="4">${escapeHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td class="empty" colspan="6">${escapeHtml(err.message)}</td></tr>`;
     board.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
   }
 });
