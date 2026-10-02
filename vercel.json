@@ -19,6 +19,8 @@
     { "source": "/index", "destination": "/index.html" },
     { "source": "/api/comercial/pedidos", "destination": "/api/shared/config?tipo=pedidoCapa" },
     { "source": "/api/comercial/depara", "destination": "/api/shared/config?tipo=capaDePara" },
+    { "source": "/api/design/mockups/finalizados/foto", "destination": "/api/shared/config?tipo=mockups&acao=integracao-foto" },
+    { "source": "/api/design/mockups/finalizados", "destination": "/api/shared/config?tipo=mockups&acao=integracao" },
     { "source": "/api/design/mockups", "destination": "/api/shared/config?tipo=mockups" },
     { "source": "/api/projetos/kanban", "destination": "/api/shared/config?tipo=projetos" },
     { "source": "/widget/capa.js", "destination": "/modules/comercial/widget/loader.js" },

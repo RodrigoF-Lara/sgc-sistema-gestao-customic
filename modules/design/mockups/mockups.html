@@ -110,6 +110,19 @@
     .lightbox.open { display: flex; }
     .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
     .empty { text-align: center; padding: 36px; color: #78909c; }
+    #apiExterna {
+      border: 1px solid #d7e3ea; background: #f7fbfd; border-radius: 10px;
+      padding: 12px 14px; margin: 0 0 16px;
+    }
+    #apiExterna[hidden] { display: none !important; }
+    #apiExterna h2 { margin: 0 0 6px; font-size: 1.05rem; }
+    #apiExterna label { display: block; margin-top: 8px; font-size: 0.82rem; font-weight: 700; color: #455a64; }
+    #apiExterna input {
+      width: 100%; box-sizing: border-box; border: 1px solid #cfd8dc; border-radius: 8px;
+      padding: 8px 10px; font: inherit;
+    }
+    #apiExterna code { font-size: 0.92em; }
+    .api-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -118,6 +131,21 @@
     <div class="container">
       <h1><i class="fa-solid fa-images"></i> Mockups</h1>
       <p class="hint">Controle de criação: CSV com código e descrição, status por SKU e quantas fotos precisar.</p>
+      <section id="apiExterna" hidden>
+        <h2>API para outros programas</h2>
+        <p class="hint">Só entram SKUs finalizados. O outro programa envia a chave no cabeçalho <code>x-api-key</code>, em <code>Authorization: Bearer</code> ou no parâmetro <code>chave</code>.</p>
+        <label for="apiListaUrl">Endereço da lista</label>
+        <input id="apiListaUrl" readonly />
+        <p class="hint">Cada foto vem no campo <code>url</code>. O modelo é <span id="apiFotoModelo"></span></p>
+        <label for="apiChave">Chave</label>
+        <input id="apiChave" readonly />
+        <p id="apiAmbiente" class="hint" hidden>A chave está definida no servidor (MOCKUPS_API_TOKEN) e não aparece aqui.</p>
+        <div class="api-actions">
+          <button type="button" class="btn-chip" id="btnCopiarUrl">Copiar endereço</button>
+          <button type="button" class="btn-chip" id="btnCopiarChave">Copiar chave</button>
+          <button type="button" class="btn-chip danger" id="btnNovaChave">Gerar nova chave</button>
+        </div>
+      </section>
 
       <div class="req-tabs">
         <button type="button" class="req-tab active" data-tab="controle" id="tabControle">
