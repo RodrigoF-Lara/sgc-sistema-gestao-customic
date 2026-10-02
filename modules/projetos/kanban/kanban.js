@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let projetos = [];
   let editandoId = null;
+  let acoesEdit = [];
   let dragId = null;
   let salvandoArraste = false;
 
@@ -94,7 +95,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     return projetos.filter((p) => {
       if (filtro && p.status !== filtro) return false;
       if (!q) return true;
-      return [p.nome, p.descricao, p.responsavel].join(" ").toLowerCase().includes(q);
+      const acoesTxt = (p.acoes || []).map((a) => a.texto).join(" ");
+      return [p.nome, p.descricao, p.responsavel, acoesTxt].join(" ").toLowerCase().includes(q);
     });
   }
 
@@ -102,6 +104,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     return COLUNAS
       .map((c) => `<option value="${c.id}" ${c.id === atual ? "selected" : ""}>${c.titulo}</option>`)
       .join("");
+  }
+
+  function htmlAcoes(p) {
+    const acoes = Array.isArray(p.acoes) ? p.acoes : [];
+    if (!acoes.length) return "";
+    const feitas = acoes.filter((a) => a.feito).length;
+    const itens = acoes.map((a) => {
+      const nivel = Math.min(3, Math.max(1, Number(a.nivel) || 1));
+      return `
+        <li class="nv-${nivel}${a.feito ? " feita" : ""}">
+          <label>
+            <input type="checkbox" data-acao="${a.id}" ${a.feito ? "checked" : ""} aria-label="${escapeHtml(a.texto)}" />
+            <span class="nv-num">${nivel}</span>
+            <span class="nv-txt">${escapeHtml(a.texto)}</span>
+          </label>
+        </li>`;
+    }).join("");
+    return `
+      <div class="acoes-box">
+        <div class="acoes-resumo">${feitas} de ${acoes.length}</div>
+        <ul class="acoes">${itens}</ul>
+      </div>`;
   }
 
   function renderLista() {
@@ -115,6 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>
           <button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button>
           ${p.descricao ? `<div class="muted">${escapeHtml(p.descricao)}</div>` : ""}
+          ${htmlAcoes(p)}
         </td>
         <td>${escapeHtml(p.responsavel)}</td>
         <td class="${atrasado(p) ? "atrasado" : ""}">${fmtData(p.prazo) || "—"}</td>
@@ -136,6 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           </button>
           <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
           ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
+          ${htmlAcoes(p)}
           <div class="kb-meta">
             ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
             ${p.prazo ? `<span class="${atrasado(p) ? "atrasado" : ""}"><i class="fa-solid fa-calendar"></i> ${fmtData(p.prazo)}</span>` : ""}
@@ -168,8 +194,76 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? projeto.status
       : (filtroStatus.value || "A FAZER");
     btnExcluir.hidden = !projeto;
+    acoesEdit = (projeto && Array.isArray(projeto.acoes) ? projeto.acoes : []).map((a) => ({
+      id: a.id,
+      texto: a.texto || "",
+      nivel: Math.min(3, Math.max(1, Number(a.nivel) || 1)),
+      feito: !!a.feito,
+    }));
+    renderAcoesEditor();
     modal.hidden = false;
     document.getElementById("campoNome").focus();
+  }
+
+  function ajustarNiveis(lista) {
+    let prev = 1;
+    lista.forEach((a, i) => {
+      let n = Math.min(3, Math.max(1, Number(a.nivel) || 1));
+      if (i === 0) n = 1;
+      else if (n > prev + 1) n = prev + 1;
+      a.nivel = n;
+      prev = n;
+    });
+  }
+
+  function renderAcoesEditor() {
+    const box = document.getElementById("listaAcoes");
+    if (!acoesEdit.length) {
+      box.innerHTML = `<p class="acao-vazia">Nenhuma ação ainda.</p>`;
+      return;
+    }
+    box.innerHTML = acoesEdit.map((a, i) => {
+      const prev = i === 0 ? 1 : acoesEdit[i - 1].nivel;
+      const podeDescer = i > 0 && a.nivel < Math.min(3, prev + 1);
+      const podeSubir = a.nivel > 1;
+      const recuo = (a.nivel - 1) * 18;
+      return `
+        <div class="acao-row" data-i="${i}" style="margin-left:${recuo}px">
+          <span class="nv-tag">Nível ${a.nivel}</span>
+          <button type="button" class="ico" data-subir="${i}" title="Subir um nível" aria-label="Subir um nível" ${podeSubir ? "" : "disabled"}>
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <button type="button" class="ico" data-descer="${i}" title="Descer um nível" aria-label="Descer um nível" ${podeDescer ? "" : "disabled"}>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+          <input type="checkbox" data-feito="${i}" ${a.feito ? "checked" : ""} aria-label="Concluir ação ${i + 1}" />
+          <input type="text" data-texto="${i}" maxlength="300" value="${escapeHtml(a.texto)}" placeholder="Descreva a ação" />
+          <button type="button" class="ico" data-remover="${i}" title="Remover ação" aria-label="Remover ação">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>`;
+    }).join("");
+  }
+
+  function lerTextoAcao(i) {
+    const el = document.querySelector(`#listaAcoes [data-texto="${i}"]`);
+    if (el && acoesEdit[i]) acoesEdit[i].texto = el.value;
+  }
+
+  function inserirAcao(depoisDe) {
+    if (acoesEdit.length >= 40) {
+      alert("No máximo 40 ações.");
+      return;
+    }
+    acoesEdit.forEach((_, i) => lerTextoAcao(i));
+    const nivel = depoisDe >= 0 && acoesEdit[depoisDe] ? acoesEdit[depoisDe].nivel : 1;
+    const item = { texto: "", nivel, feito: false };
+    const idx = depoisDe >= 0 ? depoisDe + 1 : acoesEdit.length;
+    acoesEdit.splice(idx, 0, item);
+    ajustarNiveis(acoesEdit);
+    renderAcoesEditor();
+    const foco = document.querySelector(`#listaAcoes [data-texto="${idx}"]`);
+    if (foco) foco.focus();
   }
 
   function fecharModal() {
@@ -267,6 +361,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("btnNovo").addEventListener("click", () => abrirModal(null));
+  document.getElementById("btnAddAcao").addEventListener("click", () => inserirAcao(acoesEdit.length - 1));
+  document.getElementById("listaAcoes").addEventListener("input", (e) => {
+    const texto = e.target.closest("[data-texto]");
+    if (!texto) return;
+    const i = Number(texto.dataset.texto);
+    if (acoesEdit[i]) acoesEdit[i].texto = texto.value;
+  });
+  document.getElementById("listaAcoes").addEventListener("change", (e) => {
+    const box = e.target.closest("[data-feito]");
+    if (!box) return;
+    const i = Number(box.dataset.feito);
+    if (acoesEdit[i]) acoesEdit[i].feito = box.checked;
+  });
+  document.getElementById("listaAcoes").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || !e.target.matches("[data-texto]")) return;
+    e.preventDefault();
+    inserirAcao(Number(e.target.dataset.texto));
+  });
+  document.getElementById("listaAcoes").addEventListener("click", (e) => {
+    const descer = e.target.closest("[data-descer]");
+    const subir = e.target.closest("[data-subir]");
+    const remover = e.target.closest("[data-remover]");
+    if (!descer && !subir && !remover) return;
+    acoesEdit.forEach((_, i) => lerTextoAcao(i));
+    if (descer) {
+      const i = Number(descer.dataset.descer);
+      const prev = acoesEdit[i - 1] ? acoesEdit[i - 1].nivel : 1;
+      const teto = Math.min(3, prev + 1);
+      if (i > 0 && acoesEdit[i] && acoesEdit[i].nivel < teto) acoesEdit[i].nivel += 1;
+    } else if (subir) {
+      const i = Number(subir.dataset.subir);
+      if (acoesEdit[i] && acoesEdit[i].nivel > 1) acoesEdit[i].nivel -= 1;
+      ajustarNiveis(acoesEdit);
+    } else if (remover) {
+      acoesEdit.splice(Number(remover.dataset.remover), 1);
+      ajustarNiveis(acoesEdit);
+    }
+    renderAcoesEditor();
+  });
   document.getElementById("btnCancelar").addEventListener("click", fecharModal);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) fecharModal();
@@ -279,6 +412,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     const btn = document.getElementById("btnSalvar");
     btn.disabled = true;
+    acoesEdit.forEach((_, i) => lerTextoAcao(i));
     const body = {
       id: editandoId || undefined,
       nome: document.getElementById("campoNome").value,
@@ -286,6 +420,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       responsavel: document.getElementById("campoResp").value,
       prazo: document.getElementById("campoPrazo").value,
       status: document.getElementById("campoStatus").value,
+      acoes: acoesEdit
+        .map((a) => ({
+          id: a.id || undefined,
+          texto: a.texto,
+          nivel: a.nivel,
+          feito: !!a.feito,
+        }))
+        .filter((a) => String(a.texto || "").trim()),
     };
     try {
       const data = await api("POST", "salvar", { body });
@@ -305,7 +447,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnExcluir.addEventListener("click", async () => {
     const p = projetos.find((x) => Number(x.id) === Number(editandoId));
     if (!p) return;
-    if (!confirm(`Excluir o projeto "${p.nome}"? Não dá para desfazer.`)) return;
+    if (!confirm(`Excluir o projeto "${p.nome}" e as ações? Não dá para desfazer.`)) return;
     btnExcluir.disabled = true;
     try {
       await api("DELETE", "projeto", { query: { id: String(p.id) } });
@@ -319,7 +461,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  async function marcarAcao(id, feito) {
+    let achou = null;
+    for (const p of projetos) {
+      const a = (p.acoes || []).find((x) => Number(x.id) === Number(id));
+      if (a) {
+        achou = a;
+        break;
+      }
+    }
+    if (!achou || !!achou.feito === !!feito) return;
+    const anterior = achou.feito;
+    achou.feito = feito;
+    render();
+    try {
+      await api("POST", "marcar", { body: { id, feito } });
+    } catch (err) {
+      achou.feito = anterior;
+      render();
+      alert(err.message);
+    }
+  }
+
   document.body.addEventListener("change", async (e) => {
+    const box = e.target.closest("input[data-acao]");
+    if (box && !box.closest("#formProjeto")) {
+      await marcarAcao(Number(box.dataset.acao), box.checked);
+      return;
+    }
     const sel = e.target.closest(".status-sel");
     if (!sel || !sel.dataset.id || sel.closest("#formProjeto")) return;
     await mudarStatus(Number(sel.dataset.id), sel.value);
