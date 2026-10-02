@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kanban de projetos - SGC</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    .hint { color: #546e7a; margin-top: -6px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+    .toolbar input[type="search"], .toolbar select {
+      border: 1px solid #cfd8dc; border-radius: 8px; padding: 8px 10px; font: inherit; background: #fff;
+    }
+    .toolbar input[type="search"] { min-width: 220px; flex: 1; }
+    .btn {
+      border: 1px solid #cfd8dc; background: #fff; color: #263238; border-radius: 8px;
+      padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .btn.primary { background: var(--cor-principal, #1976d2); border-color: transparent; color: #fff; }
+    .btn.danger { background: #fff; color: #c62828; border-color: #ffcdd2; }
+    .btn:disabled { opacity: 0.55; cursor: wait; }
+    .req-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dee2e6; margin-bottom: 16px; }
+    .req-tab {
+      padding: 10px 18px; border: none; background: none; font-size: 15px; font-weight: 600;
+      color: #6c757d; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
+    }
+    .req-tab.active { color: var(--cor-principal, #1976d2); border-bottom-color: var(--cor-principal, #1976d2); }
+    .req-panel { display: none; }
+    .req-panel.active { display: block; }
+    .wrap-table { overflow-x: auto; }
+    table.ctrl { width: 100%; border-collapse: collapse; background: #fff; }
+    table.ctrl th, table.ctrl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eceff1; vertical-align: middle; }
+    table.ctrl th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: #607d8b; }
+    .nome-btn {
+      border: none; background: none; padding: 0; font: inherit; font-weight: 700; color: #1565c0; cursor: pointer; text-align: left;
+    }
+    .status-sel { border: 1px solid #cfd8dc; border-radius: 8px; padding: 6px 8px; font: inherit; background: #fff; }
+    .atrasado { color: #c62828; font-weight: 700; }
+    .muted { color: #78909c; }
+    .empty { text-align: center; padding: 28px; color: #78909c; }
+    .kb-board { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 12px; }
+    .kb-col {
+      flex: 1 0 280px; max-width: 420px; background: #f4f7f8; border-radius: 12px; padding: 10px;
+      min-height: 280px;
+    }
+    .kb-col.over { outline: 2px dashed #90a4ae; }
+    .kb-col-head { display: flex; align-items: center; justify-content: space-between; margin: 2px 4px 10px; }
+    .kb-col-head h2 { margin: 0; font-size: 0.95rem; }
+    .kb-count {
+      min-width: 24px; height: 24px; border-radius: 999px; background: #fff; color: #455a64;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;
+    }
+    .kb-col.fazer { border-top: 4px solid #ef6c00; }
+    .kb-col.andamento { border-top: 4px solid #1976d2; }
+    .kb-col.feito { border-top: 4px solid #43a047; }
+    .kb-cards { display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
+    .kb-card {
+      background: #fff; border-radius: 10px; padding: 10px 10px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      display: grid; grid-template-columns: 22px 1fr; gap: 4px 8px;
+    }
+    .kb-card.dragging { opacity: 0.45; }
+    .kb-handle { grid-row: 1 / span 4; align-self: center; border: none; background: none; color: #90a4ae; cursor: grab; padding: 0; }
+    .kb-card h3 { margin: 0; font-size: 0.95rem; }
+    .kb-card p { margin: 0; color: #546e7a; font-size: 0.85rem; }
+    .kb-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem; color: #607d8b; }
+    .kb-card .status-sel { grid-column: 2; width: 100%; }
+    .modal[hidden] { display: none !important; }
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 80;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal form {
+      width: min(520px, 100%); background: #fff; border-radius: 12px; padding: 18px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .modal h2 { margin: 0 0 6px; }
+    .modal label { font-size: 0.82rem; font-weight: 700; color: #455a64; }
+    .modal input, .modal textarea, .modal select {
+      border: 1px solid #cfd8dc; border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    @media (max-width: 800px) {
+      .kb-col { flex-basis: 86vw; max-width: none; }
+      .toolbar input[type="search"] { min-width: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <div class="main-content">
+    <div class="container">
+      <h1><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
+      <p class="hint">Os mesmos projetos na lista e no quadro. Arraste o cartão para mudar a coluna.</p>
+
+      <div class="toolbar">
+        <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
+        <select id="filtroStatus" aria-label="Filtrar status">
+          <option value="">Todos os status</option>
+          <option value="A FAZER">A fazer</option>
+          <option value="EM ANDAMENTO">Em andamento</option>
+          <option value="CONCLUIDO">Concluído</option>
+        </select>
+        <button type="button" class="btn primary" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo projeto</button>
+      </div>
+
+      <div class="req-tabs" role="tablist">
+        <button type="button" class="req-tab active" data-tab="kanban" id="tabKanban">
+          <i class="fa-solid fa-table-columns"></i> Kanban
+        </button>
+        <button type="button" class="req-tab" data-tab="lista" id="tabLista">
+          <i class="fa-solid fa-list"></i> Lista
+        </button>
+      </div>
+
+      <div class="req-panel active" id="panelKanban">
+        <div class="kb-board" id="board"></div>
+      </div>
+      <div class="req-panel" id="panelLista">
+        <div class="wrap-table">
+          <table class="ctrl">
+            <thead>
+              <tr>
+                <th>Projeto</th>
+                <th>Responsável</th>
+                <th>Prazo</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal" hidden>
+    <form id="formProjeto">
+      <h2 id="modalTitulo">Novo projeto</h2>
+      <label for="campoNome">Nome</label>
+      <input id="campoNome" required maxlength="160" />
+      <label for="campoDesc">Descrição</label>
+      <textarea id="campoDesc" rows="3" maxlength="1000"></textarea>
+      <label for="campoResp">Responsável</label>
+      <input id="campoResp" maxlength="100" />
+      <label for="campoPrazo">Prazo</label>
+      <input id="campoPrazo" type="date" />
+      <label for="campoStatus">Status</label>
+      <select id="campoStatus">
+        <option value="A FAZER">A fazer</option>
+        <option value="EM ANDAMENTO">Em andamento</option>
+        <option value="CONCLUIDO">Concluído</option>
+      </select>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="btnExcluir" hidden>Excluir</button>
+        <button type="button" class="btn" id="btnCancelar">Cancelar</button>
+        <button type="submit" class="btn primary" id="btnSalvar">Salvar</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/shared/frontend/permissoes.js"></script>
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/modules/projetos/kanban/kanban.js"></script>
+</body>
+</html>

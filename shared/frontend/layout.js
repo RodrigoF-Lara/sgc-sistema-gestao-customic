@@ -128,7 +128,8 @@ function inicializarSidebar() {
     'calendarioprodutivo': 'nav-configuracoes',
     'niveis': 'nav-niveis',
     'permissoes': 'nav-permissoes',
-    'mockups': 'nav-design-mockups'
+    'mockups': 'nav-design-mockups',
+    'kanban': 'nav-projetos-kanban'
   };
   let navId = idMap[pageKey] || `nav-${pageKey}`;
   if (pageKey === 'pedidos' && /fila=1/.test(window.location.search)) {
