@@ -33,6 +33,20 @@
         resize: vertical; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap;
       }
       .prod-hint { color: #607d8b; font-size: 13px; margin: 0 0 12px; }
+      .prod-label-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      button.btn-gerir {
+        background: transparent; border: none; color: #1976d2; font-size: 12px; font-weight: 700;
+        cursor: pointer; padding: 0 2px; border-radius: 0;
+      }
+      button.btn-gerir:hover { background: transparent; text-decoration: underline; }
+      .gestor-lista { max-height: 280px; overflow: auto; margin: 12px 0; }
+      .gestor-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+      .gestor-item input { flex: 1; min-width: 0; }
+      button.btn-texto {
+        background: #fff; color: #1976d2; border: 1px solid #1976d2; border-radius: 6px;
+        padding: 6px 10px; cursor: pointer; font-weight: 700;
+      }
+      button.btn-texto.perigo { color: #c62828; border-color: #c62828; }
       @media (max-width: 640px) {
         .prod-grid { grid-template-columns: 1fr; }
       }
@@ -155,19 +169,28 @@
           </div>
         </div>
         <div class="prod-panel" data-panel="planejamento" hidden>
-          <p class="prod-hint">A lista sugere opções comuns. Dá para digitar outro valor.</p>
+          <p class="prod-hint">Linha, marca e modelo vêm do cadastro. O botão Cadastrar abre a lista sem sair daqui.</p>
           <div class="prod-grid">
             <div class="prod-field">
-              <label for="novoLinha">Linha:</label>
-              <input type="text" id="novoLinha" list="listaLinhas" maxlength="80" placeholder="Impactor Ultra, Soft Series, Vidro 3D..." />
+              <div class="prod-label-row">
+                <label for="novoLinha">Linha:</label>
+                <button type="button" class="btn-gerir" data-attr="linha">Cadastrar</button>
+              </div>
+              <select id="novoLinha"></select>
             </div>
             <div class="prod-field">
-              <label for="novoMarca">Marca:</label>
-              <input type="text" id="novoMarca" list="listaMarcas" maxlength="60" placeholder="Ovvi, Customic, JBL..." />
+              <div class="prod-label-row">
+                <label for="novoMarca">Marca:</label>
+                <button type="button" class="btn-gerir" data-attr="marca">Cadastrar</button>
+              </div>
+              <select id="novoMarca"></select>
             </div>
             <div class="prod-field">
-              <label for="novoModelo">Modelo:</label>
-              <input type="text" id="novoModelo" list="listaModelos" maxlength="80" placeholder="iPhone 17, iPhone 18..." />
+              <div class="prod-label-row">
+                <label for="novoModelo">Modelo:</label>
+                <button type="button" class="btn-gerir" data-attr="modelo">Cadastrar</button>
+              </div>
+              <select id="novoModelo"></select>
             </div>
             <div class="prod-field">
               <label for="novoCor">Cor:</label>
@@ -200,21 +223,6 @@
         </div>
       </div>
     </div>
-
-    <datalist id="listaLinhas">
-      <option value="Impactor Ultra"></option>
-      <option value="Soft Series"></option>
-      <option value="Vidro 3D"></option>
-    </datalist>
-    <datalist id="listaMarcas">
-      <option value="Ovvi"></option>
-      <option value="Customic"></option>
-      <option value="JBL"></option>
-    </datalist>
-    <datalist id="listaModelos">
-      <option value="iPhone 17"></option>
-      <option value="iPhone 18"></option>
-    </datalist>
 
     <script src="cadastroProdutos.js"></script>
     <script src="/shared/frontend/layout.js"></script>
@@ -287,19 +295,28 @@
           </div>
         </div>
         <div class="prod-panel" data-panel="planejamento" hidden>
-          <p class="prod-hint">A lista sugere opções comuns. Dá para digitar outro valor.</p>
+          <p class="prod-hint">Linha, marca e modelo vêm do cadastro. O botão Cadastrar abre a lista sem sair daqui.</p>
           <div class="prod-grid">
             <div class="prod-field">
-              <label for="editLinha">Linha:</label>
-              <input type="text" id="editLinha" list="listaLinhas" maxlength="80" placeholder="Impactor Ultra, Soft Series, Vidro 3D..." />
+              <div class="prod-label-row">
+                <label for="editLinha">Linha:</label>
+                <button type="button" class="btn-gerir" data-attr="linha">Cadastrar</button>
+              </div>
+              <select id="editLinha"></select>
             </div>
             <div class="prod-field">
-              <label for="editMarca">Marca:</label>
-              <input type="text" id="editMarca" list="listaMarcas" maxlength="60" placeholder="Ovvi, Customic, JBL..." />
+              <div class="prod-label-row">
+                <label for="editMarca">Marca:</label>
+                <button type="button" class="btn-gerir" data-attr="marca">Cadastrar</button>
+              </div>
+              <select id="editMarca"></select>
             </div>
             <div class="prod-field">
-              <label for="editModelo">Modelo:</label>
-              <input type="text" id="editModelo" list="listaModelos" maxlength="80" placeholder="iPhone 17, iPhone 18..." />
+              <div class="prod-label-row">
+                <label for="editModelo">Modelo:</label>
+                <button type="button" class="btn-gerir" data-attr="modelo">Cadastrar</button>
+              </div>
+              <select id="editModelo"></select>
             </div>
             <div class="prod-field">
               <label for="editCor">Cor:</label>
@@ -330,6 +347,22 @@
             <i class="fa-solid fa-floppy-disk"></i> Salvar Alterações
           </button>
         </div>
+      </div>
+    </div>
+
+    <div id="modalGestor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1200; align-items:center; justify-content:center;">
+      <div class="prod-dialog">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h2 id="gestorTitulo" style="margin:0;">Cadastro</h2>
+          <button type="button" id="btnFecharGestor" style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">&times;</button>
+        </div>
+        <form id="gestorForm" class="attr-form" style="display:flex; gap:8px; margin-bottom:8px;">
+          <input type="text" id="gestorNome" placeholder="Novo nome" style="flex:1;" />
+          <button type="submit" class="btn-destaque">Adicionar</button>
+        </form>
+        <div id="gestorMsg" style="min-height:18px; font-size:14px; margin-bottom:8px;"></div>
+        <div id="gestorLista" class="gestor-lista"></div>
+        <a id="gestorAbrir" href="/shared/cadastros/cadastroLinhas.html">Abrir a tela deste cadastro</a>
       </div>
     </div>
 </html>

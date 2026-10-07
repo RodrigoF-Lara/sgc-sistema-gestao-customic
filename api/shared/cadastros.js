@@ -28,6 +28,8 @@ export default async function handler(req, res) {
       return await handleFornecedores(req, res, pool, method);
     } else if (tipo === 'produtos') {
       return await handleProdutos(req, res, pool, method);
+    } else if (ATRIBUTO_TIPO[tipo]) {
+      return await handleAtributo(req, res, pool, method, tipo);
     } else {
       return res.status(400).json({ error: "Parâmetro 'tipo' é obrigatório (produtos ou fornecedores)" });
     }
@@ -77,7 +79,7 @@ async function listarFornecedores(req, res, pool) {
     let whereClause = '';
     if (search) {
       whereClause = `WHERE 
-        RAZAO_SOCIAL LIKE @search 
+        RAZAO_SOCIAL COLLATE Latin1_General_CI_AI LIKE @search 
         OR CAST(COD_FORNECEDOR AS NVARCHAR) LIKE @search 
         OR CNPJ LIKE @search`;
       request.input('search', sql.NVarChar, `%${search}%`);
@@ -230,6 +232,196 @@ async function excluirFornecedor(req, res, pool) {
 }
 
 // =========================================================================
+// LINHA, MARCA E MODELO (listas padronizadas do planejamento)
+// =========================================================================
+
+const ATRIBUTO_TIPO = {
+  linhas: {
+    tipo: "LINHA",
+    coluna: "LINHA",
+    max: 80,
+    link: "cadastro-linhas",
+    sementes: ["Impactor Ultra", "Soft Series", "Vidro 3D"],
+  },
+  marcas: {
+    tipo: "MARCA",
+    coluna: "MARCA",
+    max: 60,
+    link: "cadastro-marcas",
+    sementes: ["Ovvi", "Customic", "JBL"],
+  },
+  modelos: {
+    tipo: "MODELO",
+    coluna: "MODELO",
+    max: 80,
+    link: "cadastro-modelos",
+    sementes: ["iPhone 17", "iPhone 18"],
+  },
+};
+
+let atributosReady = false;
+
+async function ensureAtributos(pool) {
+  if (atributosReady) return;
+  const criado = await pool.request().query(`
+    IF OBJECT_ID(N'dbo.CAD_ATRIBUTO', N'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.CAD_ATRIBUTO (
+        ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        TIPO NVARCHAR(20) NOT NULL,
+        NOME NVARCHAR(80) NOT NULL
+      );
+      CREATE UNIQUE INDEX UX_CAD_ATRIBUTO_TIPO_NOME ON dbo.CAD_ATRIBUTO (TIPO, NOME);
+      SELECT 1 AS criado;
+    END
+    ELSE SELECT 0 AS criado;
+  `);
+  if (criado.recordset[0] && criado.recordset[0].criado === 1) {
+    for (const cfg of Object.values(ATRIBUTO_TIPO)) {
+      for (const nome of cfg.sementes) {
+        await pool.request()
+          .input("tipo", sql.NVarChar(20), cfg.tipo)
+          .input("nome", sql.NVarChar(80), nome)
+          .query("INSERT INTO dbo.CAD_ATRIBUTO (TIPO, NOME) VALUES (@tipo, @nome)");
+      }
+    }
+  }
+  try {
+    await pool.request().query(`
+      IF OBJECT_ID(N'dbo.SHR_PERMISSOES_MENU', N'U') IS NOT NULL
+         AND OBJECT_ID(N'dbo.SHR_NIVEIS_USUARIO', N'U') IS NOT NULL
+      BEGIN
+        INSERT INTO dbo.SHR_PERMISSOES_MENU (LINK_ID, NIVEL, PERMITIDO, USUARIO_ATUALIZACAO)
+        SELECT l.LINK_ID, n.CODIGO, 1, 'SEED-ATRIBUTO'
+        FROM dbo.SHR_NIVEIS_USUARIO n
+        CROSS JOIN (VALUES (N'cadastro-linhas'), (N'cadastro-marcas'), (N'cadastro-modelos')) l(LINK_ID)
+        WHERE NOT EXISTS (
+          SELECT 1 FROM dbo.SHR_PERMISSOES_MENU x
+          WHERE x.LINK_ID = l.LINK_ID AND x.NIVEL = n.CODIGO
+        );
+      END
+    `);
+  } catch (_) { /* permissão segue o que já estiver gravado */ }
+  atributosReady = true;
+}
+
+function nomeAtributo(valor, max) {
+  const s = String(valor ?? "").trim();
+  if (!s) return "";
+  return s.slice(0, max);
+}
+
+async function atributoDuplicado(conn, tipo, nome, id) {
+  const reqDup = new sql.Request(conn)
+    .input("tipo", sql.NVarChar(20), tipo)
+    .input("nome", sql.NVarChar(80), nome)
+    .input("id", sql.Int, id || 0);
+  const dup = await reqDup.query(`
+    SELECT ID FROM dbo.CAD_ATRIBUTO
+    WHERE TIPO = @tipo
+      AND NOME COLLATE Latin1_General_CI_AI = @nome COLLATE Latin1_General_CI_AI
+      AND ID <> @id
+  `);
+  return dup.recordset.length > 0;
+}
+
+async function handleAtributo(req, res, pool, method, tipoUrl) {
+  await ensureAtributos(pool);
+  const cfg = ATRIBUTO_TIPO[tipoUrl];
+  if (method === "GET") {
+    const result = await pool.request()
+      .input("tipo", sql.NVarChar(20), cfg.tipo)
+      .query(`
+        SELECT ID, NOME FROM dbo.CAD_ATRIBUTO
+        WHERE TIPO = @tipo
+        ORDER BY NOME
+      `);
+    return res.status(200).json({
+      itens: result.recordset.map((r) => ({ id: r.ID, nome: r.NOME })),
+    });
+  }
+  if (method !== "POST") {
+    return res.status(405).json({ message: "Método não permitido" });
+  }
+
+  const acao = req.body && req.body.acao;
+  const nome = nomeAtributo(req.body && req.body.nome, cfg.max);
+  const id = parseInt(req.body && req.body.id, 10);
+
+  try {
+    if (acao === "criar") {
+      if (!nome) return res.status(400).json({ message: "Informe o nome." });
+      if (await atributoDuplicado(pool, cfg.tipo, nome, 0)) {
+        return res.status(409).json({ message: "Já existe um cadastro com esse nome." });
+      }
+      const ins = await pool.request()
+        .input("tipo", sql.NVarChar(20), cfg.tipo)
+        .input("nome", sql.NVarChar(80), nome)
+        .query(`
+          INSERT INTO dbo.CAD_ATRIBUTO (TIPO, NOME)
+          OUTPUT INSERTED.ID AS ID
+          VALUES (@tipo, @nome)
+        `);
+      return res.status(201).json({ id: ins.recordset[0].ID, nome });
+    }
+
+    if (acao === "atualizar") {
+      if (!id) return res.status(400).json({ message: "Informe o item." });
+      if (!nome) return res.status(400).json({ message: "Informe o nome." });
+      const atual = await pool.request()
+        .input("id", sql.Int, id)
+        .input("tipo", sql.NVarChar(20), cfg.tipo)
+        .query("SELECT NOME FROM dbo.CAD_ATRIBUTO WHERE ID = @id AND TIPO = @tipo");
+      if (!atual.recordset.length) {
+        return res.status(404).json({ message: "Cadastro não encontrado." });
+      }
+      if (await atributoDuplicado(pool, cfg.tipo, nome, id)) {
+        return res.status(409).json({ message: "Já existe um cadastro com esse nome." });
+      }
+      const antigo = atual.recordset[0].NOME;
+      if (antigo !== nome) await ensurePlanejamento(pool);
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+      try {
+        await new sql.Request(transaction)
+          .input("id", sql.Int, id)
+          .input("tipo", sql.NVarChar(20), cfg.tipo)
+          .input("nome", sql.NVarChar(80), nome)
+          .query("UPDATE dbo.CAD_ATRIBUTO SET NOME = @nome WHERE ID = @id AND TIPO = @tipo");
+        if (antigo !== nome) {
+          await new sql.Request(transaction)
+            .input("antigo", sql.NVarChar(80), antigo)
+            .input("novo", sql.NVarChar(80), nome)
+            .query(`UPDATE dbo.CAD_PROD_PLANEJAMENTO SET ${cfg.coluna} = @novo WHERE ${cfg.coluna} = @antigo`);
+        }
+        await transaction.commit();
+      } catch (erro) {
+        try { await transaction.rollback(); } catch (_) { /* já encerrada */ }
+        throw erro;
+      }
+      return res.status(200).json({ id, nome });
+    }
+
+    if (acao === "excluir") {
+      if (!id) return res.status(400).json({ message: "Informe o item." });
+      const del = await pool.request()
+        .input("id", sql.Int, id)
+        .input("tipo", sql.NVarChar(20), cfg.tipo)
+        .query("DELETE FROM dbo.CAD_ATRIBUTO WHERE ID = @id AND TIPO = @tipo");
+      if (!del.rowsAffected[0]) {
+        return res.status(404).json({ message: "Cadastro não encontrado." });
+      }
+      return res.status(200).json({ message: "Excluído." });
+    }
+
+    return res.status(400).json({ message: "Ação inválida." });
+  } catch (error) {
+    console.error("Erro no cadastro de atributo:", error);
+    return res.status(500).json({ message: "Erro ao salvar o cadastro", error: error.message });
+  }
+}
+
+// =========================================================================
 // PRODUTOS (mantém compatibilidade com API antiga)
 // =========================================================================
 
@@ -327,7 +519,7 @@ async function listarProdutos(req, res, pool) {
     }
     if (descricao) {
       request.input('descricao', sql.NVarChar, String(descricao).trim());
-      where.push('p.DESCRICAO LIKE \'%\' + @descricao + \'%\'');
+      where.push('p.DESCRICAO COLLATE Latin1_General_CI_AI LIKE \'%\' + @descricao + \'%\'');
     }
     if (curva) {
       request.input('curva', sql.NVarChar, String(curva).trim());

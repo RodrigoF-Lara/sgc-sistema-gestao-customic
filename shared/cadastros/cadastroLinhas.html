@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastro de Linhas - SGC Customic</title>
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      .attr-form { display: flex; gap: 8px; margin-bottom: 16px; }
+      .attr-form input { flex: 1; min-width: 0; }
+      button.btn-texto {
+        background: #fff; color: #1976d2; border: 1px solid #1976d2; border-radius: 6px;
+        padding: 6px 10px; cursor: pointer; font-weight: 700;
+      }
+      button.btn-texto.perigo { color: #c62828; border-color: #c62828; }
+      #lista table { width: 100%; border-collapse: collapse; }
+      #lista th, #lista td { padding: 8px; border-bottom: 1px solid #eee; }
+      #lista input { width: 100%; box-sizing: border-box; }
+    </style>
+  </head>
+  <body data-tipo="linha">
+    <div id="sidebar-container" class="sidebar"></div>
+    <div class="main-content">
+      <div class="container">
+        <h1 id="titulo"><i class="fa-solid fa-layer-group"></i> Linhas</h1>
+        <p class="info-message">Estes nomes aparecem no planejamento do produto.</p>
+        <div id="statusMessage" class="status-message"></div>
+        <div class="card">
+          <form id="formNovo" class="attr-form">
+            <input type="text" id="nome" placeholder="Nova linha" required />
+            <button type="submit" class="btn-destaque">Adicionar</button>
+          </form>
+          <div id="lista"></div>
+        </div>
+      </div>
+    </div>
+    <script src="cadastroAtributo.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
+  </body>
+</html>

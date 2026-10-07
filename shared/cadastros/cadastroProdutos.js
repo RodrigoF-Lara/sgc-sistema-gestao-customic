@@ -9,6 +9,57 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('statusMessage');
 
     let produtosCarregados = [];
+    const ATRIBUTOS = {
+        linha: { api: 'linhas', titulo: 'Linhas', pagina: '/shared/cadastros/cadastroLinhas.html' },
+        marca: { api: 'marcas', titulo: 'Marcas', pagina: '/shared/cadastros/cadastroMarcas.html' },
+        modelo: { api: 'modelos', titulo: 'Modelos', pagina: '/shared/cadastros/cadastroModelos.html' },
+    };
+    let listasAtributo = { linha: [], marca: [], modelo: [] };
+    let gestorChave = null;
+
+    function escaparHtml(valor) {
+        return String(valor)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function opcoesSelect(select, itens, atual) {
+        const valor = atual || '';
+        const nomes = itens.map((item) => item.nome);
+        const fora = valor && !nomes.includes(valor);
+        select.innerHTML = `<option value="">—</option>` +
+            nomes.map((nome) => `<option value="${escaparHtml(nome)}">${escaparHtml(nome)}</option>`).join('') +
+            (fora ? `<option value="${escaparHtml(valor)}">${escaparHtml(valor)} (não cadastrado)</option>` : '');
+        select.value = valor;
+    }
+
+    async function carregarListas() {
+        const pares = await Promise.all(Object.entries(ATRIBUTOS).map(async ([chave, cfg]) => {
+            const res = await fetch('/api/shared/cadastros?tipo=' + cfg.api);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Erro ao carregar ' + cfg.titulo);
+            return [chave, data.itens || []];
+        }));
+        pares.forEach(([chave, itens]) => { listasAtributo[chave] = itens; });
+    }
+
+    function aplicarListas(valores) {
+        opcoesSelect(document.getElementById('novoLinha'), listasAtributo.linha, valores.novoLinha);
+        opcoesSelect(document.getElementById('novoMarca'), listasAtributo.marca, valores.novoMarca);
+        opcoesSelect(document.getElementById('novoModelo'), listasAtributo.modelo, valores.novoModelo);
+        opcoesSelect(document.getElementById('editLinha'), listasAtributo.linha, valores.editLinha);
+        opcoesSelect(document.getElementById('editMarca'), listasAtributo.marca, valores.editMarca);
+        opcoesSelect(document.getElementById('editModelo'), listasAtributo.modelo, valores.editModelo);
+    }
+
+    function valoresAtuais() {
+        const ler = (id) => document.getElementById(id).value;
+        return {
+            novoLinha: ler('novoLinha'), novoMarca: ler('novoMarca'), novoModelo: ler('novoModelo'),
+            editLinha: ler('editLinha'), editMarca: ler('editMarca'), editModelo: ler('editModelo'),
+        };
+    }
 
     function mostrarAba(raiz, nome) {
         raiz.querySelectorAll('.prod-tab').forEach((botao) => {
@@ -42,10 +93,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function preencherPlano(prefixo, produto) {
+        opcoesSelect(document.getElementById(prefixo + 'Linha'), listasAtributo.linha, produto?.PLN_LINHA || '');
+        opcoesSelect(document.getElementById(prefixo + 'Marca'), listasAtributo.marca, produto?.PLN_MARCA || '');
+        opcoesSelect(document.getElementById(prefixo + 'Modelo'), listasAtributo.modelo, produto?.PLN_MODELO || '');
         const campos = {
-            Linha: produto?.PLN_LINHA,
-            Marca: produto?.PLN_MARCA,
-            Modelo: produto?.PLN_MODELO,
             Cor: produto?.PLN_COR,
             Ean: produto?.PLN_EAN,
             Ncm: produto?.PLN_NCM,
@@ -78,10 +129,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const novoTipo = document.getElementById('novoTipo');
     const modalMsg = document.getElementById('modalMsg');
 
-    function abrirModal() {
+    async function abrirModal() {
         novoCodigo.value = '';
         novoDescricao.value = '';
         novoTipo.value = 'EMBALAGEM';
+        try { await carregarListas(); } catch (_) { /* a lista fica vazia e o valor atual continua */ }
         preencherPlano('novo', null);
         mostrarAba(modalNovoProduto, 'geral');
         modalMsg.textContent = '';
@@ -379,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editModalMsg      = document.getElementById('editModalMsg');
     let produtoEmEdicao     = null;
 
-    function abrirModalEditar(produto) {
+    async function abrirModalEditar(produto) {
         produtoEmEdicao = produto;
         editCodigo.value    = produto.CODIGO;
         editDescricao.value = produto.DESCRICAO || '';
@@ -389,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
         editEstoqueMinimo.value = produto.ESTOQUE_MINIMO ?? '';
         editEstoqueIdeal.value  = produto.ESTOQUE_IDEAL ?? '';
         editEstoqueMaximo.value = produto.ESTOQUE_MAXIMO ?? '';
+        try { await carregarListas(); } catch (_) { /* mantém a última lista */ }
         preencherPlano('edit', produto);
         mostrarAba(modalEditar, 'geral');
         editModalMsg.textContent = '';
@@ -461,6 +514,119 @@ document.addEventListener('DOMContentLoaded', function() {
             editModalMsg.textContent = 'Erro: ' + err.message;
         } finally {
             btnSalvarEditar.disabled = false;
+        }
+    });
+
+    const modalGestor = document.getElementById('modalGestor');
+    const gestorTitulo = document.getElementById('gestorTitulo');
+    const gestorLista = document.getElementById('gestorLista');
+    const gestorNome = document.getElementById('gestorNome');
+    const gestorMsg = document.getElementById('gestorMsg');
+    const gestorAbrir = document.getElementById('gestorAbrir');
+    const gestorForm = document.getElementById('gestorForm');
+
+    function gestorAviso(texto, cor) {
+        gestorMsg.style.color = cor || '#333';
+        gestorMsg.textContent = texto || '';
+    }
+
+    function desenharGestor() {
+        const itens = listasAtributo[gestorChave] || [];
+        if (!itens.length) {
+            gestorLista.innerHTML = '<p>Nenhum item cadastrado.</p>';
+            return;
+        }
+        gestorLista.innerHTML = itens.map((item) => `
+            <div class="gestor-item" data-id="${item.id}" data-nome="${escaparHtml(item.nome)}">
+                <input type="text" value="${escaparHtml(item.nome)}" />
+                <button type="button" class="btn-texto" data-acao="salvar">Salvar</button>
+                <button type="button" class="btn-texto perigo" data-acao="excluir">Excluir</button>
+            </div>
+        `).join('');
+    }
+
+    async function abrirGestor(chave) {
+        gestorChave = chave;
+        const cfg = ATRIBUTOS[chave];
+        gestorTitulo.textContent = cfg.titulo;
+        gestorAbrir.href = cfg.pagina;
+        gestorAbrir.textContent = 'Abrir a tela de ' + cfg.titulo;
+        gestorNome.value = '';
+        gestorAviso('');
+        try { await carregarListas(); } catch (err) { gestorAviso(err.message, '#c62828'); }
+        aplicarListas(valoresAtuais());
+        desenharGestor();
+        modalGestor.style.display = 'flex';
+        gestorNome.focus();
+    }
+
+    async function acaoGestor(acao, body, substituir) {
+        const cfg = ATRIBUTOS[gestorChave];
+        const valores = valoresAtuais();
+        if (substituir) {
+            Object.keys(valores).forEach((chave) => {
+                if (valores[chave] === substituir.de) valores[chave] = substituir.para;
+            });
+        }
+        const res = await fetch('/api/shared/cadastros?tipo=' + cfg.api, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao, ...body }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Erro ao salvar.');
+        await carregarListas();
+        aplicarListas(valores);
+        desenharGestor();
+    }
+
+    document.body.addEventListener('click', (e) => {
+        const botao = e.target.closest('.btn-gerir');
+        if (!botao) return;
+        abrirGestor(botao.dataset.attr);
+    });
+    document.getElementById('btnFecharGestor').addEventListener('click', () => {
+        modalGestor.style.display = 'none';
+    });
+    modalGestor.addEventListener('click', (e) => {
+        if (e.target === modalGestor) modalGestor.style.display = 'none';
+    });
+    gestorForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nome = gestorNome.value.trim();
+        if (!nome) {
+            gestorAviso('Informe o nome.', '#c62828');
+            return;
+        }
+        try {
+            await acaoGestor('criar', { nome });
+            gestorNome.value = '';
+            gestorAviso('Cadastrado.', '#2e7d32');
+        } catch (err) {
+            gestorAviso(err.message, '#c62828');
+        }
+    });
+    gestorLista.addEventListener('click', async (e) => {
+        const botao = e.target.closest('button');
+        const linha = e.target.closest('.gestor-item');
+        if (!botao || !linha) return;
+        const id = Number(linha.dataset.id);
+        const nome = linha.querySelector('input').value.trim();
+        try {
+            if (botao.dataset.acao === 'excluir') {
+                if (!window.confirm('Excluir este item?')) return;
+                await acaoGestor('excluir', { id });
+                gestorAviso('Excluído.', '#2e7d32');
+                return;
+            }
+            if (!nome) {
+                gestorAviso('Informe o nome.', '#c62828');
+                return;
+            }
+            await acaoGestor('atualizar', { id, nome }, { de: linha.dataset.nome, para: nome });
+            gestorAviso('Salvo.', '#2e7d32');
+        } catch (err) {
+            gestorAviso(err.message, '#c62828');
         }
     });
 

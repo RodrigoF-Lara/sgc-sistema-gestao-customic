@@ -74,7 +74,7 @@ export default async function handler(req, res) {
                         .query(`
                             SELECT TOP 20 COD_FORNECEDOR, RAZAO_SOCIAL
                             FROM [dbo].[CAD_FORNECEDOR]
-                            WHERE COD_FORNECEDOR LIKE @Q OR RAZAO_SOCIAL LIKE @Q
+                            WHERE COD_FORNECEDOR LIKE @Q OR RAZAO_SOCIAL COLLATE Latin1_General_CI_AI LIKE @Q
                             ORDER BY RAZAO_SOCIAL
                         `);
                     return res.status(200).json(result.recordset);
