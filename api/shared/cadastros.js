@@ -549,12 +549,7 @@ export function prepararImportacao(itens, produtos, atributos) {
           campos[coluna] = oficial;
           continue;
         }
-        const atual = String(produto[coluna] ?? "").trim();
-        if (atual && semAcento(atual) === semAcento(texto)) {
-          campos[coluna] = atual;
-          continue;
-        }
-        problemas.push(`${ROTULO_IMPORTACAO[chaveCampo]} "${texto}" não está no cadastro. Cadastre antes de importar.`);
+        problemas.push(`${ROTULO_IMPORTACAO[chaveCampo]} "${texto}" não está no cadastro. Use um nome da página Cadastros.`);
         continue;
       }
       campos[coluna] = texto;

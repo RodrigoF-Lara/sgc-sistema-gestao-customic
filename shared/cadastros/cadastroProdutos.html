@@ -77,14 +77,14 @@
             <button type="button" id="btnImportar" class="btn-texto">
               <i class="fa-solid fa-file-import"></i> Importar ajustes
             </button>
-            <input id="arquivoPlanejamento" type="file" accept=".csv,text/csv" hidden />
+            <input id="arquivoPlanejamento" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden />
           </div>
           <button id="btnNovoProduto" class="btn-destaque" style="background: linear-gradient(135deg, #2e7d32, #1b5e20);">
             <i class="fa-solid fa-plus"></i>
             Novo Produto
           </button>
         </div>
-        <p class="prod-hint">Sem filtro, a exportação traz todos os produtos. Código e descrição só identificam o item. A importação grava apenas Linha, Marca, Modelo, Cor, EAN, NCM, SAP Vivo e Cód. Claro.</p>
+        <p class="prod-hint">A primeira página do arquivo lista as linhas, marcas e modelos cadastrados. Use esses nomes na página Produtos. A importação só aceita linha, marca e modelo que estejam nessa lista, e grava apenas esses campos novos mais cor, EAN, NCM, SAP Vivo e Cód. Claro.</p>
         <div id="importarRelatorio" class="card" hidden>
           <p id="importarResumo"></p>
           <table><tbody id="importarErros"></tbody></table>
@@ -244,6 +244,7 @@
       </div>
     </div>
 
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="cadastroProdutos.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>
