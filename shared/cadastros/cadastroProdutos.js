@@ -144,9 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (btnSalvarNovo) btnSalvarNovo.addEventListener('click', salvarNovoProduto);
     ligarAbas(modalNovoProduto);
-    [novoCodigo, novoDescricao].forEach(inp => {
-        inp.addEventListener('keypress', (e) => { if (e.key === 'Enter') salvarNovoProduto(); });
-    });
+    novoCodigo.addEventListener('keypress', (e) => { if (e.key === 'Enter') salvarNovoProduto(); });
 
     async function buscarProdutos() {
         const codigo = filtroCodigo.value.trim();

@@ -25,8 +25,12 @@
       .prod-panel[hidden] { display: none !important; }
       .prod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       .prod-field label { font-weight: bold; display: block; margin-bottom: 4px; }
-      .prod-field input, .prod-field select {
+      .prod-field input, .prod-field select, .prod-field textarea {
         width: 100%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;
+      }
+      .prod-field textarea {
+        font-family: inherit; line-height: 1.45; min-height: 150px; height: 150px; max-height: 280px;
+        resize: vertical; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap;
       }
       .prod-hint { color: #607d8b; font-size: 13px; margin: 0 0 12px; }
       @media (max-width: 640px) {
@@ -133,7 +137,7 @@
           </div>
           <div class="prod-field" style="margin-bottom:14px;">
             <label for="novoDescricao">Descrição:</label>
-            <input type="text" id="novoDescricao" maxlength="200" />
+            <textarea id="novoDescricao" maxlength="200" rows="6"></textarea>
           </div>
           <div class="prod-field" style="margin-bottom:18px;">
             <label for="novoTipo">Tipo:</label>
@@ -234,7 +238,7 @@
           </div>
           <div class="prod-field" style="margin-bottom:14px;">
             <label for="editDescricao">Descrição:</label>
-            <input type="text" id="editDescricao" maxlength="200" />
+            <textarea id="editDescricao" maxlength="200" rows="6"></textarea>
           </div>
           <div class="prod-field" style="margin-bottom:14px;">
             <label for="editTipo">Tipo:</label>
