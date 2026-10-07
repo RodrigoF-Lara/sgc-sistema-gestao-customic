@@ -630,6 +630,179 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    const COLUNAS_CSV = [
+        ['codigo', 'CODIGO'],
+        ['descricao', 'DESCRICAO'],
+        ['linha', 'PLN_LINHA'],
+        ['marca', 'PLN_MARCA'],
+        ['modelo', 'PLN_MODELO'],
+        ['cor', 'PLN_COR'],
+        ['ean', 'PLN_EAN'],
+        ['ncm', 'PLN_NCM'],
+        ['sap vivo', 'PLN_SAP_VIVO'],
+        ['cod claro', 'PLN_COD_CLARO'],
+    ];
+    const CAMPOS_CSV = {
+        linha: 'linha',
+        marca: 'marca',
+        modelo: 'modelo',
+        cor: 'cor',
+        ean: 'ean',
+        ncm: 'ncm',
+        'sap vivo': 'sapVivo',
+        'sapvivo': 'sapVivo',
+        'cod claro': 'codClaro',
+        'codclaro': 'codClaro',
+        'codigo claro': 'codClaro',
+    };
+
+    function semAcentoCsv(valor) {
+        return String(valor ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    }
+
+    function celulaCsv(valor) {
+        const s = String(valor ?? '');
+        if (/[;"\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+    }
+
+    function baixarCsv(nome, linhas) {
+        const blob = new Blob(['\uFEFF' + linhas.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = nome;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    }
+
+    function lerPlanilha(texto) {
+        const raw = String(texto || '').replace(/^\uFEFF/, '');
+        const primeira = raw.split(/\r?\n/, 1)[0] || '';
+        const delim = primeira.split(';').length >= primeira.split(',').length ? ';' : ',';
+        const rows = [];
+        let row = [];
+        let cell = '';
+        let quoted = false;
+        for (let i = 0; i < raw.length; i++) {
+            const ch = raw[i];
+            if (quoted) {
+                if (ch === '"') {
+                    if (raw[i + 1] === '"') { cell += '"'; i++; }
+                    else quoted = false;
+                } else cell += ch;
+            } else if (ch === '"') quoted = true;
+            else if (ch === delim) { row.push(cell); cell = ''; }
+            else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+            else if (ch !== '\r') cell += ch;
+        }
+        if (cell.length || row.length) { row.push(cell); rows.push(row); }
+        return rows.filter((linha) => linha.some((celula) => String(celula).trim()));
+    }
+
+    function itensDaPlanilha(texto) {
+        const rows = lerPlanilha(texto);
+        if (!rows.length) throw new Error('O arquivo está vazio.');
+        const cabecalho = rows[0].map((coluna) => semAcentoCsv(coluna).replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim());
+        const mapa = cabecalho.map((coluna) => {
+            if (coluna === 'codigo' || coluna === 'codigo produto') return 'codigo';
+            return CAMPOS_CSV[coluna] || '';
+        });
+        if (!mapa.includes('codigo')) throw new Error('O arquivo precisa da coluna codigo.');
+        if (!mapa.some((coluna) => coluna && coluna !== 'codigo')) {
+            throw new Error('O arquivo não tem os campos de planejamento.');
+        }
+        return rows.slice(1).map((linha) => {
+            const item = {};
+            mapa.forEach((campo, idx) => {
+                if (!campo) return;
+                item[campo] = String(linha[idx] ?? '').trim();
+            });
+            return item;
+        }).filter((item) => Object.values(item).some((valor) => String(valor).trim()));
+    }
+
+    function mostrarRelatorioImportacao(data) {
+        const box = document.getElementById('importarRelatorio');
+        const resumo = document.getElementById('importarResumo');
+        const corpo = document.getElementById('importarErros');
+        const linhas = []
+            .concat((data.erros || []).map((item) => ({ ...item, tipo: 'erro' })))
+            .concat((data.avisos || []).map((item) => ({ ...item, tipo: 'aviso' })));
+        resumo.textContent = data.message || '';
+        if (!linhas.length) {
+            box.hidden = true;
+            corpo.innerHTML = '';
+            return;
+        }
+        corpo.innerHTML = linhas.map((item) => `
+            <tr>
+                <td>${escaparHtml(item.codigo || '')}</td>
+                <td>${escaparHtml(item.motivo || '')}</td>
+            </tr>
+        `).join('');
+        box.hidden = false;
+    }
+
+    document.getElementById('btnExportar').addEventListener('click', async () => {
+        const botao = document.getElementById('btnExportar');
+        botao.disabled = true;
+        mostrarMensagem('Exportando planejamento...', 'info');
+        try {
+            const params = new URLSearchParams({ tipo: 'produtos', exportar: '1' });
+            const codigo = filtroCodigo.value.trim();
+            const descricao = filtroDescricao.value.trim();
+            if (codigo) params.set('codigo', codigo);
+            if (descricao) params.set('descricao', descricao);
+            if (filtroCurva.value) params.set('curva', filtroCurva.value);
+            if (filtroAtivo.value) params.set('ativo', filtroAtivo.value);
+            const res = await fetch('/api/shared/cadastros?' + params.toString());
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Erro ao exportar.');
+            const produtos = data.produtos || [];
+            if (!produtos.length) throw new Error('Nenhum produto para exportar.');
+            const linhas = [COLUNAS_CSV.map(([titulo]) => titulo).join(';')];
+            produtos.forEach((produto) => {
+                linhas.push(COLUNAS_CSV.map(([, campo]) => celulaCsv(produto[campo])).join(';'));
+            });
+            baixarCsv('planejamento-produtos.csv', linhas);
+            mostrarMensagem(`${produtos.length} produto(s) exportados.`, 'success');
+        } catch (err) {
+            mostrarMensagem(err.message, 'error');
+        } finally {
+            botao.disabled = false;
+        }
+    });
+
+    document.getElementById('btnImportar').addEventListener('click', () => {
+        document.getElementById('arquivoPlanejamento').click();
+    });
+
+    document.getElementById('arquivoPlanejamento').addEventListener('change', async (e) => {
+        const input = e.target;
+        const arquivo = input.files && input.files[0];
+        input.value = '';
+        if (!arquivo) return;
+        mostrarMensagem('Lendo arquivo...', 'info');
+        try {
+            const itens = itensDaPlanilha(await arquivo.text());
+            if (!itens.length) throw new Error('Nenhuma linha para importar.');
+            if (itens.length > 8000) throw new Error('O arquivo tem mais de 8000 linhas. Divida a planilha.');
+            mostrarMensagem(`Importando ${itens.length} linha(s)...`, 'info');
+            const res = await fetch('/api/shared/cadastros?tipo=produtos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ acao: 'importar-planejamento', itens }),
+            });
+            const data = await res.json();
+            mostrarRelatorioImportacao(data);
+            if (!res.ok && !Array.isArray(data.erros)) throw new Error(data.message || 'Erro ao importar.');
+            mostrarMensagem(data.message || 'Importação concluída.', res.ok && !(data.erros || []).length ? 'success' : 'error');
+            if ((data.atualizados || 0) > 0 && resultadosContainer.style.display !== 'none') buscarProdutos();
+        } catch (err) {
+            mostrarMensagem(err.message, 'error');
+        }
+    });
+
     function mostrarMensagem(mensagem, tipo) {
         statusMessage.textContent = mensagem;
         statusMessage.className = `status-message ${tipo}`;

@@ -465,6 +465,202 @@ function planoDe(body) {
   };
 }
 
+const CAMPOS_IMPORTACAO = [
+  ["linha", "LINHA", 80],
+  ["marca", "MARCA", 60],
+  ["modelo", "MODELO", 80],
+  ["cor", "COR", 40],
+  ["ean", "EAN", 20],
+  ["ncm", "NCM", 10],
+  ["sapVivo", "SAP_VIVO", 40],
+  ["codClaro", "COD_CLARO", 40],
+];
+const CATALOGO_IMPORTACAO = { linha: "LINHA", marca: "MARCA", modelo: "MODELO" };
+const ROTULO_IMPORTACAO = {
+  linha: "Linha", marca: "Marca", modelo: "Modelo", cor: "Cor",
+  ean: "EAN", ncm: "NCM", sapVivo: "SAP Vivo", codClaro: "Cód. Claro",
+};
+
+export function semAcento(valor) {
+  return String(valor ?? "")
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+}
+
+function nomeNoCatalogo(atributos, tipo, valor) {
+  const alvo = semAcento(valor);
+  const nomes = atributos.filter((item) => item.tipo === tipo).map((item) => item.nome);
+  return nomes.find((nome) => semAcento(nome) === alvo) || "";
+}
+
+export function prepararImportacao(itens, produtos, atributos) {
+  const porCodigo = new Map();
+  for (const produto of produtos || []) {
+    porCodigo.set(String(produto.CODIGO || "").trim().toUpperCase(), produto);
+  }
+  const gravar = [];
+  const erros = [];
+  const avisos = [];
+  const vistos = new Map();
+
+  (itens || []).forEach((item, indice) => {
+    const codigo = String(item?.codigo ?? "").trim();
+    const linhaArquivo = indice + 2;
+    if (!codigo) {
+      erros.push({ codigo: "", motivo: `Linha ${linhaArquivo}: informe o código.` });
+      return;
+    }
+    const chave = codigo.toUpperCase();
+    if (vistos.has(chave)) {
+      avisos.push({ codigo, motivo: "Código repetido no arquivo. Vale a última linha." });
+      const anterior = vistos.get(chave);
+      const pos = gravar.findIndex((row) => row.codigo.toUpperCase() === chave);
+      if (pos >= 0) gravar.splice(pos, 1);
+      const erroPos = erros.findIndex((row) => row.codigo.toUpperCase() === chave && row.linhaArquivo === anterior);
+      if (erroPos >= 0) erros.splice(erroPos, 1);
+    }
+    vistos.set(chave, linhaArquivo);
+
+    const produto = porCodigo.get(chave);
+    if (!produto) {
+      erros.push({ codigo, linhaArquivo, motivo: "Produto não encontrado. Este arquivo não cria produto." });
+      return;
+    }
+
+    const campos = {};
+    const problemas = [];
+    for (const [chaveCampo, coluna, max] of CAMPOS_IMPORTACAO) {
+      if (!Object.prototype.hasOwnProperty.call(item, chaveCampo)) continue;
+      const texto = String(item[chaveCampo] ?? "").trim();
+      if (!texto) {
+        campos[coluna] = null;
+        continue;
+      }
+      if (texto.length > max) {
+        problemas.push(`${ROTULO_IMPORTACAO[chaveCampo]} passa de ${max} caracteres.`);
+        continue;
+      }
+      const tipoCatalogo = CATALOGO_IMPORTACAO[chaveCampo];
+      if (tipoCatalogo) {
+        const oficial = nomeNoCatalogo(atributos, tipoCatalogo, texto);
+        if (oficial) {
+          campos[coluna] = oficial;
+          continue;
+        }
+        const atual = String(produto[coluna] ?? "").trim();
+        if (atual && semAcento(atual) === semAcento(texto)) {
+          campos[coluna] = atual;
+          continue;
+        }
+        problemas.push(`${ROTULO_IMPORTACAO[chaveCampo]} "${texto}" não está no cadastro. Cadastre antes de importar.`);
+        continue;
+      }
+      campos[coluna] = texto;
+    }
+
+    if (problemas.length) {
+      erros.push({ codigo, linhaArquivo, motivo: problemas.join(" ") });
+      return;
+    }
+    if (!Object.keys(campos).length) return;
+    gravar.push({ codigo: String(produto.CODIGO).trim(), campos });
+  });
+
+  return { gravar, erros, avisos };
+}
+
+async function gravarPlanejamentoParcial(conn, codigo, campos) {
+  const reqUp = new sql.Request(conn).input("codigo", sql.NVarChar(100), codigo);
+  const colunas = [];
+  const valores = [];
+  const updates = [];
+  CAMPOS_IMPORTACAO.forEach(([chaveCampo, coluna]) => {
+    if (!Object.prototype.hasOwnProperty.call(campos, coluna)) return;
+    const param = chaveCampo;
+    reqUp.input(param, sql.NVarChar(80), campos[coluna]);
+    colunas.push(coluna);
+    valores.push("@" + param);
+    updates.push(`${coluna}=@${param}`);
+  });
+  if (!colunas.length) return;
+  await reqUp.query(`
+    MERGE dbo.CAD_PROD_PLANEJAMENTO AS alvo
+    USING (SELECT @codigo AS CODIGO) AS origem ON alvo.CODIGO = origem.CODIGO
+    WHEN MATCHED THEN UPDATE SET ${updates.join(", ")}
+    WHEN NOT MATCHED THEN INSERT (CODIGO, ${colunas.join(", ")})
+    VALUES (@codigo, ${valores.join(", ")});
+  `);
+}
+
+async function importarPlanejamento(req, res, pool) {
+  await ensureAtributos(pool);
+  const itens = req.body && req.body.itens;
+  if (!Array.isArray(itens) || itens.length === 0) {
+    return res.status(400).json({ message: "Nenhuma linha no arquivo." });
+  }
+  if (itens.length > 8000) {
+    return res.status(400).json({ message: "O arquivo tem mais de 8000 linhas. Divida a planilha." });
+  }
+
+  const codigos = [...new Set(itens.map((item) => String(item?.codigo ?? "").trim()).filter(Boolean))];
+  const produtos = [];
+  for (let i = 0; i < codigos.length; i += 200) {
+    const fatia = codigos.slice(i, i + 200);
+    const pedido = pool.request();
+    const params = fatia.map((codigo, idx) => {
+      pedido.input("c" + idx, sql.NVarChar(100), codigo);
+      return "@c" + idx;
+    });
+    const achados = await pedido.query(`
+      SELECT p.CODIGO, pl.LINHA, pl.MARCA, pl.MODELO, pl.COR, pl.EAN, pl.NCM, pl.SAP_VIVO, pl.COD_CLARO
+      FROM [dbo].[CAD_PROD] p
+      LEFT JOIN dbo.CAD_PROD_PLANEJAMENTO pl ON pl.CODIGO = p.CODIGO
+      WHERE p.CODIGO IN (${params.join(", ")})
+    `);
+    produtos.push(...achados.recordset);
+  }
+  const attrs = await pool.request().query("SELECT TIPO, NOME FROM dbo.CAD_ATRIBUTO");
+  const atributos = (attrs.recordset || []).map((row) => ({ tipo: row.TIPO, nome: row.NOME }));
+  const preparado = prepararImportacao(itens, produtos, atributos);
+
+  if (!preparado.gravar.length) {
+    return res.status(400).json({
+      message: preparado.erros.length
+        ? "Nenhum produto foi atualizado."
+        : "O arquivo não tem os campos de planejamento.",
+      atualizados: 0,
+      erros: preparado.erros,
+      avisos: preparado.avisos,
+    });
+  }
+
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  try {
+    for (const item of preparado.gravar) {
+      await gravarPlanejamentoParcial(transaction, item.codigo, item.campos);
+    }
+    await transaction.commit();
+  } catch (error) {
+    try { await transaction.rollback(); } catch (_) { /* já encerrada */ }
+    console.error("Erro ao importar planejamento:", error);
+    return res.status(500).json({ message: "Erro ao importar o planejamento", error: error.message });
+  }
+
+  const atualizados = preparado.gravar.length;
+  const falhas = preparado.erros.length;
+  return res.status(200).json({
+    message: falhas
+      ? `${atualizados} produto(s) atualizados. ${falhas} não entraram.`
+      : `${atualizados} produto(s) atualizados.`,
+    atualizados,
+    erros: preparado.erros,
+    avisos: preparado.avisos,
+  });
+}
+
 async function gravarPlanejamento(conn, codigo, plano) {
   await new sql.Request(conn)
     .input("codigo", sql.NVarChar(100), String(codigo).trim())
@@ -500,6 +696,9 @@ async function handleProdutos(req, res, pool, method) {
     if (acao === 'atualizar') {
       return await atualizarProdutosAlteracoes(req, res, pool);
     }
+    if (acao === 'importar-planejamento') {
+      return await importarPlanejamento(req, res, pool);
+    }
     return await atualizarProdutos(req, res, pool);
   }
 
@@ -531,9 +730,10 @@ async function listarProdutos(req, res, pool) {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const limite = String(req.query.exportar || "") === "1" ? "" : "TOP 500";
 
     const result = await request.query(`
-      SELECT TOP 500 p.CODIGO, p.DESCRICAO, p.TIPO, p.DEPOSITO, p.CURVA_A_B_C, p.ATIVO,
+      SELECT ${limite} p.CODIGO, p.DESCRICAO, p.TIPO, p.DEPOSITO, p.CURVA_A_B_C, p.ATIVO,
              p.ESTOQUE_MINIMO, p.ESTOQUE_IDEAL, p.ESTOQUE_MAXIMO,
              pl.LINHA AS PLN_LINHA, pl.MARCA AS PLN_MARCA, pl.MODELO AS PLN_MODELO,
              pl.COR AS PLN_COR, pl.EAN AS PLN_EAN, pl.NCM AS PLN_NCM,

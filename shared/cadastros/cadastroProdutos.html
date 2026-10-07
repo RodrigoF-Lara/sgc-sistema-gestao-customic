@@ -47,6 +47,12 @@
         padding: 6px 10px; cursor: pointer; font-weight: 700;
       }
       button.btn-texto.perigo { color: #c62828; border-color: #c62828; }
+      button.btn-texto:hover { background: #e3f2fd; color: #1976d2; }
+      .prod-acoes { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+      .prod-acoes-esq { display: flex; gap: 8px; flex-wrap: wrap; }
+      #importarRelatorio { margin: 8px 0 16px; }
+      #importarRelatorio table { width: 100%; border-collapse: collapse; }
+      #importarRelatorio td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
       @media (max-width: 640px) {
         .prod-grid { grid-template-columns: 1fr; }
       }
@@ -63,11 +69,25 @@
         </h1>
 
         <!-- Ações -->
-        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+        <div class="prod-acoes">
+          <div class="prod-acoes-esq">
+            <button type="button" id="btnExportar" class="btn-texto">
+              <i class="fa-solid fa-file-export"></i> Exportar planejamento
+            </button>
+            <button type="button" id="btnImportar" class="btn-texto">
+              <i class="fa-solid fa-file-import"></i> Importar ajustes
+            </button>
+            <input id="arquivoPlanejamento" type="file" accept=".csv,text/csv" hidden />
+          </div>
           <button id="btnNovoProduto" class="btn-destaque" style="background: linear-gradient(135deg, #2e7d32, #1b5e20);">
             <i class="fa-solid fa-plus"></i>
             Novo Produto
           </button>
+        </div>
+        <p class="prod-hint">Sem filtro, a exportação traz todos os produtos. Código e descrição só identificam o item. A importação grava apenas Linha, Marca, Modelo, Cor, EAN, NCM, SAP Vivo e Cód. Claro.</p>
+        <div id="importarRelatorio" class="card" hidden>
+          <p id="importarResumo"></p>
+          <table><tbody id="importarErros"></tbody></table>
         </div>
 
         <!-- Filtros -->
