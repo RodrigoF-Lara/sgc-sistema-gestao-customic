@@ -10,6 +10,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let produtosCarregados = [];
 
+    function mostrarAba(raiz, nome) {
+        raiz.querySelectorAll('.prod-tab').forEach((botao) => {
+            const ativo = botao.dataset.tab === nome;
+            botao.classList.toggle('active', ativo);
+            botao.setAttribute('aria-selected', ativo ? 'true' : 'false');
+        });
+        raiz.querySelectorAll('.prod-panel').forEach((painel) => {
+            painel.hidden = painel.dataset.panel !== nome;
+        });
+    }
+
+    function ligarAbas(raiz) {
+        raiz.querySelectorAll('.prod-tab').forEach((botao) => {
+            botao.addEventListener('click', () => mostrarAba(raiz, botao.dataset.tab));
+        });
+    }
+
+    function lerPlano(prefixo) {
+        const valor = (id) => document.getElementById(prefixo + id).value.trim();
+        return {
+            linha: valor('Linha'),
+            marca: valor('Marca'),
+            modelo: valor('Modelo'),
+            cor: valor('Cor'),
+            ean: valor('Ean'),
+            ncm: valor('Ncm'),
+            sapVivo: valor('SapVivo'),
+            codClaro: valor('CodClaro'),
+        };
+    }
+
+    function preencherPlano(prefixo, produto) {
+        const campos = {
+            Linha: produto?.PLN_LINHA,
+            Marca: produto?.PLN_MARCA,
+            Modelo: produto?.PLN_MODELO,
+            Cor: produto?.PLN_COR,
+            Ean: produto?.PLN_EAN,
+            Ncm: produto?.PLN_NCM,
+            SapVivo: produto?.PLN_SAP_VIVO,
+            CodClaro: produto?.PLN_COD_CLARO,
+        };
+        Object.entries(campos).forEach(([id, valor]) => {
+            document.getElementById(prefixo + id).value = valor || '';
+        });
+    }
+
     buscarBtn.addEventListener('click', buscarProdutos);
 
     // Permite buscar ao pressionar Enter nos campos de filtro
@@ -35,6 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
         novoCodigo.value = '';
         novoDescricao.value = '';
         novoTipo.value = 'EMBALAGEM';
+        preencherPlano('novo', null);
+        mostrarAba(modalNovoProduto, 'geral');
         modalMsg.textContent = '';
         modalMsg.style.color = '';
         modalNovoProduto.style.display = 'flex';
@@ -69,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const res = await fetch('/api/shared/cadastros?tipo=produtos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ acao: 'criar', codigo, descricao, tipo })
+                body: JSON.stringify({ acao: 'criar', codigo, descricao, tipo, ...lerPlano('novo') })
             });
             const data = await res.json();
             if (!res.ok) {
@@ -94,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     if (btnSalvarNovo) btnSalvarNovo.addEventListener('click', salvarNovoProduto);
+    ligarAbas(modalNovoProduto);
     [novoCodigo, novoDescricao].forEach(inp => {
         inp.addEventListener('keypress', (e) => { if (e.key === 'Enter') salvarNovoProduto(); });
     });
@@ -341,6 +391,8 @@ document.addEventListener('DOMContentLoaded', function() {
         editEstoqueMinimo.value = produto.ESTOQUE_MINIMO ?? '';
         editEstoqueIdeal.value  = produto.ESTOQUE_IDEAL ?? '';
         editEstoqueMaximo.value = produto.ESTOQUE_MAXIMO ?? '';
+        preencherPlano('edit', produto);
+        mostrarAba(modalEditar, 'geral');
         editModalMsg.textContent = '';
         modalEditar.style.display = 'flex';
         setTimeout(() => editDescricao.focus(), 50);
@@ -349,6 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modalEditar.style.display = 'none';
         produtoEmEdicao = null;
     }
+    ligarAbas(modalEditar);
     if (btnFecharEditar)   btnFecharEditar.addEventListener('click', fecharModalEditar);
     if (btnCancelarEditar) btnCancelarEditar.addEventListener('click', fecharModalEditar);
     modalEditar.addEventListener('click', (e) => { if (e.target === modalEditar) fecharModalEditar(); });
@@ -377,7 +430,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         ativo: parseInt(editAtivo.value),
                         estoqueMinimo: normalizarNumeroCampo(editEstoqueMinimo.value),
                         estoqueIdeal: normalizarNumeroCampo(editEstoqueIdeal.value),
-                        estoqueMaximo: normalizarNumeroCampo(editEstoqueMaximo.value)
+                        estoqueMaximo: normalizarNumeroCampo(editEstoqueMaximo.value),
+                        ...lerPlano('edit')
                     }]
                 })
             });
@@ -391,6 +445,15 @@ document.addEventListener('DOMContentLoaded', function() {
             produtoEmEdicao.ESTOQUE_MINIMO = normalizarNumeroCampo(editEstoqueMinimo.value);
             produtoEmEdicao.ESTOQUE_IDEAL  = normalizarNumeroCampo(editEstoqueIdeal.value);
             produtoEmEdicao.ESTOQUE_MAXIMO = normalizarNumeroCampo(editEstoqueMaximo.value);
+            const planoSalvo = lerPlano('edit');
+            produtoEmEdicao.PLN_LINHA = planoSalvo.linha;
+            produtoEmEdicao.PLN_MARCA = planoSalvo.marca;
+            produtoEmEdicao.PLN_MODELO = planoSalvo.modelo;
+            produtoEmEdicao.PLN_COR = planoSalvo.cor;
+            produtoEmEdicao.PLN_EAN = planoSalvo.ean;
+            produtoEmEdicao.PLN_NCM = planoSalvo.ncm;
+            produtoEmEdicao.PLN_SAP_VIVO = planoSalvo.sapVivo;
+            produtoEmEdicao.PLN_COD_CLARO = planoSalvo.codClaro;
             editModalMsg.style.color = '#2e7d32';
             editModalMsg.textContent = 'Salvo com sucesso!';
             mostrarMensagem('Produto atualizado com sucesso!', 'success');

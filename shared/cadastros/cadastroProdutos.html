@@ -9,6 +9,30 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     />
+    <style>
+      .prod-dialog {
+        background: #fff; border-radius: 10px; padding: 24px; width: 90%; max-width: 720px;
+        max-height: 90vh; overflow: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); box-sizing: border-box;
+      }
+      .prod-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dee2e6; margin-bottom: 14px; }
+      button.prod-tab {
+        padding: 8px 14px; border: none; background: transparent; color: #6c757d;
+        font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+        border-bottom: 3px solid transparent; margin-bottom: -2px; border-radius: 0;
+      }
+      button.prod-tab.active { color: #1976d2; border-bottom-color: #1976d2; }
+      button.prod-tab:hover { background: transparent; color: #1976d2; }
+      .prod-panel[hidden] { display: none !important; }
+      .prod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .prod-field label { font-weight: bold; display: block; margin-bottom: 4px; }
+      .prod-field input, .prod-field select {
+        width: 100%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;
+      }
+      .prod-hint { color: #607d8b; font-size: 13px; margin: 0 0 12px; }
+      @media (max-width: 640px) {
+        .prod-grid { grid-template-columns: 1fr; }
+      }
+    </style>
   </head>
   <body>
     <div id="sidebar-container" class="sidebar"></div>
@@ -93,32 +117,75 @@
 
     <!-- Modal Novo Produto -->
     <div id="modalNovoProduto" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-      <div style="background:white; border-radius:10px; padding:24px; width:90%; max-width:520px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+      <div class="prod-dialog">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:12px; margin-bottom:16px;">
           <h2 style="margin:0;"><i class="fa-solid fa-plus-circle"></i> Criar Produto</h2>
           <button id="btnFecharModal" style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">&times;</button>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label for="novoCodigo" style="font-weight:bold;">Código:</label>
-          <input type="text" id="novoCodigo" maxlength="50" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;" />
+        <div class="prod-tabs" role="tablist">
+          <button type="button" class="prod-tab active" data-tab="geral" aria-selected="true">Geral</button>
+          <button type="button" class="prod-tab" data-tab="planejamento" aria-selected="false">Planejamento</button>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label for="novoDescricao" style="font-weight:bold;">Descrição:</label>
-          <input type="text" id="novoDescricao" maxlength="200" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;" />
+        <div class="prod-panel" data-panel="geral">
+          <div class="prod-field" style="margin-bottom:14px;">
+            <label for="novoCodigo">Código:</label>
+            <input type="text" id="novoCodigo" maxlength="50" />
+          </div>
+          <div class="prod-field" style="margin-bottom:14px;">
+            <label for="novoDescricao">Descrição:</label>
+            <input type="text" id="novoDescricao" maxlength="200" />
+          </div>
+          <div class="prod-field" style="margin-bottom:18px;">
+            <label for="novoTipo">Tipo:</label>
+            <select id="novoTipo">
+              <option value="EMBALAGEM">EMBALAGEM</option>
+              <option value="CAPAS">CAPAS</option>
+              <option value="MAQUINA DE FILMES">MAQUINA DE FILMES</option>
+              <option value="ALCAS">ALÇAS</option>
+              <option value="WALLETS">WALLETS</option>
+              <option value="CABOS">CABOS</option>
+              <option value="MATERIAL DE ESCRITORIO">MATERIAL DE ESCRITÓRIO</option>
+              <option value="MATERIAL DE LIMPEZA">MATERIAL DE LIMPEZA</option>
+              <option value="OUTROS">OUTROS</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group" style="margin-bottom:18px;">
-          <label for="novoTipo" style="font-weight:bold;">Tipo:</label>
-          <select id="novoTipo" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;">
-            <option value="EMBALAGEM">EMBALAGEM</option>
-            <option value="CAPAS">CAPAS</option>
-            <option value="MAQUINA DE FILMES">MAQUINA DE FILMES</option>
-            <option value="ALCAS">ALÇAS</option>
-            <option value="WALLETS">WALLETS</option>
-            <option value="CABOS">CABOS</option>
-            <option value="MATERIAL DE ESCRITORIO">MATERIAL DE ESCRITÓRIO</option>
-            <option value="MATERIAL DE LIMPEZA">MATERIAL DE LIMPEZA</option>
-            <option value="OUTROS">OUTROS</option>
-          </select>
+        <div class="prod-panel" data-panel="planejamento" hidden>
+          <p class="prod-hint">A lista sugere opções comuns. Dá para digitar outro valor.</p>
+          <div class="prod-grid">
+            <div class="prod-field">
+              <label for="novoLinha">Linha:</label>
+              <input type="text" id="novoLinha" list="listaLinhas" maxlength="80" placeholder="Impactor Ultra, Soft Series, Vidro 3D..." />
+            </div>
+            <div class="prod-field">
+              <label for="novoMarca">Marca:</label>
+              <input type="text" id="novoMarca" list="listaMarcas" maxlength="60" placeholder="Ovvi, Customic, JBL..." />
+            </div>
+            <div class="prod-field">
+              <label for="novoModelo">Modelo:</label>
+              <input type="text" id="novoModelo" list="listaModelos" maxlength="80" placeholder="iPhone 17, iPhone 18..." />
+            </div>
+            <div class="prod-field">
+              <label for="novoCor">Cor:</label>
+              <input type="text" id="novoCor" maxlength="40" />
+            </div>
+            <div class="prod-field">
+              <label for="novoEan">EAN:</label>
+              <input type="text" id="novoEan" maxlength="20" inputmode="numeric" />
+            </div>
+            <div class="prod-field">
+              <label for="novoNcm">NCM:</label>
+              <input type="text" id="novoNcm" maxlength="10" placeholder="0000.00.00" />
+            </div>
+            <div class="prod-field">
+              <label for="novoSapVivo">SAP Vivo:</label>
+              <input type="text" id="novoSapVivo" maxlength="40" />
+            </div>
+            <div class="prod-field">
+              <label for="novoCodClaro">Cód. Claro:</label>
+              <input type="text" id="novoCodClaro" maxlength="40" />
+            </div>
+          </div>
         </div>
         <div id="modalMsg" style="margin-bottom:12px; font-size:14px;"></div>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -130,68 +197,126 @@
       </div>
     </div>
 
+    <datalist id="listaLinhas">
+      <option value="Impactor Ultra"></option>
+      <option value="Soft Series"></option>
+      <option value="Vidro 3D"></option>
+    </datalist>
+    <datalist id="listaMarcas">
+      <option value="Ovvi"></option>
+      <option value="Customic"></option>
+      <option value="JBL"></option>
+    </datalist>
+    <datalist id="listaModelos">
+      <option value="iPhone 17"></option>
+      <option value="iPhone 18"></option>
+    </datalist>
+
     <script src="cadastroProdutos.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>
 
     <!-- Modal Editar Produto -->
     <div id="modalEditarProduto" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-      <div style="background:white; border-radius:10px; padding:24px; width:90%; max-width:540px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+      <div class="prod-dialog">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:12px; margin-bottom:16px;">
           <h2 style="margin:0;"><i class="fa-solid fa-pen-to-square"></i> Editar Produto</h2>
           <button id="btnFecharEditar" style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">&times;</button>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label style="font-weight:bold; display:block; margin-bottom:4px;">Código:</label>
-          <input type="text" id="editCodigo" readonly style="width:100%; padding:10px; font-size:15px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5; color:#666; box-sizing:border-box;" />
+        <div class="prod-tabs" role="tablist">
+          <button type="button" class="prod-tab active" data-tab="geral" aria-selected="true">Geral</button>
+          <button type="button" class="prod-tab" data-tab="planejamento" aria-selected="false">Planejamento</button>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label for="editDescricao" style="font-weight:bold; display:block; margin-bottom:4px;">Descrição:</label>
-          <input type="text" id="editDescricao" maxlength="200" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
-        </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label for="editTipo" style="font-weight:bold; display:block; margin-bottom:4px;">Tipo:</label>
-          <select id="editTipo" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;">
-            <option value="EMBALAGEM">EMBALAGEM</option>
-            <option value="CAPAS">CAPAS</option>
-            <option value="MAQUINA DE FILMES">MAQUINA DE FILMES</option>
-            <option value="ALCAS">ALÇAS</option>
-            <option value="WALLETS">WALLETS</option>
-            <option value="CABOS">CABOS</option>
-            <option value="MATERIAL DE ESCRITORIO">MATERIAL DE ESCRITÓRIO</option>
-            <option value="MATERIAL DE LIMPEZA">MATERIAL DE LIMPEZA</option>
-            <option value="OUTROS">OUTROS</option>
-          </select>
-        </div>
-        <div style="display:flex; gap:16px; margin-bottom:14px;">
-          <div class="form-group" style="flex:1;">
-            <label for="editCurva" style="font-weight:bold; display:block; margin-bottom:4px;">Curva ABC:</label>
-            <select id="editCurva" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;">
-              <option value="A">A - Alta prioridade</option>
-              <option value="B">B - Média prioridade</option>
-              <option value="C">C - Baixa prioridade</option>
+        <div class="prod-panel" data-panel="geral">
+          <div class="prod-field" style="margin-bottom:14px;">
+            <label for="editCodigo">Código:</label>
+            <input type="text" id="editCodigo" readonly style="background:#f5f5f5; color:#666; border-color:#ddd;" />
+          </div>
+          <div class="prod-field" style="margin-bottom:14px;">
+            <label for="editDescricao">Descrição:</label>
+            <input type="text" id="editDescricao" maxlength="200" />
+          </div>
+          <div class="prod-field" style="margin-bottom:14px;">
+            <label for="editTipo">Tipo:</label>
+            <select id="editTipo">
+              <option value="EMBALAGEM">EMBALAGEM</option>
+              <option value="CAPAS">CAPAS</option>
+              <option value="MAQUINA DE FILMES">MAQUINA DE FILMES</option>
+              <option value="ALCAS">ALÇAS</option>
+              <option value="WALLETS">WALLETS</option>
+              <option value="CABOS">CABOS</option>
+              <option value="MATERIAL DE ESCRITORIO">MATERIAL DE ESCRITÓRIO</option>
+              <option value="MATERIAL DE LIMPEZA">MATERIAL DE LIMPEZA</option>
+              <option value="OUTROS">OUTROS</option>
             </select>
           </div>
-          <div class="form-group" style="flex:1;">
-            <label for="editAtivo" style="font-weight:bold; display:block; margin-bottom:4px;">Status:</label>
-            <select id="editAtivo" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px;">
-              <option value="1">✅ Ativo</option>
-              <option value="0">❌ Inativo</option>
-            </select>
+          <div style="display:flex; gap:16px; margin-bottom:14px;">
+            <div class="prod-field" style="flex:1;">
+              <label for="editCurva">Curva ABC:</label>
+              <select id="editCurva">
+                <option value="A">A - Alta prioridade</option>
+                <option value="B">B - Média prioridade</option>
+                <option value="C">C - Baixa prioridade</option>
+              </select>
+            </div>
+            <div class="prod-field" style="flex:1;">
+              <label for="editAtivo">Status:</label>
+              <select id="editAtivo">
+                <option value="1">✅ Ativo</option>
+                <option value="0">❌ Inativo</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; margin-bottom:14px;">
+            <div class="prod-field">
+              <label for="editEstoqueMinimo">Estoque Mínimo:</label>
+              <input type="number" id="editEstoqueMinimo" min="0" step="0.001" />
+            </div>
+            <div class="prod-field">
+              <label for="editEstoqueIdeal">Estoque Ideal:</label>
+              <input type="number" id="editEstoqueIdeal" min="0" step="0.001" />
+            </div>
+            <div class="prod-field">
+              <label for="editEstoqueMaximo">Estoque Máximo:</label>
+              <input type="number" id="editEstoqueMaximo" min="0" step="0.001" />
+            </div>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; margin-bottom:14px;">
-          <div class="form-group">
-            <label for="editEstoqueMinimo" style="font-weight:bold; display:block; margin-bottom:4px;">Estoque Mínimo:</label>
-            <input type="number" id="editEstoqueMinimo" min="0" step="0.001" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
-          </div>
-          <div class="form-group">
-            <label for="editEstoqueIdeal" style="font-weight:bold; display:block; margin-bottom:4px;">Estoque Ideal:</label>
-            <input type="number" id="editEstoqueIdeal" min="0" step="0.001" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
-          </div>
-          <div class="form-group">
-            <label for="editEstoqueMaximo" style="font-weight:bold; display:block; margin-bottom:4px;">Estoque Máximo:</label>
-            <input type="number" id="editEstoqueMaximo" min="0" step="0.001" style="width:100%; padding:10px; font-size:15px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" />
+        <div class="prod-panel" data-panel="planejamento" hidden>
+          <p class="prod-hint">A lista sugere opções comuns. Dá para digitar outro valor.</p>
+          <div class="prod-grid">
+            <div class="prod-field">
+              <label for="editLinha">Linha:</label>
+              <input type="text" id="editLinha" list="listaLinhas" maxlength="80" placeholder="Impactor Ultra, Soft Series, Vidro 3D..." />
+            </div>
+            <div class="prod-field">
+              <label for="editMarca">Marca:</label>
+              <input type="text" id="editMarca" list="listaMarcas" maxlength="60" placeholder="Ovvi, Customic, JBL..." />
+            </div>
+            <div class="prod-field">
+              <label for="editModelo">Modelo:</label>
+              <input type="text" id="editModelo" list="listaModelos" maxlength="80" placeholder="iPhone 17, iPhone 18..." />
+            </div>
+            <div class="prod-field">
+              <label for="editCor">Cor:</label>
+              <input type="text" id="editCor" maxlength="40" />
+            </div>
+            <div class="prod-field">
+              <label for="editEan">EAN:</label>
+              <input type="text" id="editEan" maxlength="20" inputmode="numeric" />
+            </div>
+            <div class="prod-field">
+              <label for="editNcm">NCM:</label>
+              <input type="text" id="editNcm" maxlength="10" placeholder="0000.00.00" />
+            </div>
+            <div class="prod-field">
+              <label for="editSapVivo">SAP Vivo:</label>
+              <input type="text" id="editSapVivo" maxlength="40" />
+            </div>
+            <div class="prod-field">
+              <label for="editCodClaro">Cód. Claro:</label>
+              <input type="text" id="editCodClaro" maxlength="40" />
+            </div>
           </div>
         </div>
         <div id="editModalMsg" style="margin-bottom:12px; font-size:14px;"></div>
