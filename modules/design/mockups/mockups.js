@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const titulo = document.querySelector("h1");
     if (titulo) titulo.innerHTML = `<i class="fa-solid fa-circle-check"></i> Mockups Finalizados`;
     const hint = document.querySelector("h1 + .hint");
-    if (hint) hint.textContent = "Somente os SKUs com status finalizada. Marque as linhas que quer baixar.";
+    if (hint) hint.textContent = "Somente os SKUs com status finalizada. Marque as linhas que quer baixar. O lead time é o tempo em Em andamento até Finalizada.";
     filtroStatus.value = "FINALIZADA";
     document.body.classList.add("mockups-leitura");
     document.querySelector(".req-tabs").hidden = true;
@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const lightbox = document.getElementById("lightbox");
   const lightboxImg = document.getElementById("lightboxImg");
 
+  const COLUNAS = 8;
   let itens = [];
   let lotes = [];
 
@@ -138,7 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function carregarItens() {
-    tbody.innerHTML = `<tr><td class="empty" colspan="7"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
+    tbody.innerHTML = `<tr><td class="empty" colspan="${COLUNAS}"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>`;
     const query = {};
     if (filtroLote.value) query.loteId = filtroLote.value;
     if (filtroStatus.value) query.status = filtroStatus.value;
@@ -158,7 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const msg = soFinalizados
         ? "Nenhum SKU finalizado."
         : "Nenhum SKU. Envie um CSV na aba Nova lista.";
-      tbody.innerHTML = `<tr><td class="empty" colspan="7">${msg}</td></tr>`;
+      tbody.innerHTML = `<tr><td class="empty" colspan="${COLUNAS}">${msg}</td></tr>`;
       return;
     }
     tbody.innerHTML = itens
@@ -179,12 +180,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         const status = soFinalizados
           ? `<span class="st ${stClass(it.status)}">${escapeHtml(it.status)}</span>`
           : `<select class="status-sel ${stClass(it.status)}" data-id="${it.id}">${opts}</select>`;
+        const lead = rotuloLead(it);
         return `<tr data-id="${it.id}">
           ${chk}
           <td class="cod">${escapeHtml(it.codigo)}${soFinalizados ? "" : `<button type="button" class="btn-excluir-item" data-del-item="${it.id}" title="Excluir este código" aria-label="Excluir ${escapeHtml(it.codigo)}"><i class="fa-solid fa-trash"></i></button>`}</td>
           <td>${escapeHtml(it.descricao)}</td>
           <td>${escapeHtml(it.linha)}</td>
           <td>${status}</td>
+          <td><button type="button" class="lead-link${lead.aberto ? " aberto" : ""}" data-lead="${it.id}" title="${escapeHtml(lead.titulo)}">${escapeHtml(lead.texto)}</button></td>
           <td><div class="fotos">${slots}${addBtn}${nLabel}</div></td>
           <td>${escapeHtml(it.loteNome)}</td>
         </tr>`;
@@ -202,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       sel.disabled = true;
       try {
         const data = await api("POST", "status", { body: { itemId: id, status: sel.value } });
-        if (it) aplicarStatusNaLinha(it, data.status || sel.value);
+        if (it) aplicarStatusNaLinha(it, data.status || sel.value, data.criadoEm);
       } catch (err) {
         if (anterior) sel.value = anterior;
         alert(err.message);
@@ -268,10 +271,109 @@ document.addEventListener("DOMContentLoaded", async () => {
     return status === filtro;
   }
 
-  function aplicarStatusNaLinha(it, novo) {
+  function leadApi() {
+    return window.SGCMockupLeadTime;
+  }
+
+  function rotuloLead(it) {
+    const apiLead = leadApi();
+    if (!apiLead) return { texto: "—", aberto: false, titulo: "Lead time indisponível" };
+    return apiLead.rotulo(apiLead.calcular(it.eventos || [], new Date(), apiLead.minutosProdutivos));
+  }
+
+  function atualizarCelulaLead(it) {
+    const btn = tbody.querySelector(`tr[data-id="${it.id}"] .lead-link`);
+    if (!btn) return;
+    const lead = rotuloLead(it);
+    btn.textContent = lead.texto;
+    btn.title = lead.titulo;
+    btn.classList.toggle("aberto", !!lead.aberto);
+  }
+
+  function htmlHistorico(data) {
+    const apiLead = leadApi();
+    const eventos = (data && data.eventos) || [];
+    if (!apiLead || !eventos.length) {
+      return `<p class="lead-vazio">Nenhum histórico. O lead time começa quando o status muda para Em andamento.</p>`;
+    }
+    const { linhas, resumo } = apiLead.historico(eventos, new Date(), apiLead.minutosProdutivos);
+    const total = resumo.semInicio
+      ? "Sem início"
+      : (resumo.emAberto
+        ? `Em aberto: ${apiLead.formatarDuracao(resumo.minutos)}`
+        : apiLead.formatarDuracao(resumo.minutos));
+    const inicio = resumo.inicio ? apiLead.formatarDataHora(resumo.inicio) : "—";
+    const fim = resumo.emAberto ? "Em andamento" : (resumo.fim ? apiLead.formatarDataHora(resumo.fim) : "—");
+    const rows = linhas.map((e) => {
+      const tempo = e.tempo == null
+        ? "-"
+        : (e.emAberto ? `Em aberto: ${apiLead.formatarDuracao(e.tempo)}` : apiLead.formatarDuracao(e.tempo));
+      return `<tr>
+        <td>${apiLead.formatarData(e.em)}</td>
+        <td>${apiLead.formatarHora(e.em)}</td>
+        <td>${escapeHtml(e.usuario)}</td>
+        <td>${escapeHtml(e.status)}</td>
+        <td>${tempo}</td>
+      </tr>`;
+    }).join("");
+    return `
+      <div class="lead-total">
+        <strong>Lead Time Total:</strong> ${total}<br>
+        <strong>Início:</strong> ${inicio}<br>
+        <strong>Fim:</strong> ${fim}
+      </div>
+      <p class="hint">Soma só o tempo em Em andamento, até Finalizada, nos dias e no horário do calendário produtivo.</p>
+      <div class="lead-scroll">
+        <table id="leadTabela">
+          <thead><tr><th>Data</th><th>Hora</th><th>Usuário</th><th>Processo</th><th>Tempo até próximo status</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function fecharHistorico() {
+    const modal = document.getElementById("leadModal");
+    if (modal) modal.style.display = "none";
+  }
+
+  async function abrirHistorico(id) {
+    const modal = document.getElementById("leadModal");
+    const conteudo = document.getElementById("leadModalConteudo");
+    const it = itens.find((x) => Number(x.id) === id);
+    document.getElementById("leadModalCodigo").textContent = it ? it.codigo : "";
+    document.getElementById("leadModalDescricao").textContent = it ? (it.descricao || "") : "";
+    conteudo.innerHTML = `<p class="hint"><i class="fa fa-spinner fa-spin"></i> Carregando...</p>`;
+    modal.style.display = "block";
+    try {
+      const data = await api("GET", "historico", { query: { itemId: String(id) } });
+      if (data.item) {
+        document.getElementById("leadModalCodigo").textContent = data.item.codigo || "";
+        document.getElementById("leadModalDescricao").textContent = data.item.descricao || "";
+      }
+      if (it && Array.isArray(data.eventos)) it.eventos = data.eventos;
+      conteudo.innerHTML = htmlHistorico(data);
+      if (it) atualizarCelulaLead(it);
+    } catch (err) {
+      conteudo.innerHTML = `<p class="lead-vazio">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  document.getElementById("leadModalFechar").addEventListener("click", fecharHistorico);
+  document.getElementById("leadModal").addEventListener("click", (e) => {
+    if (e.target.id === "leadModal") fecharHistorico();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") fecharHistorico();
+  });
+
+  function aplicarStatusNaLinha(it, novo, criadoEm) {
     const anterior = it.status;
     if (!anterior || anterior === novo) return;
     it.status = novo;
+    if (criadoEm) {
+      if (!Array.isArray(it.eventos)) it.eventos = [];
+      it.eventos.push({ status: novo, em: criadoEm });
+    }
     baixarContagem(kpiDoStatus(anterior));
     somarContagem(kpiDoStatus(novo));
     const lote = lotes.find((l) => Number(l.id) === Number(it.loteId));
@@ -291,6 +393,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       sel.value = novo;
       sel.className = `status-sel ${stClass(novo)}`;
     }
+    atualizarCelulaLead(it);
   }
 
   function slotFotoHtml(f, i) {
@@ -376,6 +479,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   tbody.addEventListener("click", async (e) => {
+    const leadBtn = e.target.closest("[data-lead]");
+    if (leadBtn) {
+      e.preventDefault();
+      abrirHistorico(Number(leadBtn.getAttribute("data-lead")));
+      return;
+    }
     const del = !soFinalizados && e.target.closest("[data-del-id]");
     if (del) {
       e.preventDefault();
@@ -445,10 +554,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     try {
-      await api("POST", "status-lote", { body: { itemIds: ids, status: st } });
+      const data = await api("POST", "status-lote", { body: { itemIds: ids, status: st } });
+      const porId = new Map((data.eventos || []).map((ev) => [Number(ev.id), ev.em]));
       for (const id of ids) {
         const it = itens.find((x) => Number(x.id) === id);
-        if (it) aplicarStatusNaLinha(it, st);
+        if (it) aplicarStatusNaLinha(it, st, porId.get(id));
       }
       document.getElementById("chkAll").checked = false;
     } catch (err) {
@@ -899,9 +1009,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
+    if (window.SGCCalendarioLeadTime) await window.SGCCalendarioLeadTime.carregar(authHeaders());
     await carregarLotes();
     await carregarItens();
   } catch (err) {
-    tbody.innerHTML = `<tr><td class="empty" colspan="7" style="color:#c62828;">${escapeHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td class="empty" colspan="${COLUNAS}" style="color:#c62828;">${escapeHtml(err.message)}</td></tr>`;
   }
 });

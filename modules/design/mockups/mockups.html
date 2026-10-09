@@ -110,6 +110,38 @@
     .lightbox.open { display: flex; }
     .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
     .empty { text-align: center; padding: 36px; color: #78909c; }
+    button.lead-link, button.lead-link:hover {
+      background: transparent !important;
+      border: 0 !important;
+      padding: 0 !important;
+      box-shadow: none;
+      color: #01579b;
+      font-weight: 800;
+      font-size: 0.92em;
+      cursor: pointer;
+      text-decoration: underline;
+      white-space: nowrap;
+    }
+    button.lead-link.aberto, button.lead-link.aberto:hover { color: #e65100; }
+    #leadModal .modal-content {
+      width: min(95vw, 920px);
+      max-width: 920px;
+      margin: 4vh auto;
+      max-height: 90vh;
+      overflow: auto;
+    }
+    #leadModal .lead-total { margin-bottom: 8px; line-height: 1.55; }
+    #leadModal .lead-scroll { overflow-x: auto; }
+    #leadTabela { width: 100%; min-width: 640px; border-collapse: collapse; }
+    #leadTabela th, #leadTabela td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      white-space: normal;
+      word-break: break-word;
+    }
+    #leadTabela th { background: #b3e5fc; color: #01579b; }
+    .lead-vazio { color: #546e7a; }
   </style>
 </head>
 <body>
@@ -117,7 +149,7 @@
   <div class="main-content">
     <div class="container">
       <h1><i class="fa-solid fa-images"></i> Mockups</h1>
-      <p class="hint">Controle de criação: CSV com código e descrição, status por SKU e quantas fotos precisar.</p>
+      <p class="hint">Controle de criação: CSV com código e descrição, status por SKU e quantas fotos precisar. O lead time conta o tempo no Photoshop, de Em andamento até Finalizada.</p>
 
       <div class="req-tabs">
         <button type="button" class="req-tab active" data-tab="controle" id="tabControle">
@@ -170,6 +202,7 @@
                 <th>Descrição</th>
                 <th>Linha</th>
                 <th>Status</th>
+                <th title="Tempo no Photoshop: começa em Em andamento e termina em Finalizada">Lead time</th>
                 <th>Fotos</th>
                 <th>Lista</th>
               </tr>
@@ -231,6 +264,19 @@
 
   <div class="lightbox" id="lightbox"><img id="lightboxImg" alt="Foto do mockup" /></div>
 
+  <div id="leadModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Histórico do Item</h2>
+        <span class="close-btn" id="leadModalFechar">&times;</span>
+      </div>
+      <p><strong>Código:</strong> <span id="leadModalCodigo"></span> | <strong>Descrição:</strong> <span id="leadModalDescricao"></span></p>
+      <div id="leadModalConteudo"></div>
+    </div>
+  </div>
+
+  <script src="/shared/frontend/calendarioLeadTime.js"></script>
+  <script src="/modules/design/mockups/leadTime.js"></script>
   <script src="/shared/frontend/permissoes.js"></script>
   <script src="/shared/frontend/layout.js"></script>
   <script src="/modules/design/mockups/mockups.js"></script>
