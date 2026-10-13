@@ -1,6 +1,9 @@
 {
   "name": "sgc-sistema-gestao-customic",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "local": "vercel dev --listen 3000",
     "env:pull": "vercel env pull .env.local"
