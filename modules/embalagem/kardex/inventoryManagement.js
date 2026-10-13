@@ -60,6 +60,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     return h;
   }
 
+  async function lerResposta(res) {
+    const texto = await res.text();
+    let data = {};
+    if (texto) {
+      try {
+        data = JSON.parse(texto);
+      } catch (_) {
+        const aviso = /An error occurred|FUNCTION_INVOCATION_TIMEOUT|FUNCTION_INVOCATION_FAILED/i.test(texto)
+          ? "O servidor interrompeu a operação antes de concluir. Tente de novo."
+          : (texto.replace(/\s+/g, " ").trim().slice(0, 160) || `HTTP ${res.status}`);
+        throw new Error(aviso);
+      }
+    }
+    if (!res.ok) throw new Error((data && data.message) || `HTTP ${res.status}`);
+    return data;
+  }
+
   function podeAcao(linkId) {
     if (window.SGCPermissoes && typeof window.SGCPermissoes.podeAcessar === "function") {
       return window.SGCPermissoes.podeAcessar(linkId);
@@ -1014,8 +1031,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           usuario,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      const data = await lerResposta(res);
 
       modalZerarCodigo.style.display = "none";
       statusEl.style.color = "#28a745";
@@ -1221,8 +1237,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             endereco: end,
           }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
+        const data = await lerResposta(res);
 
         submitBtn.disabled = false;
         modalZerarEndereco.style.display = "none";

@@ -2,6 +2,79 @@ import { getConnection, sql } from "../../db.js";
 import { exigirPermissao, exigirQualquerPermissao } from "../../lib/permissoesHelper.js";
 import { handleMapaEnderecos } from "../../lib/mapaEnderecosApi.js";
 
+function agoraSaoPaulo() {
+  return {
+    dt: new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })),
+    hr: new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour12: false }),
+  };
+}
+
+/**
+ * Zera o saldo numa instrução só.
+ * O laço antigo (update + insert por lote) passava de 60s na Vercel
+ * quando o endereço tinha muitos lotes e a plataforma devolvia texto, não JSON.
+ */
+async function zerarSaldos(transaction, { codigo, usuario, motivo, observacao, armazem, endereco }) {
+  const { dt, hr } = agoraSaoPaulo();
+  const filtraEndereco = armazem != null && endereco != null;
+  const request = transaction.request();
+  request.timeout = 50000;
+  const result = await request
+    .input("CODIGO", sql.VarChar(10), codigo)
+    .input("USUARIO", sql.VarChar, usuario)
+    .input("DT", sql.Date, dt)
+    .input("HR", sql.VarChar, hr)
+    .input("MOTIVO", sql.VarChar, motivo)
+    .input("OBS", sql.VarChar, observacao || "")
+    .input("FILTRA_ENDERECO", sql.Bit, filtraEndereco)
+    .input("ARMAZEM", sql.VarChar(20), armazem || "")
+    .input("ENDERECO", sql.VarChar(50), endereco || "")
+    .query(`
+      SET NOCOUNT ON;
+
+      DECLARE @zerados TABLE (
+        ID INT NOT NULL,
+        SALDO FLOAT NULL,
+        QNT FLOAT NULL,
+        ENDERECO VARCHAR(200) NULL,
+        ARMAZEM VARCHAR(40) NULL
+      );
+
+      UPDATE e
+      SET [QNT_SAIDA] = ISNULL(e.[QNT_SAIDA], 0) + e.[SALDO],
+          [USUARIO_SAIDA] = @USUARIO,
+          [DT_SAIDA] = @DT,
+          [HR_SAIDA] = @HR
+      OUTPUT inserted.[ID], deleted.[SALDO], inserted.[QNT], inserted.[ENDERECO], inserted.[ARMAZEM]
+      INTO @zerados (ID, SALDO, QNT, ENDERECO, ARMAZEM)
+      FROM [dbo].[KARDEX_2026_EMBALAGEM] e
+      WHERE e.[D_E_L_E_T_] = ''
+        AND e.[CODIGO] = @CODIGO
+        AND e.[SALDO] > 0
+        AND e.[KARDEX] = 2026
+        AND (
+          @FILTRA_ENDERECO = 0
+          OR (e.[ARMAZEM] = @ARMAZEM AND e.[ENDERECO] = @ENDERECO)
+        );
+
+      INSERT INTO [dbo].[KARDEX_2026]
+        ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
+      SELECT
+        '', 'SGC-WEB', z.ID, @CODIGO, ISNULL(z.ENDERECO, ''), ISNULL(z.ARMAZEM, ''),
+        -z.SALDO, 'SAÍDA', @USUARIO, @DT, @HR, @MOTIVO, @OBS, 2026, z.QNT
+      FROM @zerados z;
+
+      SELECT COUNT(*) AS LOTES, ISNULL(SUM(SALDO), 0) AS TOTAL FROM @zerados;
+    `);
+
+  const conjuntos = result.recordsets || [];
+  const linha = (conjuntos.length ? conjuntos[conjuntos.length - 1][0] : result.recordset?.[0]) || {};
+  return {
+    lotes: Number(linha.LOTES) || 0,
+    total: Number(linha.TOTAL) || 0,
+  };
+}
+
 /** tipo de movimento (API) → link_id da matriz de permissões */
 const TIPO_PARA_LINK = {
   ENTRADA: "estoque-entrada",
@@ -376,140 +449,33 @@ export default async function handler(req, res) {
                 VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
             `);
         } else if (operacao === 'ZERAR_ENDERECO') {
-          // Lógica de ZERAR ENDEREÇO: saída total de todos os lotes de um endereço
           const { armazem: arm, endereco: end } = req.body;
           if (!arm || !end) {
             throw new Error("Armazém e endereço são obrigatórios para zerar endereço.");
           }
-
-          const lotesResult = await transaction.request()
-            .input("CODIGO", sql.VarChar(10), codigo)
-            .input("ARMAZEM", sql.VarChar(20), arm)
-            .input("ENDERECO", sql.VarChar(50), end)
-            .query(`
-              SELECT ID, SALDO, QNT_SAIDA, QNT
-              FROM [dbo].[KARDEX_2026_EMBALAGEM]
-              WHERE [D_E_L_E_T_] = ''
-                AND CODIGO = @CODIGO
-                AND ARMAZEM = @ARMAZEM
-                AND ENDERECO = @ENDERECO
-                AND SALDO > 0
-                AND KARDEX = 2026
-            `);
-
-          if (lotesResult.recordset.length === 0) {
+          const { lotes, total } = await zerarSaldos(transaction, {
+            codigo,
+            usuario,
+            motivo: "ZERAR ENDEREÇO",
+            observacao,
+            armazem: arm,
+            endereco: end,
+          });
+          if (!lotes) {
             throw new Error("Nenhum lote com saldo encontrado neste endereço.");
           }
-
-          let totalZerado = 0;
-          for (const lote of lotesResult.recordset) {
-            const { ID, SALDO, QNT_SAIDA, QNT: TAM_LOTE } = lote;
-            const novaQntSaida = (QNT_SAIDA || 0) + SALDO;
-
-            await transaction.request()
-              .input('ID_upd', sql.Int, ID)
-              .input('NOVA_QNT_SAIDA', sql.Float, novaQntSaida)
-              .input('USUARIO_SAIDA', sql.VarChar, usuario)
-              .input('DT_SAIDA', sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
-              .input('HR_SAIDA', sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .query(`
-                UPDATE [dbo].[KARDEX_2026_EMBALAGEM]
-                SET [QNT_SAIDA] = @NOVA_QNT_SAIDA,
-                    [USUARIO_SAIDA] = @USUARIO_SAIDA,
-                    [DT_SAIDA] = @DT_SAIDA,
-                    [HR_SAIDA] = @HR_SAIDA
-                WHERE ID = @ID_upd
-              `);
-
-            await transaction.request()
-              .input("D_E_L_E_T_", sql.VarChar, "")
-              .input("APLICATIVO", sql.VarChar, "SGC-WEB")
-              .input("ID_TB_RESUMO", sql.Int, ID)
-              .input("CODIGO_log", sql.VarChar, codigo)
-              .input("ENDERECO_log", sql.VarChar, end)
-              .input("ARMAZEM_log", sql.VarChar, arm)
-              .input("QNT_log", sql.Float, -SALDO)
-              .input("OPERACAO_log", sql.VarChar, "SAÍDA")
-              .input("USUARIO_log", sql.VarChar, usuario)
-              .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
-              .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO_log", sql.VarChar, "ZERAR ENDEREÇO")
-              .input("OBS_log", sql.VarChar, observacao || "")
-              .input("KARDEX_log", sql.Int, 2026)
-              .input("CAIXA_log", sql.Float, TAM_LOTE)
-              .query(`
-                INSERT INTO [dbo].[KARDEX_2026]
-                ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
-                VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
-              `);
-
-            totalZerado += SALDO;
-          }
-
-          responseData = { message: `Endereço zerado com sucesso! ${totalZerado} unidade(s) removida(s) em ${lotesResult.recordset.length} lote(s).`, totalZerado };
+          responseData = { message: `Endereço zerado com sucesso! ${total} unidade(s) removida(s) em ${lotes} lote(s).`, totalZerado: total };
         } else if (operacao === 'ZERAR_CODIGO') {
-          // Lógica de ZERAR CÓDIGO: saída total de todos os lotes do código em todos os endereços
-          const lotesResult = await transaction.request()
-            .input("CODIGO", sql.VarChar(10), codigo)
-            .query(`
-              SELECT ID, SALDO, QNT_SAIDA, QNT, ENDERECO, ARMAZEM
-              FROM [dbo].[KARDEX_2026_EMBALAGEM]
-              WHERE [D_E_L_E_T_] = ''
-                AND CODIGO = @CODIGO
-                AND SALDO > 0
-                AND KARDEX = 2026
-            `);
-
-          if (lotesResult.recordset.length === 0) {
+          const { lotes, total } = await zerarSaldos(transaction, {
+            codigo,
+            usuario,
+            motivo: "ZERAR CÓDIGO",
+            observacao,
+          });
+          if (!lotes) {
             throw new Error("Nenhum lote com saldo encontrado para este código.");
           }
-
-          let totalZerado = 0;
-          for (const lote of lotesResult.recordset) {
-            const { ID, SALDO, QNT_SAIDA, QNT: TAM_LOTE, ENDERECO: loteEnd, ARMAZEM: loteArm } = lote;
-            const novaQntSaida = (QNT_SAIDA || 0) + SALDO;
-
-            await transaction.request()
-              .input('ID_upd', sql.Int, ID)
-              .input('NOVA_QNT_SAIDA', sql.Float, novaQntSaida)
-              .input('USUARIO_SAIDA', sql.VarChar, usuario)
-              .input('DT_SAIDA', sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
-              .input('HR_SAIDA', sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .query(`
-                UPDATE [dbo].[KARDEX_2026_EMBALAGEM]
-                SET [QNT_SAIDA] = @NOVA_QNT_SAIDA,
-                    [USUARIO_SAIDA] = @USUARIO_SAIDA,
-                    [DT_SAIDA] = @DT_SAIDA,
-                    [HR_SAIDA] = @HR_SAIDA
-                WHERE ID = @ID_upd
-              `);
-
-            await transaction.request()
-              .input("D_E_L_E_T_", sql.VarChar, "")
-              .input("APLICATIVO", sql.VarChar, "SGC-WEB")
-              .input("ID_TB_RESUMO", sql.Int, ID)
-              .input("CODIGO_log", sql.VarChar, codigo)
-              .input("ENDERECO_log", sql.VarChar, loteEnd || "")
-              .input("ARMAZEM_log", sql.VarChar, loteArm || "")
-              .input("QNT_log", sql.Float, -SALDO)
-              .input("OPERACAO_log", sql.VarChar, "SAÍDA")
-              .input("USUARIO_log", sql.VarChar, usuario)
-              .input("DT_log", sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
-              .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
-              .input("MOTIVO_log", sql.VarChar, "ZERAR CÓDIGO")
-              .input("OBS_log", sql.VarChar, observacao || "")
-              .input("KARDEX_log", sql.Int, 2026)
-              .input("CAIXA_log", sql.Float, TAM_LOTE)
-              .query(`
-                INSERT INTO [dbo].[KARDEX_2026]
-                ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
-                VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
-              `);
-
-            totalZerado += SALDO;
-          }
-
-          responseData = { message: `Código zerado com sucesso! ${totalZerado} unidade(s) removida(s) em ${lotesResult.recordset.length} lote(s).`, totalZerado };
+          responseData = { message: `Código zerado com sucesso! ${total} unidade(s) removida(s) em ${lotes} lote(s).`, totalZerado: total };
         } else if (operacao === 'ALTERAR_ENDERECO') {
           // Lógica de ALTERAR ENDEREÇO: saída no endereço antigo + entrada no novo
           const { armazem: armAtual, endereco: endAtual, novoArmazem, novoEndereco } = req.body;
