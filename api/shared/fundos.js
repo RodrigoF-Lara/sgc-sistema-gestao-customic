@@ -6,28 +6,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const diag = req.query && (req.query.diag === '1' || req.query.diag === 'db');
-  if (diag) {
-    const info = { node: process.version, platform: process.platform };
-    try {
-      const mssql = await import('mssql');
-      info.mssql = typeof (mssql.default || mssql) === 'object' || typeof (mssql.default || mssql) === 'function';
-    } catch (error) {
-      info.mssql = false;
-      info.mssqlErro = `${error && error.name}: ${error && error.message}`;
-      info.mssqlStack = String((error && error.stack) || '').slice(0, 1500);
-    }
-    try {
-      const db = await import('../../db.js');
-      info.db = typeof db.getConnection === 'function';
-    } catch (error) {
-      info.db = false;
-      info.dbErro = `${error && error.name}: ${error && error.message}`;
-      info.dbStack = String((error && error.stack) || '').slice(0, 1500);
-    }
-    return res.status(200).json(info);
-  }
-
   try {
     // Lê a pasta de fundos diretamente
     const fundosDir = path.join(process.cwd(), 'img', 'fundo_menu_principal');
