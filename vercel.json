@@ -1,17 +1,24 @@
 {
   "cleanUrls": true,
   "functions": {
+    "api/**/*.js": {
+      "includeFiles": "node_modules/**"
+    },
     "api/embalagem/relatorios.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "node_modules/**"
     },
     "api/embalagem/inventarioCiclico.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "node_modules/**"
     },
     "api/embalagem/inventory.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "node_modules/**"
     },
     "api/shared/config.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "node_modules/**"
     }
   },
   "rewrites": [
