@@ -1,9 +1,0 @@
-{
-  "name": "csv-azure-upload",
-  "version": "1.0.0",
-  "main": "api/upload.js",
-  "type": "module",
-  "dependencies": {
-    "mssql": "^10.0.0"
-  }
-}
