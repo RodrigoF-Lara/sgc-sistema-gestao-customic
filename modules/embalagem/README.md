@@ -155,7 +155,7 @@ A tela [modules/embalagem/inventario/balancoAnual.html](./inventario/balancoAnua
 
 O operador abre o ano novo, lança ou importa a contagem (código, armazém, endereço, quantidade) e salva. Isso só escreve `TB_BALANCO_ANUAL` e `TB_BALANCO_ANUAL_ITEM`. A revisão aponta código inexistente, quantidade vazia ou negativa, linha repetida e endereço que ainda tem saldo no ano vivo e não entrou na contagem.
 
-O botão **Subir saldo e virar o ano** (permissão `balanco-subir`) só roda com o armazém parado. Numa transação só, cria um lote novo por linha com quantidade maior que zero (`MOTIVO = inventario`, `QNT` = contagem, `QNT_SAIDA` = 0), grava a entrada em `KARDEX_MOVIMENTO`, muda `TB_KARDEX_ANO.ANO_VIVO` e marca o balanço como `FINALIZADO`. O ano anterior não é apagado nem zerado. Quantidade zero não vira lote. A simulação não grava estoque.
+O botão **Subir saldo e virar o ano** só funciona para o cargo administrador. A permissão `balanco-subir` não é mais consultada. O armazém precisa estar parado. Numa transação só, cria um lote novo por linha com quantidade maior que zero (`MOTIVO = inventario`, `QNT` = contagem, `QNT_SAIDA` = 0), grava a entrada em `KARDEX_MOVIMENTO`, muda `TB_KARDEX_ANO.ANO_VIVO`, grava o comparativo em `TB_BALANCO_ANUAL` e `TB_BALANCO_ANUAL_DIFERENCA` e marca o balanço como `FINALIZADO`. A diferença é a quantidade contada menos o estoque do ano vivo, por código, com o custo da última nota congelado na hora. O ano anterior não é apagado nem zerado. Quantidade zero não vira lote, mas entra na diferença do código. A simulação e o relatório de diferenças não gravam estoque.
 
 ### Status de NF (Lead Time por Etapa)
 

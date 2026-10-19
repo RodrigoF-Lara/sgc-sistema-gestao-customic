@@ -20,8 +20,13 @@
         <div class="card">
           <p>
             Contagem geral de fim de ano. Não é o inventário cíclico. A lista fica salva nesta tela.
-            O estoque só muda no botão <strong>Subir saldo e virar o ano</strong>: cada linha com quantidade
-            vira um lote novo, com motivo <strong>inventario</strong>. O ano anterior permanece no banco.
+            O estoque só muda no botão <strong>Subir saldo e virar o ano</strong>, e somente o administrador
+            pode usá-lo. Cada linha com quantidade vira um lote novo, com motivo <strong>inventario</strong>.
+            O ano anterior permanece no banco.
+          </p>
+          <p>
+            Antes de virar, o relatório compara o estoque atual com a contagem salva.
+            Essa diferença só fica gravada, com valores e data, quando a virada conclui.
           </p>
           <p id="anoVivoTexto">Ano vivo do estoque: —</p>
         </div>
@@ -98,20 +103,78 @@
               <button id="simularBtn" class="btn-secundario" type="button">
                 <i class="fa-solid fa-flask"></i> Simular
               </button>
+              <button id="relatorioBtn" class="btn-secundario" type="button">
+                <i class="fa-solid fa-scale-balanced"></i> Relatório de diferenças
+              </button>
               <button id="subirBtn" class="btn-sucesso" type="button" style="display: none;">
                 <i class="fa-solid fa-upload"></i> Subir saldo e virar o ano
               </button>
             </div>
             <p id="avisoParado" style="margin-top: 12px;">
-              Pare o armazém antes de subir o saldo. A simulação não grava estoque.
+              Somente o administrador vira o ano. Pare o armazém antes.
+              O relatório e a simulação não gravam estoque.
               Endereço com saldo que não entrar na contagem não passa para o ano novo.
-              Quantidade com decimal usa vírgula, como em 1.234,5. Zero não vira lote.
+              Quantidade com decimal usa vírgula, como em 1.234,5.
+              Zero não vira lote, mas entra na diferença do código.
             </p>
           </div>
 
           <div class="card" id="painelAnalise" style="display: none;">
             <h2>Revisão</h2>
             <div id="analise"></div>
+          </div>
+        </div>
+
+        <div class="card" id="painelComparacao" style="display: none;">
+          <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <h2 style="margin: 0;">Diferença do balanço</h2>
+            <button id="exportarDifBtn" class="btn-secundario" type="button">
+              <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </button>
+          </div>
+          <div id="resumoComparacao" class="info-lista" style="margin-top: 12px;"></div>
+          <div style="margin: 12px 0;">
+            <input id="filtroDif" class="form-control" type="search" placeholder="Filtrar código ou descrição" />
+          </div>
+          <p id="contagemDif"></p>
+          <div style="overflow-x: auto;">
+            <table id="tabelaDif">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Qtd atual</th>
+                  <th>Qtd contada</th>
+                  <th>Diferença</th>
+                  <th>Custo unit.</th>
+                  <th>Valor atual</th>
+                  <th>Valor contado</th>
+                  <th>Diferença valor</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="painelViradas">
+          <h2>Viradas gravadas</h2>
+          <p>Cada virada concluída fica aqui, com o resumo e a tabela código a código daquele momento.</p>
+          <div style="overflow-x: auto;">
+            <table id="tabelaViradas">
+              <thead>
+                <tr>
+                  <th>Ano novo</th>
+                  <th>Ano antigo</th>
+                  <th>Virada</th>
+                  <th>Usuário</th>
+                  <th>Dif. quantidade</th>
+                  <th>Dif. valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
 

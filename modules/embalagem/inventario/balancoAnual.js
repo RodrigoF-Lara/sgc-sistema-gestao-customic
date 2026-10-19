@@ -12,12 +12,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     const painelAnalise = document.getElementById("painelAnalise");
     const analise = document.getElementById("analise");
     const subirBtn = document.getElementById("subirBtn");
+    const relatorioBtn = document.getElementById("relatorioBtn");
+    const painelComparacao = document.getElementById("painelComparacao");
+    const resumoComparacao = document.getElementById("resumoComparacao");
+    const filtroDif = document.getElementById("filtroDif");
+    const contagemDif = document.getElementById("contagemDif");
+    const corpoDif = document.querySelector("#tabelaDif tbody");
+    const corpoViradas = document.querySelector("#tabelaViradas tbody");
 
     let anoVivo = null;
     let podeSubir = false;
     let balanco = null;
     let itens = [];
     let sujo = false;
+    let comparativoAtual = null;
 
     function authHeaders() {
         const h = { "Content-Type": "application/json" };
@@ -61,14 +69,36 @@ document.addEventListener("DOMContentLoaded", async function () {
         return n.toLocaleString("pt-BR");
     }
 
+    function fmtQtd(valor) {
+        if (valor === null || valor === undefined || valor === "") return "—";
+        const n = Number(valor);
+        if (!Number.isFinite(n)) return "—";
+        return n.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+    }
+
+    function fmtMoeda(valor) {
+        if (valor === null || valor === undefined || valor === "") return "—";
+        const n = Number(valor);
+        if (!Number.isFinite(n)) return "—";
+        return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function fmtData(valor) {
+        if (!valor) return "—";
+        const d = new Date(valor);
+        if (Number.isNaN(d.getTime())) return "—";
+        return d.toLocaleString("pt-BR");
+    }
+
     function mostrar(texto, tipo) {
         statusMessage.style.display = "block";
         statusMessage.className = "status-message " + (tipo || "info");
         statusMessage.textContent = texto;
     }
 
-    async function api(method, body) {
-        const response = await fetch("/api/embalagem/inventarioCiclico?rota=balanco", {
+    async function api(method, body, extra) {
+        const qs = extra ? "&" + new URLSearchParams(extra).toString() : "";
+        const response = await fetch("/api/embalagem/inventarioCiclico?rota=balanco" + qs, {
             method,
             headers: authHeaders(),
             body: body ? JSON.stringify(body) : undefined
@@ -145,7 +175,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         const total = positivas.reduce((s, item) => s + numero(item.quantidade), 0);
         resumo.innerHTML = `<p>Ano do saldo novo: <strong>${esc(balanco ? balanco.ANO : "")}</strong></p>
             <p>${itens.length.toLocaleString("pt-BR")} linhas, ${positivas.length.toLocaleString("pt-BR")} com quantidade, total ${fmt(total)}.</p>
-            <p>${sujo ? "Há alteração ainda não salva." : "Contagem salva. O estoque ainda não mudou."}</p>`;
+            <p>${sujo ? "Há alteração ainda não salva." : "Contagem salva. O estoque ainda não mudou."}</p>
+            <p>${podeSubir ? "Seu cargo pode virar o ano." : "A virada do ano fica só com o administrador."}</p>`;
     }
 
     function payloadItens() {
@@ -176,13 +207,166 @@ document.addEventListener("DOMContentLoaded", async function () {
         analise.innerHTML = `<p><strong>${esc(titulo)}</strong></p>${extra}${errosHtml}${foraHtml}`;
     }
 
+    function renderLinhasDif() {
+        const data = comparativoAtual;
+        if (!data) {
+            corpoDif.innerHTML = "";
+            contagemDif.textContent = "";
+            return;
+        }
+        const termo = filtroDif.value.trim().toUpperCase();
+        const linhas = (data.linhas || []).filter((linha) => {
+            if (!termo) return true;
+            return (linha.codigo + " " + (linha.descricao || "")).toUpperCase().includes(termo);
+        });
+        corpoDif.innerHTML = linhas.map((linha) => `<tr>
+            <td>${esc(linha.codigo)}</td>
+            <td>${esc(linha.descricao || "")}</td>
+            <td>${fmtQtd(linha.qtdAntiga)}</td>
+            <td>${fmtQtd(linha.qtdNova)}</td>
+            <td>${fmtQtd(linha.qtdDiferenca)}</td>
+            <td>${linha.custoUnit ? fmtMoeda(linha.custoUnit) : "—"}</td>
+            <td>${fmtMoeda(linha.vlAntigo)}</td>
+            <td>${fmtMoeda(linha.vlNovo)}</td>
+            <td>${fmtMoeda(linha.vlDiferenca)}</td>
+        </tr>`).join("") || `<tr><td colspan="9">Nenhum código neste filtro.</td></tr>`;
+        contagemDif.textContent = linhas.length.toLocaleString("pt-BR") + " códigos nesta tabela.";
+    }
+
+    function mostrarComparacao(data) {
+        comparativoAtual = data;
+        painelComparacao.style.display = "block";
+        const t = data.totais || {};
+        const previa = !!data.previa;
+        const titulo = previa ? "Prévia — ainda não gravada" : "Gravado na virada";
+        const quando = previa
+            ? "Estes números são calculados agora. O estoque não mudou e a virada ainda não foi gravada."
+            : "Diferença gravada em " + fmtData(data.dtSubida) + " por " + (data.usuarioSubida || "—") + ".";
+        resumoComparacao.innerHTML = `<p><strong>${esc(titulo)}</strong>. ${esc(quando)}</p>
+            <p>Estoque de <strong>${esc(data.anoVivo ?? "—")}</strong> comparado com a contagem de <strong>${esc(data.anoBalanco ?? "—")}</strong>.
+               Abertura: ${esc(fmtData(data.dtAbertura))}. Virada: ${esc(fmtData(data.dtSubida))}.</p>
+            <p>Diferença = quantidade contada − estoque atual. Valor positivo: a contagem ficou maior.
+               O valor usa o custo da última nota${previa ? ", nesta prévia" : ", congelado na virada"}.</p>
+            <table>
+                <thead><tr><th></th><th>Estoque atual</th><th>Contagem</th><th>Diferença</th></tr></thead>
+                <tbody>
+                    <tr><th>Quantidade</th><td>${fmtQtd(t.qtdAntiga)}</td><td>${fmtQtd(t.qtdNova)}</td><td>${fmtQtd(t.qtdDiferenca)}</td></tr>
+                    <tr><th>Valor</th><td>${fmtMoeda(t.vlAntigo)}</td><td>${fmtMoeda(t.vlNovo)}</td><td>${fmtMoeda(t.vlDiferenca)}</td></tr>
+                </tbody>
+            </table>
+            <p>${Number(t.codigos || 0).toLocaleString("pt-BR")} códigos.
+               ${Number(t.semCusto || 0).toLocaleString("pt-BR")} sem custo de nota, com valor zero.</p>`;
+        filtroDif.value = "";
+        renderLinhasDif();
+        painelComparacao.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function textoVirada(comp) {
+        const t = comp.totais || {};
+        return [
+            "Virar o estoque de " + comp.anoVivo + " para " + comp.anoBalanco + "?",
+            "O armazém precisa estar parado. O ano " + comp.anoVivo + " não será apagado.",
+            "",
+            "Quantidade atual: " + fmtQtd(t.qtdAntiga),
+            "Quantidade contada: " + fmtQtd(t.qtdNova),
+            "Diferença (contado − atual): " + fmtQtd(t.qtdDiferenca),
+            "Valor atual: " + fmtMoeda(t.vlAntigo),
+            "Valor contado: " + fmtMoeda(t.vlNovo),
+            "Diferença de valor: " + fmtMoeda(t.vlDiferenca),
+            Number(t.semCusto) ? Number(t.semCusto).toLocaleString("pt-BR") + " códigos sem custo de nota ficam com valor zero." : "",
+            "",
+            "A prévia ainda não está gravada. O número definitivo é recalculado na hora da virada."
+        ].filter((linha) => linha !== "").join("\n");
+    }
+
+    function renderViradas(lista) {
+        if (!lista.length) {
+            corpoViradas.innerHTML = `<tr><td colspan="7">Nenhuma virada gravada.</td></tr>`;
+            return;
+        }
+        corpoViradas.innerHTML = lista.map((item) => `<tr>
+            <td>${esc(item.ano)}</td>
+            <td>${esc(item.anoOrigem ?? "—")}</td>
+            <td>${esc(fmtData(item.dtSubida))}</td>
+            <td>${esc(item.usuarioSubida || "")}</td>
+            <td>${fmtQtd(item.qtdDiferenca)}</td>
+            <td>${fmtMoeda(item.vlDiferenca)}</td>
+            <td><button type="button" class="btn-secundario" data-virada="${esc(item.id)}">Abrir</button></td>
+        </tr>`).join("");
+    }
+
     async function carregar() {
         const data = await api("GET");
         anoVivo = data.anoVivo;
         podeSubir = !!data.podeSubir;
         anoVivoTexto.textContent = "Ano vivo do estoque: " + anoVivo + ".";
         if (!anoBalanco.value) anoBalanco.value = Number(anoVivo) + 1;
+        renderViradas(data.viradas || []);
         if (data.balanco) aplicarBalanco(data.balanco);
+    }
+
+    async function relatorio() {
+        if (!balanco) return;
+        lerGrade();
+        relatorioBtn.disabled = true;
+        try {
+            await salvar();
+            mostrar("Montando o comparativo. O estoque não será alterado.", "info");
+            const data = await api("POST", { acao: "comparar", id: balanco.ID, usuario: usuario() });
+            mostrarComparacao(data);
+            mostrar("Prévia pronta. Nada foi gravado no estoque nem na virada.", "success");
+        } catch (err) {
+            mostrar(err.message, "error");
+        } finally {
+            relatorioBtn.disabled = false;
+        }
+    }
+
+    async function verVirada(id) {
+        mostrar("Carregando a virada gravada...", "info");
+        const data = await api("GET", null, { acao: "diferenca", id: String(id) });
+        mostrarComparacao(data);
+        if (data.gravado) mostrar("Comparativo gravado na virada. Estes números não mudam.", "success");
+        else mostrar("Esta virada não tem o comparativo salvo.", "info");
+    }
+
+    function exportarDif() {
+        if (!comparativoAtual || !window.XLSX) return;
+        const data = comparativoAtual;
+        const t = data.totais || {};
+        const resumoFolha = [
+            ["Situação", data.previa ? "Prévia" : "Gravado"],
+            ["Ano do estoque atual", data.anoVivo],
+            ["Ano da contagem", data.anoBalanco],
+            ["Abertura", fmtData(data.dtAbertura)],
+            ["Virada", fmtData(data.dtSubida)],
+            ["Usuário da abertura", data.usuarioAbertura || ""],
+            ["Usuário da virada", data.usuarioSubida || ""],
+            ["Quantidade atual", t.qtdAntiga],
+            ["Quantidade contada", t.qtdNova],
+            ["Diferença de quantidade", t.qtdDiferenca],
+            ["Valor atual", t.vlAntigo],
+            ["Valor contado", t.vlNovo],
+            ["Diferença de valor", t.vlDiferenca],
+            ["Códigos", t.codigos],
+            ["Códigos sem custo", t.semCusto],
+            ["Regra", "Diferença = contado - estoque atual. Valor = quantidade x custo da última nota."]
+        ];
+        const linhas = (data.linhas || []).map((linha) => ({
+            CODIGO: linha.codigo,
+            DESCRICAO: linha.descricao,
+            QTD_ATUAL: linha.qtdAntiga,
+            QTD_CONTADA: linha.qtdNova,
+            QTD_DIFERENCA: linha.qtdDiferenca,
+            CUSTO_UNIT: linha.custoUnit,
+            VL_ATUAL: linha.vlAntigo,
+            VL_CONTADO: linha.vlNovo,
+            VL_DIFERENCA: linha.vlDiferenca
+        }));
+        const livro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(resumoFolha), "Resumo");
+        XLSX.utils.book_append_sheet(livro, XLSX.utils.json_to_sheet(linhas), "Codigos");
+        XLSX.writeFile(livro, "diferenca-balanco-" + (data.anoBalanco || "comparativo") + ".xlsx");
     }
 
     async function abrir() {
@@ -231,14 +415,17 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (!podeSubir || !balanco) return;
         lerGrade();
         const ano = balanco.ANO;
-        const aviso = "Isso grava a contagem como saldo inicial de " + ano +
-            " e passa o estoque vivo para " + ano +
-            ". O armazém precisa estar parado. O ano " + anoVivo + " não será apagado. Continuar?";
-        if (!window.confirm(aviso)) return;
+        subirBtn.disabled = true;
         try {
             await salvar();
+            mostrar("Montando o comparativo antes da virada. O estoque ainda não muda.", "info");
+            const comp = await api("POST", { acao: "comparar", id: balanco.ID, usuario: usuario() });
+            mostrarComparacao(comp);
+            if (!window.confirm(textoVirada(comp))) {
+                mostrar("Virada cancelada. O estoque não mudou. O comparativo acima é só uma prévia.", "info");
+                return;
+            }
             mostrar("Lançando o saldo...", "info");
-            subirBtn.disabled = true;
             let data;
             try {
                 data = await api("POST", { acao: "subir", id: balanco.ID, usuario: usuario(), confirmarFora: false });
@@ -257,6 +444,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 data = await api("POST", { acao: "subir", id: balanco.ID, usuario: usuario(), confirmarFora: true });
             }
             mostrar(data.message, "success");
+            if (data.comparativo) mostrarComparacao(data.comparativo);
             painelContagem.style.display = "none";
             balanco = null;
             itens = [];
@@ -347,6 +535,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.getElementById("salvarBtn").addEventListener("click", () => salvar().catch((err) => mostrar(err.message, "error")));
     document.getElementById("revisarBtn").addEventListener("click", () => revisar("revisar"));
     document.getElementById("simularBtn").addEventListener("click", () => revisar("simular"));
+    relatorioBtn.addEventListener("click", relatorio);
+    document.getElementById("exportarDifBtn").addEventListener("click", exportarDif);
+    filtroDif.addEventListener("input", renderLinhasDif);
+    corpoViradas.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-virada]");
+        if (!btn) return;
+        verVirada(btn.dataset.virada).catch((err) => mostrar(err.message, "error"));
+    });
     subirBtn.addEventListener("click", subir);
     document.getElementById("limparBtn").addEventListener("click", () => {
         lerGrade();
