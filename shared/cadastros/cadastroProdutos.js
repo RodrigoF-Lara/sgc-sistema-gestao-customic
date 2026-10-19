@@ -668,6 +668,15 @@ document.addEventListener('DOMContentLoaded', function() {
         let row = [];
         let cell = '';
         let quoted = false;
+        let numeroLinha = 1;
+        function fechaLinha() {
+            row.push(cell);
+            row.linhaArquivo = numeroLinha;
+            numeroLinha += 1;
+            if (row.some((celula) => String(celula).trim())) rows.push(row);
+            row = [];
+            cell = '';
+        }
         for (let i = 0; i < raw.length; i++) {
             const ch = raw[i];
             if (quoted) {
@@ -677,11 +686,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else cell += ch;
             } else if (ch === '"') quoted = true;
             else if (ch === delim) { row.push(cell); cell = ''; }
-            else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+            else if (ch === '\n') fechaLinha();
             else if (ch !== '\r') cell += ch;
         }
-        if (cell.length || row.length) { row.push(cell); rows.push(row); }
-        return rows.filter((linha) => linha.some((celula) => String(celula).trim()));
+        if (cell.length || row.length) fechaLinha();
+        return rows;
     }
 
     function itensDasLinhas(rows) {
@@ -695,14 +704,51 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!mapa.some((coluna) => coluna && coluna !== 'codigo')) {
             throw new Error('O arquivo não tem os campos de planejamento.');
         }
-        return rows.slice(1).map((linha) => {
-            const item = {};
+        return rows.slice(1).map((linha, indice) => {
+            const item = { linhaArquivo: linha.linhaArquivo || indice + 2 };
             mapa.forEach((campo, idx) => {
                 if (!campo) return;
                 item[campo] = String(linha[idx] ?? '').trim();
             });
             return item;
-        }).filter((item) => Object.values(item).some((valor) => String(valor).trim()));
+        }).filter((item) => Object.entries(item).some(([campo, valor]) => campo !== 'linhaArquivo' && String(valor).trim()));
+    }
+
+    function textoCelulaXlsx(cell) {
+        if (!cell) return '';
+        const mostrado = cell.w != null ? String(cell.w).trim() : '';
+        const valor = cell.v;
+        if (typeof valor === 'number' && Number.isFinite(valor)) {
+            const inteiro = Math.round(valor);
+            const cientifico = /e[+-]?\d/i.test(mostrado);
+            const seguro = Math.abs(valor - inteiro) < 1e-6 && Math.abs(inteiro) <= Number.MAX_SAFE_INTEGER;
+            if (cientifico && seguro) return String(inteiro);
+            if (mostrado) return mostrado;
+            if (seguro) return String(inteiro);
+            return String(valor);
+        }
+        if (mostrado) return mostrado;
+        if (valor == null) return '';
+        return String(valor).trim();
+    }
+
+    function linhasDaAba(sheet) {
+        if (!sheet || !sheet['!ref']) return [];
+        const range = XLSX.utils.decode_range(sheet['!ref']);
+        const rows = [];
+        for (let r = range.s.r; r <= range.e.r; r++) {
+            const linha = [];
+            let tem = false;
+            for (let c = range.s.c; c <= range.e.c; c++) {
+                const texto = textoCelulaXlsx(sheet[XLSX.utils.encode_cell({ r, c })]);
+                if (texto) tem = true;
+                linha.push(texto);
+            }
+            if (!tem) continue;
+            linha.linhaArquivo = r + 1;
+            rows.push(linha);
+        }
+        return rows;
     }
 
     function itensDaPlanilha(texto) {
@@ -723,42 +769,200 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!aba) {
             aba = nomes.find((item) => {
                 if (semAcentoCsv(item) === 'cadastros') return false;
-                const previa = XLSX.utils.sheet_to_json(wb.Sheets[item], { header: 1, defval: '' });
+                const previa = linhasDaAba(wb.Sheets[item]);
                 const cab = (previa[0] || []).map((coluna) => semAcentoCsv(coluna).replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim());
                 return cab.includes('codigo');
             }) || '';
         }
         if (!aba) throw new Error('O arquivo não tem a página Produtos.');
-        const rows = XLSX.utils.sheet_to_json(wb.Sheets[aba], { header: 1, defval: '', raw: false });
-        return itensDasLinhas(rows.map((linha) => linha.map((celula) => String(celula ?? ''))));
+        return itensDasLinhas(linhasDaAba(wb.Sheets[aba]));
     }
 
-    function mostrarRelatorioImportacao(data) {
-        const box = document.getElementById('importarRelatorio');
-        const resumo = document.getElementById('importarResumo');
-        const corpo = document.getElementById('importarErros');
-        const linhas = []
-            .concat((data.erros || []).map((item) => ({ ...item, tipo: 'erro' })))
-            .concat((data.avisos || []).map((item) => ({ ...item, tipo: 'aviso' })));
-        resumo.textContent = data.message || '';
-        if (!linhas.length) {
-            box.hidden = true;
-            corpo.innerHTML = '';
+    const btnExportar = document.getElementById('btnExportar');
+    const btnImportar = document.getElementById('btnImportar');
+    const htmlExportar = btnExportar.innerHTML;
+    const htmlImportar = btnImportar.innerHTML;
+    let relatorioAtual = null;
+
+    function painelPlanilha() {
+        return {
+            box: document.getElementById('importarRelatorio'),
+            status: document.getElementById('importarStatus'),
+            resumo: document.getElementById('importarResumo'),
+            mudancasBox: document.getElementById('importarMudancasBox'),
+            mudancas: document.getElementById('importarMudancas'),
+            tituloMudancas: document.getElementById('importarTituloMudancas'),
+            errosBox: document.getElementById('importarErrosBox'),
+            erros: document.getElementById('importarErros'),
+            tituloErros: document.getElementById('importarTituloErros'),
+            avisosBox: document.getElementById('importarAvisosBox'),
+            avisos: document.getElementById('importarAvisos'),
+            tituloAvisos: document.getElementById('importarTituloAvisos'),
+            fechar: document.getElementById('btnFecharRelatorio'),
+            baixar: document.getElementById('btnBaixarRelatorio'),
+        };
+    }
+
+    function escreverStatus(texto, tipo, girando) {
+        const painel = painelPlanilha();
+        painel.box.hidden = false;
+        painel.status.className = 'importar-status ' + tipo;
+        painel.status.textContent = '';
+        if (girando) {
+            const icone = document.createElement('i');
+            icone.className = 'fa-solid fa-spinner fa-spin';
+            icone.setAttribute('aria-hidden', 'true');
+            painel.status.appendChild(icone);
+            painel.status.appendChild(document.createTextNode(' ' + texto));
+        } else {
+            painel.status.textContent = texto;
+        }
+        return painel;
+    }
+
+    function esconderDetalhes(painel) {
+        painel.resumo.textContent = '';
+        painel.resumo.hidden = true;
+        painel.mudancasBox.hidden = true;
+        painel.errosBox.hidden = true;
+        painel.avisosBox.hidden = true;
+        painel.mudancas.innerHTML = '';
+        painel.erros.innerHTML = '';
+        painel.avisos.innerHTML = '';
+        painel.fechar.hidden = true;
+        painel.baixar.hidden = true;
+    }
+
+    function mostrarAndamento(texto) {
+        const painel = escreverStatus(texto, 'info', true);
+        esconderDetalhes(painel);
+        painel.box.scrollIntoView({ block: 'nearest' });
+    }
+
+    function mostrarFalhaPlanilha(texto) {
+        const painel = escreverStatus(texto, 'erro', false);
+        esconderDetalhes(painel);
+        painel.fechar.hidden = false;
+        relatorioAtual = null;
+    }
+
+    function linhasHtml(itens, colunas) {
+        return itens.map((item) => '<tr>' + colunas.map((valor) => '<td>' + escaparHtml(valor(item)) + '</td>').join('') + '</tr>').join('');
+    }
+
+    function mostrarRelatorioImportacao(relatorio) {
+        relatorioAtual = relatorio;
+        const erros = relatorio.erros || [];
+        const avisos = relatorio.avisos || [];
+        const mudancas = [];
+        (relatorio.mudancas || []).forEach((item) => {
+            (item.campos || []).forEach((campo) => {
+                mudancas.push({
+                    codigo: item.codigo || '',
+                    campo: campo.campo || '',
+                    de: campo.de ? campo.de : '(vazio)',
+                    para: campo.para ? campo.para : '(vazio)',
+                });
+            });
+        });
+        const alterou = (relatorio.atualizados || 0) > 0;
+        const tipo = erros.length && !alterou ? 'erro' : erros.length ? 'aviso' : alterou ? 'ok' : 'aviso';
+        const painel = escreverStatus(relatorio.message || 'Importação concluída.', tipo, false);
+        esconderDetalhes(painel);
+        painel.resumo.hidden = false;
+        painel.resumo.textContent = 'O relatório fica nesta tela até você fechar. Dá para baixar uma cópia.';
+        if (mudancas.length) {
+            painel.tituloMudancas.textContent = 'O que mudou (' + (relatorio.atualizados || 0) + ' produto(s))';
+            painel.mudancas.innerHTML = linhasHtml(mudancas, [
+                (item) => item.codigo,
+                (item) => item.campo,
+                (item) => item.de,
+                (item) => item.para,
+            ]);
+            painel.mudancasBox.hidden = false;
+        }
+        if (erros.length) {
+            painel.tituloErros.textContent = 'Erros (' + erros.length + ')';
+            painel.erros.innerHTML = linhasHtml(erros, [
+                (item) => item.linha ? String(item.linha) : '',
+                (item) => item.codigo || '',
+                (item) => item.motivo || '',
+            ]);
+            painel.errosBox.hidden = false;
+        }
+        if (avisos.length) {
+            painel.tituloAvisos.textContent = 'Avisos (' + avisos.length + ')';
+            painel.avisos.innerHTML = linhasHtml(avisos, [
+                (item) => item.linha ? String(item.linha) : '',
+                (item) => item.codigo || '',
+                (item) => item.motivo || '',
+            ]);
+            painel.avisosBox.hidden = false;
+        }
+        painel.fechar.hidden = false;
+        painel.baixar.hidden = false;
+        painel.box.scrollIntoView({ block: 'nearest' });
+    }
+
+    function mensagemDoRelatorio(relatorio) {
+        const alterados = relatorio.atualizados || 0;
+        const iguais = relatorio.semMudanca || 0;
+        const falhas = (relatorio.erros || []).length;
+        const partes = [];
+        if (alterados) partes.push(alterados + (alterados === 1 ? ' alterado' : ' alterados'));
+        if (iguais) partes.push(iguais + (iguais === 1 ? ' já estava igual' : ' já estavam iguais'));
+        if (falhas) partes.push(falhas + ' com erro');
+        if (!partes.length) partes.push('nenhum produto foi lido');
+        return 'Concluído. ' + partes.join('. ') + '.';
+    }
+
+    function travarPlanilha(travado) {
+        btnExportar.disabled = travado;
+        btnImportar.disabled = travado;
+        if (travado) {
+            btnExportar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguardando...';
+            btnImportar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguardando...';
+        } else {
+            btnExportar.innerHTML = htmlExportar;
+            btnImportar.innerHTML = htmlImportar;
+        }
+    }
+
+    function baixarRelatorioImportacao() {
+        if (!relatorioAtual) return;
+        if (typeof XLSX === 'undefined') {
+            mostrarFalhaPlanilha('Biblioteca de Excel não carregada. Recarregue a página.');
             return;
         }
-        corpo.innerHTML = linhas.map((item) => `
-            <tr>
-                <td>${escaparHtml(item.codigo || '')}</td>
-                <td>${escaparHtml(item.motivo || '')}</td>
-            </tr>
-        `).join('');
-        box.hidden = false;
+        const relatorio = relatorioAtual;
+        const alteracoes = [['codigo', 'campo', 'antes', 'depois']];
+        (relatorio.mudancas || []).forEach((item) => {
+            (item.campos || []).forEach((campo) => {
+                alteracoes.push([item.codigo || '', campo.campo || '', campo.de || '', campo.para || '']);
+            });
+        });
+        const erros = [['linha', 'codigo', 'motivo']].concat((relatorio.erros || []).map((item) => [
+            item.linha || '', item.codigo || '', item.motivo || '',
+        ]));
+        const avisos = [['linha', 'codigo', 'motivo']].concat((relatorio.avisos || []).map((item) => [
+            item.linha || '', item.codigo || '', item.motivo || '',
+        ]));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[relatorio.message || '']]), 'Resumo');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(alteracoes), 'Alteracoes');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(erros), 'Erros');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(avisos), 'Avisos');
+        XLSX.writeFile(wb, 'relatorio-importacao-produtos.xlsx');
     }
 
-    document.getElementById('btnExportar').addEventListener('click', async () => {
-        const botao = document.getElementById('btnExportar');
-        botao.disabled = true;
-        mostrarMensagem('Exportando cadastro...', 'info');
+    document.getElementById('btnFecharRelatorio').addEventListener('click', () => {
+        document.getElementById('importarRelatorio').hidden = true;
+    });
+    document.getElementById('btnBaixarRelatorio').addEventListener('click', baixarRelatorioImportacao);
+
+    btnExportar.addEventListener('click', async () => {
+        travarPlanilha(true);
+        mostrarAndamento('Aguardando... buscando o cadastro para exportar. Não feche esta página.');
         try {
             if (typeof XLSX === 'undefined') throw new Error('Biblioteca de Excel não carregada. Recarregue a página.');
             const params = new URLSearchParams({ tipo: 'produtos', exportar: '1' });
@@ -778,6 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!res.ok) throw new Error(data.message || 'Erro ao exportar.');
             const produtos = data.produtos || [];
             if (!produtos.length) throw new Error('Nenhum produto para exportar.');
+            mostrarAndamento('Aguardando... montando o arquivo de ' + produtos.length + ' produto(s).');
             const listas = await Promise.all([resLinhas, resMarcas, resModelos].map(async (resp) => {
                 const corpo = await resp.json();
                 if (!resp.ok) throw new Error(corpo.message || 'Erro ao carregar os cadastros.');
@@ -795,41 +1000,133 @@ document.addEventListener('DOMContentLoaded', function() {
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(paginaCadastros), 'Cadastros');
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(paginaProdutos), 'Produtos');
             XLSX.writeFile(wb, 'cadastro-produtos.xlsx');
-            mostrarMensagem(`${produtos.length} produto(s) exportados. A primeira página lista os nomes padrão.`, 'success');
+            const painel = escreverStatus(produtos.length + ' produto(s) exportados. A primeira página lista os nomes padrão.', 'ok', false);
+            esconderDetalhes(painel);
+            painel.fechar.hidden = false;
+            relatorioAtual = null;
         } catch (err) {
-            mostrarMensagem(err.message, 'error');
+            mostrarFalhaPlanilha(err.message);
         } finally {
-            botao.disabled = false;
+            travarPlanilha(false);
         }
     });
 
-    document.getElementById('btnImportar').addEventListener('click', () => {
+    btnImportar.addEventListener('click', () => {
+        if (btnImportar.disabled) return;
         document.getElementById('arquivoPlanejamento').click();
     });
+
+    function ultimasLinhas(itens) {
+        const avisos = [];
+        const ultimo = new Map();
+        const semCodigo = [];
+        itens.forEach((item) => {
+            const codigo = String(item.codigo || '').trim();
+            if (!codigo) {
+                semCodigo.push(item);
+                return;
+            }
+            const chave = codigo.toUpperCase();
+            if (ultimo.has(chave)) {
+                avisos.push({
+                    codigo,
+                    linha: item.linhaArquivo,
+                    motivo: 'Linha ' + item.linhaArquivo + ': código repetido. Vale esta linha e a anterior foi ignorada.',
+                });
+            }
+            ultimo.set(chave, item);
+        });
+        return { itens: semCodigo.concat(Array.from(ultimo.values())), avisos };
+    }
+
+    async function enviarLote(itens) {
+        let ultimoErro = new Error('Erro ao importar.');
+        for (let tentativa = 1; tentativa <= 2; tentativa++) {
+            try {
+                const res = await fetch('/api/shared/cadastros?tipo=produtos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ acao: 'importar-planejamento', itens }),
+                });
+                const texto = await res.text();
+                let data = {};
+                try { data = texto ? JSON.parse(texto) : {}; } catch (_) { data = {}; }
+                const relatorio = Array.isArray(data.erros) || typeof data.atualizados === 'number' || typeof data.semMudanca === 'number';
+                if (relatorio && res.status < 500) return data;
+                ultimoErro = new Error(data.message || 'O servidor não concluiu este lote.');
+                if (res.status < 500 || tentativa === 2) throw ultimoErro;
+            } catch (err) {
+                if (err instanceof Error) ultimoErro = err;
+                const texto = String(ultimoErro.message || '');
+                const tentarDeNovo = err instanceof TypeError || /Failed to fetch|NetworkError|Load failed|não concluiu/i.test(texto);
+                if (!tentarDeNovo || tentativa === 2) throw ultimoErro;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+        throw ultimoErro;
+    }
 
     document.getElementById('arquivoPlanejamento').addEventListener('change', async (e) => {
         const input = e.target;
         const arquivo = input.files && input.files[0];
         input.value = '';
         if (!arquivo) return;
-        mostrarMensagem('Lendo arquivo...', 'info');
+        travarPlanilha(true);
+        mostrarAndamento('Aguardando... lendo o arquivo.');
         try {
-            const itens = await itensDoArquivo(arquivo);
-            if (!itens.length) throw new Error('Nenhuma linha para importar.');
-            if (itens.length > 8000) throw new Error('O arquivo tem mais de 8000 linhas. Divida a planilha.');
-            mostrarMensagem(`Importando ${itens.length} linha(s)...`, 'info');
-            const res = await fetch('/api/shared/cadastros?tipo=produtos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ acao: 'importar-planejamento', itens }),
-            });
-            const data = await res.json();
-            mostrarRelatorioImportacao(data);
-            if (!res.ok && !Array.isArray(data.erros)) throw new Error(data.message || 'Erro ao importar.');
-            mostrarMensagem(data.message || 'Importação concluída.', res.ok && !(data.erros || []).length ? 'success' : 'error');
-            if ((data.atualizados || 0) > 0 && resultadosContainer.style.display !== 'none') buscarProdutos();
+            const lidos = await itensDoArquivo(arquivo);
+            if (!lidos.length) throw new Error('Nenhuma linha para importar.');
+            if (lidos.length > 8000) throw new Error('O arquivo tem mais de 8000 linhas. Divida a planilha.');
+            const unico = ultimasLinhas(lidos);
+            const itens = unico.itens;
+            const total = itens.length;
+            const lote = 300;
+            const acumulado = {
+                atualizados: 0,
+                semMudanca: 0,
+                erros: [],
+                avisos: unico.avisos.slice(),
+                mudancas: [],
+            };
+            for (let i = 0; i < itens.length; i += lote) {
+                const parte = itens.slice(i, i + lote);
+                const inicio = i + 1;
+                const fim = i + parte.length;
+                mostrarAndamento('Aguardando... gravando produtos ' + inicio + ' a ' + fim + ' de ' + total + '. Não feche esta página.');
+                let data;
+                try {
+                    data = await enviarLote(parte);
+                } catch (err) {
+                    parte.forEach((item) => {
+                        acumulado.erros.push({
+                            codigo: String(item.codigo || '').trim(),
+                            linha: item.linhaArquivo,
+                            motivo: 'Linha ' + (item.linhaArquivo || '?') + ': não foi possível gravar (' + (err.message || 'falha') + '). Importe de novo. O que já estava igual não é regravado.',
+                        });
+                    });
+                    continue;
+                }
+                const vazio = !(data.atualizados || 0) && !(data.semMudanca || 0) && !(data.erros || []).length && !(data.mudancas || []).length;
+                if (vazio) {
+                    if (!acumulado.atualizados && !acumulado.semMudanca && !acumulado.erros.length && !acumulado.mudancas.length) {
+                        throw new Error(data.message || 'O arquivo não tem os campos de planejamento.');
+                    }
+                    break;
+                }
+                acumulado.atualizados += data.atualizados || 0;
+                acumulado.semMudanca += data.semMudanca || 0;
+                acumulado.erros.push(...(data.erros || []));
+                acumulado.avisos.push(...(data.avisos || []));
+                acumulado.mudancas.push(...(data.mudancas || []));
+                mostrarAndamento('Aguardando... ' + fim + ' de ' + total + '. ' + acumulado.atualizados + ' alterado(s), ' + acumulado.erros.length + ' erro(s).');
+            }
+            acumulado.message = mensagemDoRelatorio(acumulado);
+            mostrarRelatorioImportacao(acumulado);
+            if (acumulado.atualizados > 0 && resultadosContainer.style.display !== 'none') buscarProdutos();
         } catch (err) {
-            mostrarMensagem(err.message, 'error');
+            mostrarFalhaPlanilha(err.message);
+        } finally {
+            travarPlanilha(false);
         }
     });
 

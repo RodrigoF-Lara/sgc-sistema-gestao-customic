@@ -1,5 +1,7 @@
 import { getConnection, sql } from "../../db.js";
 
+export const config = { maxDuration: 60 };
+
 /**
  * API unificada de Cadastros
  * Gerencia produtos e fornecedores
@@ -495,6 +497,14 @@ function nomeNoCatalogo(atributos, tipo, valor) {
   return nomes.find((nome) => semAcento(nome) === alvo) || "";
 }
 
+const COLUNAS_SQL_IMPORTACAO = new Set(CAMPOS_IMPORTACAO.map(([, coluna]) => coluna));
+
+function textoGravado(valor) {
+  if (valor == null) return null;
+  const texto = String(valor).trim();
+  return texto ? texto : null;
+}
+
 export function prepararImportacao(itens, produtos, atributos) {
   const porCodigo = new Map();
   for (const produto of produtos || []) {
@@ -503,29 +513,52 @@ export function prepararImportacao(itens, produtos, atributos) {
   const gravar = [];
   const erros = [];
   const avisos = [];
+  let semMudanca = 0;
+  let reconheceuCampo = false;
   const vistos = new Map();
+
+  function desfazer(chave) {
+    const anterior = vistos.get(chave);
+    if (!anterior) return;
+    if (anterior.tipo === "igual") semMudanca -= 1;
+    if (anterior.tipo === "gravar") {
+      const pos = gravar.findIndex((row) => row.codigo.toUpperCase() === chave);
+      if (pos >= 0) gravar.splice(pos, 1);
+    }
+    if (anterior.tipo === "erro") {
+      const pos = erros.findIndex((row) => String(row.codigo || "").toUpperCase() === chave && row.linha === anterior.linha);
+      if (pos >= 0) erros.splice(pos, 1);
+    }
+  }
 
   (itens || []).forEach((item, indice) => {
     const codigo = String(item?.codigo ?? "").trim();
-    const linhaArquivo = indice + 2;
+    const linhaArquivo = Number(item?.linhaArquivo) > 0 ? Number(item.linhaArquivo) : indice + 2;
+    if (item && CAMPOS_IMPORTACAO.some(([chaveCampo]) => Object.prototype.hasOwnProperty.call(item, chaveCampo))) {
+      reconheceuCampo = true;
+    }
     if (!codigo) {
-      erros.push({ codigo: "", motivo: `Linha ${linhaArquivo}: informe o código.` });
+      erros.push({ codigo: "", linha: linhaArquivo, motivo: `Linha ${linhaArquivo}: informe o código.` });
       return;
     }
     const chave = codigo.toUpperCase();
     if (vistos.has(chave)) {
-      avisos.push({ codigo, motivo: "Código repetido no arquivo. Vale a última linha." });
-      const anterior = vistos.get(chave);
-      const pos = gravar.findIndex((row) => row.codigo.toUpperCase() === chave);
-      if (pos >= 0) gravar.splice(pos, 1);
-      const erroPos = erros.findIndex((row) => row.codigo.toUpperCase() === chave && row.linhaArquivo === anterior);
-      if (erroPos >= 0) erros.splice(erroPos, 1);
+      avisos.push({
+        codigo,
+        linha: linhaArquivo,
+        motivo: `Linha ${linhaArquivo}: código repetido. Vale esta linha e a anterior foi ignorada.`,
+      });
+      desfazer(chave);
     }
-    vistos.set(chave, linhaArquivo);
 
     const produto = porCodigo.get(chave);
     if (!produto) {
-      erros.push({ codigo, linhaArquivo, motivo: "Produto não encontrado. Este arquivo não cria produto." });
+      erros.push({
+        codigo,
+        linha: linhaArquivo,
+        motivo: `Linha ${linhaArquivo}: produto não encontrado. Este arquivo não cria produto.`,
+      });
+      vistos.set(chave, { tipo: "erro", linha: linhaArquivo });
       return;
     }
 
@@ -556,41 +589,118 @@ export function prepararImportacao(itens, produtos, atributos) {
     }
 
     if (problemas.length) {
-      erros.push({ codigo, linhaArquivo, motivo: problemas.join(" ") });
+      erros.push({ codigo, linha: linhaArquivo, motivo: `Linha ${linhaArquivo}: ${problemas.join(" ")}` });
+      vistos.set(chave, { tipo: "erro", linha: linhaArquivo });
       return;
     }
-    if (!Object.keys(campos).length) return;
-    gravar.push({ codigo: String(produto.CODIGO).trim(), campos });
+    if (!Object.keys(campos).length) {
+      vistos.set(chave, { tipo: "vazio", linha: linhaArquivo });
+      return;
+    }
+
+    const mudancas = [];
+    const alterados = {};
+    for (const [chaveCampo, coluna] of CAMPOS_IMPORTACAO) {
+      if (!Object.prototype.hasOwnProperty.call(campos, coluna)) continue;
+      const destino = textoGravado(campos[coluna]);
+      const atual = textoGravado(produto[coluna]);
+      if (atual === destino) continue;
+      alterados[coluna] = destino;
+      mudancas.push({
+        campo: ROTULO_IMPORTACAO[chaveCampo],
+        de: atual || "",
+        para: destino || "",
+      });
+    }
+    if (!mudancas.length) {
+      semMudanca += 1;
+      vistos.set(chave, { tipo: "igual", linha: linhaArquivo });
+      return;
+    }
+    gravar.push({ codigo: String(produto.CODIGO).trim(), campos: alterados, mudancas });
+    vistos.set(chave, { tipo: "gravar", linha: linhaArquivo });
   });
 
-  return { gravar, erros, avisos };
+  return { gravar, erros, avisos, semMudanca, reconheceuCampo };
 }
 
-async function gravarPlanejamentoParcial(conn, codigo, campos) {
-  const reqUp = new sql.Request(conn).input("codigo", sql.NVarChar(100), codigo);
-  const colunas = [];
-  const valores = [];
-  const updates = [];
-  CAMPOS_IMPORTACAO.forEach(([chaveCampo, coluna]) => {
-    if (!Object.prototype.hasOwnProperty.call(campos, coluna)) return;
-    const param = chaveCampo;
-    reqUp.input(param, sql.NVarChar(80), campos[coluna]);
-    colunas.push(coluna);
-    valores.push("@" + param);
-    updates.push(`${coluna}=@${param}`);
-  });
-  if (!colunas.length) return;
-  await reqUp.query(`
-    MERGE dbo.CAD_PROD_PLANEJAMENTO AS alvo
-    USING (SELECT @codigo AS CODIGO) AS origem ON alvo.CODIGO = origem.CODIGO
-    WHEN MATCHED THEN UPDATE SET ${updates.join(", ")}
-    WHEN NOT MATCHED THEN INSERT (CODIGO, ${colunas.join(", ")})
-    VALUES (@codigo, ${valores.join(", ")});
-  `);
+function mensagemImportacao(preparado) {
+  const atualizados = preparado.gravar.length;
+  const iguais = preparado.semMudanca;
+  const falhas = preparado.erros.length;
+  if (!preparado.reconheceuCampo) return "O arquivo não tem os campos de planejamento.";
+  if (!atualizados && !falhas) {
+    return iguais
+      ? `${iguais} produto(s) já estavam iguais. Nada foi alterado.`
+      : "Nenhum produto foi alterado.";
+  }
+  if (!atualizados) return `Nenhum produto foi alterado. ${falhas} com erro.`;
+  const partes = [`${atualizados} produto(s) alterados`];
+  if (iguais) partes.push(`${iguais} já estavam iguais`);
+  if (falhas) partes.push(`${falhas} com erro`);
+  return partes.join(". ") + ".";
+}
+
+function colunaSql(coluna) {
+  if (!COLUNAS_SQL_IMPORTACAO.has(coluna)) throw new Error("Coluna de planejamento inválida.");
+  return coluna;
+}
+
+async function gravarPlanejamentoLote(conn, itens) {
+  const grupos = new Map();
+  for (const item of itens) {
+    const cols = Object.keys(item.campos || {}).filter((coluna) => COLUNAS_SQL_IMPORTACAO.has(coluna)).sort();
+    if (!cols.length) continue;
+    const chave = cols.join(",");
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(item);
+  }
+
+  for (const [chave, rows] of grupos) {
+    const cols = chave.split(",");
+    // SQL Server aceita até 2100 parâmetros por comando.
+    const porLote = Math.max(1, Math.floor(1800 / (cols.length + 1)));
+    for (let i = 0; i < rows.length; i += porLote) {
+      const fatia = rows.slice(i, i + porLote);
+      const reqUp = new sql.Request(conn);
+      const valores = fatia.map((item, idx) => {
+        reqUp.input("c" + idx, sql.NVarChar(100), item.codigo);
+        const partes = [`CAST(@c${idx} AS nvarchar(100))`];
+        cols.forEach((col, c) => {
+          const nome = "v" + idx + "_" + c;
+          reqUp.input(nome, sql.NVarChar(80), item.campos[col]);
+          partes.push(`CAST(@${nome} AS nvarchar(80))`);
+        });
+        return "(" + partes.join(", ") + ")";
+      });
+      const lista = cols.map(colunaSql).join(", ");
+      const sets = cols.map((col) => `${colunaSql(col)}=origem.${colunaSql(col)}`).join(", ");
+      const origemCols = cols.map((col) => `origem.${colunaSql(col)}`).join(", ");
+      await reqUp.query(`
+        MERGE dbo.CAD_PROD_PLANEJAMENTO AS alvo
+        USING (VALUES ${valores.join(", ")}) AS origem (CODIGO, ${lista})
+        ON alvo.CODIGO = origem.CODIGO
+        WHEN MATCHED THEN UPDATE SET ${sets}
+        WHEN NOT MATCHED THEN INSERT (CODIGO, ${lista}) VALUES (origem.CODIGO, ${origemCols});
+      `);
+    }
+  }
+}
+
+function respostaImportacao(preparado) {
+  return {
+    message: mensagemImportacao(preparado),
+    atualizados: preparado.gravar.length,
+    semMudanca: preparado.semMudanca,
+    erros: preparado.erros,
+    avisos: preparado.avisos,
+    mudancas: preparado.gravar.map((item) => ({ codigo: item.codigo, campos: item.mudancas })),
+  };
 }
 
 async function importarPlanejamento(req, res, pool) {
   await ensureAtributos(pool);
+  await ensurePlanejamento(pool);
   const itens = req.body && req.body.itens;
   if (!Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ message: "Nenhuma linha no arquivo." });
@@ -601,8 +711,9 @@ async function importarPlanejamento(req, res, pool) {
 
   const codigos = [...new Set(itens.map((item) => String(item?.codigo ?? "").trim()).filter(Boolean))];
   const produtos = [];
-  for (let i = 0; i < codigos.length; i += 200) {
-    const fatia = codigos.slice(i, i + 200);
+  const attrs = await pool.request().query("SELECT TIPO, NOME FROM dbo.CAD_ATRIBUTO");
+  for (let i = 0; i < codigos.length; i += 500) {
+    const fatia = codigos.slice(i, i + 500);
     const pedido = pool.request();
     const params = fatia.map((codigo, idx) => {
       pedido.input("c" + idx, sql.NVarChar(100), codigo);
@@ -616,44 +727,28 @@ async function importarPlanejamento(req, res, pool) {
     `);
     produtos.push(...achados.recordset);
   }
-  const attrs = await pool.request().query("SELECT TIPO, NOME FROM dbo.CAD_ATRIBUTO");
   const atributos = (attrs.recordset || []).map((row) => ({ tipo: row.TIPO, nome: row.NOME }));
   const preparado = prepararImportacao(itens, produtos, atributos);
 
+  if (!preparado.reconheceuCampo) {
+    return res.status(400).json(respostaImportacao(preparado));
+  }
   if (!preparado.gravar.length) {
-    return res.status(400).json({
-      message: preparado.erros.length
-        ? "Nenhum produto foi atualizado."
-        : "O arquivo não tem os campos de planejamento.",
-      atualizados: 0,
-      erros: preparado.erros,
-      avisos: preparado.avisos,
-    });
+    return res.status(200).json(respostaImportacao(preparado));
   }
 
   const transaction = new sql.Transaction(pool);
   await transaction.begin();
   try {
-    for (const item of preparado.gravar) {
-      await gravarPlanejamentoParcial(transaction, item.codigo, item.campos);
-    }
+    await gravarPlanejamentoLote(transaction, preparado.gravar);
     await transaction.commit();
   } catch (error) {
     try { await transaction.rollback(); } catch (_) { /* já encerrada */ }
     console.error("Erro ao importar planejamento:", error);
-    return res.status(500).json({ message: "Erro ao importar o planejamento", error: error.message });
+    return res.status(500).json({ message: "Erro ao gravar este lote. Nada deste lote foi salvo." });
   }
 
-  const atualizados = preparado.gravar.length;
-  const falhas = preparado.erros.length;
-  return res.status(200).json({
-    message: falhas
-      ? `${atualizados} produto(s) atualizados. ${falhas} não entraram.`
-      : `${atualizados} produto(s) atualizados.`,
-    atualizados,
-    erros: preparado.erros,
-    avisos: preparado.avisos,
-  });
+  return res.status(200).json(respostaImportacao(preparado));
 }
 
 async function gravarPlanejamento(conn, codigo, plano) {
