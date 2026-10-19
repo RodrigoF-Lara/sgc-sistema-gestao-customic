@@ -88,10 +88,13 @@ if (!csvForm) {
     const aguardeAnimacao = document.getElementById("aguardeAnimacao");
     const resumoContainer = document.getElementById("resumo-container");
     const resumoRequisicaoTbody = document.querySelector("#resumoRequisicao tbody");
+    const pelaTela = typeof window.SGCItensRequisicao === "function";
 
-    if (!fileInput.files.length || !dtNecessidade || !prioridade) {
+    if (!dtNecessidade || !prioridade || (!pelaTela && !fileInput?.files.length)) {
         statusElem.style.color = "#c00";
-        statusElem.textContent = "Preencha todos os campos e selecione um arquivo CSV!";
+        statusElem.textContent = pelaTela
+            ? "Informe a data de necessidade e a prioridade."
+            : "Preencha todos os campos e selecione um arquivo CSV!";
         return;
     }
 
@@ -114,7 +117,8 @@ if (!csvForm) {
 
     aguardeAnimacao.style.display = "block";
     statusElem.style.color = "#222";
-    statusElem.textContent = "Validando CSV";
+    statusElem.dataset.fase = pelaTela ? "Validando itens" : "Validando CSV";
+    statusElem.textContent = statusElem.dataset.fase;
     let dots = 0;
     const animInterval = setInterval(() => {
         dots = (dots + 1) % 4;
@@ -122,13 +126,23 @@ if (!csvForm) {
     }, 500);
 
     try {
-        statusElem.dataset.fase = "Validando CSV";
-        const texto = await lerArquivoComoTexto(fileInput.files[0]);
-        const parsed = await parseCsv(texto);
-        const itens = normalizarItensCsv(parsed.data);
+        let itens;
+        if (pelaTela) {
+            statusElem.dataset.fase = "Validando itens";
+            const montados = window.SGCItensRequisicao();
+            if (montados.erro) throw new Error(montados.erro);
+            itens = montados.itens || [];
+        } else {
+            statusElem.dataset.fase = "Validando CSV";
+            const texto = await lerArquivoComoTexto(fileInput.files[0]);
+            const parsed = await parseCsv(texto);
+            itens = normalizarItensCsv(parsed.data);
+        }
 
         if (itens.length === 0) {
-            throw new Error("Nenhum item válido no arquivo. Use as colunas CODIGO e QNT_REQ (separador ; ou ,).");
+            throw new Error(pelaTela
+                ? "Inclua ao menos um item na requisição."
+                : "Nenhum item válido no arquivo. Use as colunas CODIGO e QNT_REQ (separador ; ou ,).");
         }
 
         statusElem.dataset.fase = "Enviando";
@@ -148,7 +162,10 @@ if (!csvForm) {
 
         const dataResp = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(dataResp.error || dataResp.message || "Erro ao criar requisição");
+            const detalhes = Array.isArray(dataResp.erros)
+                ? dataResp.erros.map((item) => `Código ${item.codigo}: pedido ${item.pedido}, disponível ${item.disponivel}.`).join(" ")
+                : "";
+            throw new Error(detalhes || dataResp.error || dataResp.message || "Erro ao criar requisição");
         }
 
         const idReq = dataResp.idReq;
@@ -168,19 +185,25 @@ if (!csvForm) {
 
         if (resumoRequisicaoTbody) {
             resumoRequisicaoTbody.innerHTML = "";
+            const celula = (valor) => String(valor ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/"/g, "&quot;");
             itens.forEach((item) => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${idReq}</td>
-                    <td>${dtNecessidade}</td>
-                    <td>${prioridade}</td>
-                    <td>${item.CODIGO}</td>
-                    <td>${item.QNT_REQ}</td>
+                    <td>${celula(idReq)}</td>
+                    <td>${celula(dtNecessidade)}</td>
+                    <td>${celula(prioridade)}</td>
+                    <td>${celula(item.CODIGO)}</td>
+                    <td>${celula(item.DESCRICAO || "")}</td>
+                    <td>${celula(item.QNT_REQ)}</td>
                 `;
                 resumoRequisicaoTbody.appendChild(row);
             });
         }
         if (resumoContainer) resumoContainer.style.display = "block";
+        if (typeof window.SGCLimparItensRequisicao === "function") window.SGCLimparItensRequisicao();
     } catch (error) {
         clearInterval(animInterval);
         console.error(error);

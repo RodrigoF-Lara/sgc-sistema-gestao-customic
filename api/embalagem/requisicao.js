@@ -1,6 +1,8 @@
 import { getConnection, sql } from "../../db.js";
 import { exigirPermissao, podeAcessar, nivelDoRequest } from "../../lib/permissoesHelper.js";
 
+export const config = { maxDuration: 60 };
+
 function obterDataHoraSaoPaulo() {
     const agora = new Date();
     const partes = new Intl.DateTimeFormat('sv-SE', {
@@ -40,8 +42,125 @@ export default async function handler(req, res) {
     }
 }
 
+async function podeMontarRequisicao(req, res) {
+    const nivel = nivelDoRequest(req);
+    if (nivel === null) return true;
+    const ok =
+        (await podeAcessar("nova-requisicao", nivel)) ||
+        (await podeAcessar("requisicoes", nivel)) ||
+        (await podeAcessar("consultar-requisicoes", nivel));
+    if (!ok) {
+        res.status(403).json({ message: "Sem permissão para montar a requisição." });
+        return false;
+    }
+    return true;
+}
+
+async function listarItensDisponiveis(req, res) {
+    if (!(await podeMontarRequisicao(req, res))) return;
+    const { curvaABC, tipoProduto } = req.query;
+    const pool = await getConnection();
+    const pedido = pool.request();
+    pedido.timeout = 20000;
+    let query = `
+        SELECT
+            cp.CODIGO,
+            cp.DESCRICAO,
+            cp.TIPO,
+            ISNULL(cp.CURVA_A_B_C, 'C') AS CURVA_A_B_C,
+            ISNULL(k.SALDO, 0) AS SALDO
+        FROM [dbo].[CAD_PROD] cp WITH (NOLOCK)
+        LEFT JOIN (
+            SELECT CODIGO, SUM(SALDO) AS SALDO
+            FROM [dbo].[KARDEX_2026_EMBALAGEM] WITH (NOLOCK)
+            WHERE D_E_L_E_T_ <> '*'
+              AND KARDEX = 2026
+            GROUP BY CODIGO
+        ) k ON cp.CODIGO = k.CODIGO
+        WHERE ISNULL(cp.ATIVO, 1) = 1
+          AND ISNULL(k.SALDO, 0) > 0
+    `;
+    if (curvaABC && String(curvaABC).trim()) {
+        const curva = String(curvaABC).trim();
+        if (curva === "C") {
+            query += ` AND (cp.CURVA_A_B_C IS NULL OR cp.CURVA_A_B_C = '' OR cp.CURVA_A_B_C = 'C')`;
+        } else {
+            query += ` AND cp.CURVA_A_B_C = @CURVA_ABC`;
+            pedido.input("CURVA_ABC", sql.NVarChar(1), curva);
+        }
+    }
+    if (tipoProduto && String(tipoProduto).trim()) {
+        query += ` AND cp.TIPO = @TIPO_PRODUTO`;
+        pedido.input("TIPO_PRODUTO", sql.NVarChar, String(tipoProduto).trim());
+    }
+    query += ` ORDER BY CURVA_A_B_C, cp.CODIGO`;
+    const result = await pedido.query(query);
+    return res.status(200).json({
+        itens: (result.recordset || []).map((row) => ({
+            CODIGO: row.CODIGO,
+            DESCRICAO: row.DESCRICAO || "",
+            TIPO: row.TIPO || "",
+            CURVA_A_B_C: row.CURVA_A_B_C || "C",
+            SALDO: Number(row.SALDO) || 0,
+        })),
+    });
+}
+
+async function saldosPorCodigo(pool, codigos) {
+    const mapa = new Map();
+    for (let i = 0; i < codigos.length; i += 400) {
+        const fatia = codigos.slice(i, i + 400);
+        const pedido = pool.request();
+        const params = fatia.map((codigo, idx) => {
+            pedido.input("c" + idx, sql.NVarChar(100), codigo);
+            return "@c" + idx;
+        });
+        const result = await pedido.query(`
+            SELECT CODIGO, SUM(SALDO) AS SALDO
+            FROM [dbo].[KARDEX_2026_EMBALAGEM] WITH (NOLOCK)
+            WHERE D_E_L_E_T_ <> '*'
+              AND KARDEX = 2026
+              AND CODIGO IN (${params.join(", ")})
+            GROUP BY CODIGO
+        `);
+        for (const row of result.recordset || []) {
+            mapa.set(String(row.CODIGO || "").trim().toUpperCase(), Number(row.SALDO) || 0);
+        }
+    }
+    return mapa;
+}
+
+function agruparItens(itens) {
+    const mapa = new Map();
+    for (const item of itens) {
+        const codigo = String(item.CODIGO || "").trim();
+        if (!codigo) continue;
+        const chave = codigo.toUpperCase();
+        const anterior = mapa.get(chave);
+        if (anterior) anterior.QNT_REQ += item.QNT_REQ;
+        else mapa.set(chave, { CODIGO: codigo, QNT_REQ: item.QNT_REQ });
+    }
+    return [...mapa.values()];
+}
+
+async function validarSaldoItens(pool, itens) {
+    const saldos = await saldosPorCodigo(pool, itens.map((item) => item.CODIGO));
+    const erros = [];
+    for (const item of itens) {
+        const disponivel = saldos.get(item.CODIGO.toUpperCase()) || 0;
+        if (item.QNT_REQ > disponivel + 0.0000001) {
+            erros.push({ codigo: item.CODIGO, pedido: item.QNT_REQ, disponivel });
+        }
+    }
+    return erros;
+}
+
 // --- LÓGICA GET (COM AJUSTE NA BUSCA DO LOG) ---
 async function handleGet(req, res) {
+    if (req.query.acao === "itensDisponiveis") {
+        return await listarItensDisponiveis(req, res);
+    }
+
     // Consulta lista/detalhe exige permissão de consultar (ou hub legado)
     const nivel = nivelDoRequest(req);
     if (nivel !== null) {
@@ -219,10 +338,17 @@ async function handlePost(req, res) {
         if (!dtNecessidade || !prioridade || !solicitante) {
             return res.status(400).json({ message: "Informe data de necessidade, prioridade e solicitante." });
         }
-        const itens = normalizarItensCsv(data);
+        const itens = agruparItens(normalizarItensCsv(data));
         if (itens.length === 0) {
             return res.status(400).json({
-                message: "Nenhum item válido no arquivo. Use as colunas CODIGO e QNT_REQ (separador ; ou ,)."
+                message: "Nenhum item válido. Informe o código e uma quantidade maior que zero."
+            });
+        }
+        const errosSaldo = await validarSaldoItens(pool, itens);
+        if (errosSaldo.length) {
+            return res.status(400).json({
+                message: "A quantidade passa do saldo disponível.",
+                erros: errosSaldo,
             });
         }
 

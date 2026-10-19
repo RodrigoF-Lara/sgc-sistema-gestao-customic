@@ -15,6 +15,9 @@
     },
     "api/shared/cadastros.js": {
       "maxDuration": 60
+    },
+    "api/embalagem/requisicao.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

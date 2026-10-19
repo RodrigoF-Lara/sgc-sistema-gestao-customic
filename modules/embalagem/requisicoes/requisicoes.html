@@ -47,7 +47,7 @@
         .nova-req-form { display: flex; flex-direction: column; gap: 22px; }
         .nova-req-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1.4fr;
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
             align-items: start;
         }
@@ -82,60 +82,55 @@
             outline: none;
         }
 
-        /* Dropzone do arquivo */
-        .form-group-file { min-width: 0; }
-        .file-dropzone {
+        .req-bloco { margin-top: 8px; }
+        .req-bloco h3 {
+            margin: 0 0 6px;
+            color: #1a253c;
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 14px 18px;
-            border: 2px dashed var(--cor-cinza-borda);
-            border-radius: 8px;
-            background: #fafbfc;
-            cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
-            min-height: 60px;
+            gap: 8px;
         }
-        .file-dropzone:hover,
-        .file-dropzone.is-dragover {
-            border-color: var(--cor-principal);
-            background: rgba(25, 118, 210, 0.06);
+        .req-filtros {
+            display: grid;
+            grid-template-columns: 180px 220px 1fr auto;
+            gap: 12px;
+            align-items: end;
+            margin: 14px 0;
         }
-        .file-dropzone.has-file {
-            border-style: solid;
-            border-color: var(--cor-sucesso);
-            background: rgba(40, 167, 69, 0.06);
+        @media (max-width: 900px) {
+            .req-filtros { grid-template-columns: 1fr; }
         }
-        .file-dropzone-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(25, 118, 210, 0.12);
-            color: var(--cor-principal);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1em;
-            flex-shrink: 0;
-        }
-        .file-dropzone.has-file .file-dropzone-icon {
-            background: rgba(40, 167, 69, 0.15);
-            color: var(--cor-sucesso);
-        }
-        .file-dropzone-text { display: flex; flex-direction: column; min-width: 0; }
-        .file-dropzone-title {
+        .req-filtros label {
+            font-size: 0.82em;
             font-weight: 600;
-            color: #212529;
-            font-size: 0.95em;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            color: #495057;
+            display: block;
+            margin-bottom: 6px;
         }
-        .file-dropzone-hint {
-            font-size: 0.8em;
-            color: #6c757d;
-            margin-top: 2px;
+        .req-filtros input, .req-filtros select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--cor-cinza-borda);
+            border-radius: 6px;
+            background: #fff;
         }
+        .req-scroll { max-height: 420px; overflow: auto; border: 1px solid #eee; border-radius: 8px; }
+        .req-scroll table { width: 100%; border-collapse: collapse; }
+        .req-scroll th, .req-scroll td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
+        .req-scroll th { position: sticky; top: 0; background: #f5f7fa; z-index: 1; }
+        .req-qtd { width: 110px; padding: 8px; }
+        .req-ja { background: #e8f5e9; }
+        .req-vazio { color: #607d8b; padding: 14px; }
+        .req-aviso { margin: 8px 0 0; font-weight: 700; }
+        .req-aviso.info { color: #0d47a1; }
+        .req-aviso.erro { color: #b71c1c; }
+        .sgc-giro { display: inline-block; animation: sgc-giro 0.8s linear infinite; }
+        @keyframes sgc-giro { to { transform: rotate(360deg); } }
+        button.btn-incluir {
+            background: #fff; color: #1976d2; border: 1px solid #1976d2; border-radius: 6px;
+            padding: 6px 10px; font-weight: 700; cursor: pointer;
+        }
+        button.btn-incluir.perigo { color: #c62828; border-color: #c62828; }
 
         /* Ações */
         .nova-req-actions {
@@ -179,7 +174,7 @@
                 <div id="novaRequisicaoContainer" class="card">
                     <div class="nova-req-header">
                         <h2><i class="fa-solid fa-clipboard-list"></i> Dados da Requisição</h2>
-                        <p class="nova-req-subtitle">Informe a data de necessidade, prioridade e envie o arquivo CSV com os itens.</p>
+                        <p class="nova-req-subtitle">Informe a data e a prioridade, monte os itens na lista e gere a requisição.</p>
                     </div>
                     <form id="csvForm" class="nova-req-form">
                         <div class="nova-req-grid">
@@ -195,20 +190,47 @@
                                     <option value="BAIXA">Baixa</option>
                                 </select>
                             </div>
-                            <div class="form-group form-group-file">
-                                <label><i class="fa-solid fa-file-csv"></i> Arquivo CSV</label>
-                                <label for="csvFile" class="file-dropzone" id="fileDropzone">
-                                    <div class="file-dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                                    <div class="file-dropzone-text">
-                                        <span class="file-dropzone-title" id="fileDropzoneTitle">Clique para selecionar</span>
-                                        <span class="file-dropzone-hint">ou arraste o arquivo .csv aqui</span>
-                                    </div>
-                                    <input type="file" id="csvFile" name="csvFile" accept=".csv" required hidden />
-                                </label>
-                            </div>
                         </div>
+
+                        <div class="req-bloco">
+                            <h3><i class="fa-solid fa-boxes-stacked"></i> Itens disponíveis</h3>
+                            <p class="nova-req-subtitle">Gere a lista com o saldo em estoque. O filtro usa código ou parte da descrição. A quantidade não passa do saldo disponível.</p>
+                            <div class="req-filtros">
+                                <div>
+                                    <label for="filtroCurvaReq">Curva ABC</label>
+                                    <select id="filtroCurvaReq">
+                                        <option value="">Todas</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="filtroTipoReq">Tipo de produto</label>
+                                    <select id="filtroTipoReq">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="filtroTextoReq">Código ou descrição</label>
+                                    <input type="text" id="filtroTextoReq" placeholder="Digite para filtrar a lista" autocomplete="off" />
+                                </div>
+                                <button type="button" id="btnGerarLista" class="btn-destaque">
+                                    <i class="fa-solid fa-list"></i> Gerar lista
+                                </button>
+                            </div>
+                            <p id="listaStatus" class="req-aviso info" hidden></p>
+                            <div id="listaDisponivel"></div>
+                        </div>
+
+                        <div class="req-bloco">
+                            <h3 id="tituloPedido"><i class="fa-solid fa-clipboard-check"></i> Itens da requisição</h3>
+                            <p class="nova-req-subtitle">O que já foi incluído. Dá para mudar a quantidade ou tirar o item antes de gerar.</p>
+                            <div id="listaPedido"></div>
+                        </div>
+
                         <div class="nova-req-actions">
-                            <button type="submit" class="btn-destaque btn-gerar">
+                            <button type="submit" class="btn-destaque btn-gerar" id="btnGerarReq">
                                 <i class="fa-solid fa-paper-plane"></i> Gerar Requisição
                             </button>
                         </div>
@@ -226,6 +248,7 @@
                                 <th>Data de Necessidade</th>
                                 <th>Prioridade</th>
                                 <th>Código</th>
+                                <th>Descrição</th>
                                 <th>Quantidade</th>
                             </tr>
                         </thead>
@@ -266,9 +289,9 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="/shared/frontend/permissoes.js"></script>
     <script src="/shared/frontend/script.js"></script>
+    <script src="novaLista.js"></script>
     <script src="consulta.js"></script>
     <script src="/shared/frontend/layout.js"></script>
     <script src="/shared/frontend/fundos.js"></script>
@@ -366,49 +389,6 @@
             window.SGC_PODE_CONSULTAR_REQ = podeConsulta;
         })();
 
-        // Dropzone do CSV: mostrar nome e suportar drag&drop
-        (function() {
-            const dropzone = document.getElementById('fileDropzone');
-            const input = document.getElementById('csvFile');
-            const title = document.getElementById('fileDropzoneTitle');
-            if (!dropzone || !input || !title) return;
-
-            function updateLabel(file) {
-                if (file) {
-                    title.textContent = file.name;
-                    dropzone.classList.add('has-file');
-                } else {
-                    title.textContent = 'Clique para selecionar';
-                    dropzone.classList.remove('has-file');
-                }
-            }
-
-            input.addEventListener('change', () => updateLabel(input.files[0]));
-
-            ['dragenter', 'dragover'].forEach(ev => {
-                dropzone.addEventListener(ev, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropzone.classList.add('is-dragover');
-                });
-            });
-            ['dragleave', 'drop'].forEach(ev => {
-                dropzone.addEventListener(ev, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropzone.classList.remove('is-dragover');
-                });
-            });
-            dropzone.addEventListener('drop', e => {
-                const file = e.dataTransfer.files && e.dataTransfer.files[0];
-                if (file && file.name.toLowerCase().endsWith('.csv')) {
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    input.files = dt.files;
-                    updateLabel(file);
-                }
-            });
-        })();
     </script>
 </body>
 </html>
