@@ -45,32 +45,52 @@
         status.textContent = texto || "";
     }
 
+    const filtrosColuna = { codigo: "", descricao: "", tipo: "", curva: "", saldo: "" };
+    const rascunhoQtd = new Map();
+
+    function contem(valor, filtro) {
+        if (!filtro) return true;
+        return semAcento(valor).includes(semAcento(filtro));
+    }
+
     function filtrados() {
         const texto = semAcento(document.getElementById("filtroTextoReq").value);
-        if (!texto) return estoque;
-        return estoque.filter((item) => semAcento(item.CODIGO).includes(texto) || semAcento(item.DESCRICAO).includes(texto));
+        return estoque.filter((item) => {
+            if (texto && !(semAcento(item.CODIGO).includes(texto) || semAcento(item.DESCRICAO).includes(texto))) return false;
+            if (!contem(item.CODIGO, filtrosColuna.codigo)) return false;
+            if (!contem(item.DESCRICAO, filtrosColuna.descricao)) return false;
+            if (!contem(item.TIPO, filtrosColuna.tipo)) return false;
+            if (!contem(item.CURVA_A_B_C, filtrosColuna.curva)) return false;
+            if (filtrosColuna.saldo && !contem(fmt(item.SALDO), filtrosColuna.saldo) && !contem(item.SALDO, filtrosColuna.saldo)) return false;
+            return true;
+        });
+    }
+
+    function caixaColuna(coluna, rotulo) {
+        return `<th><span class="req-col-titulo">${rotulo}</span><input class="req-filtro-col" type="search" data-filtro-coluna="${coluna}" value="${escapar(filtrosColuna[coluna])}" placeholder="Filtrar" autocomplete="off" /></th>`;
     }
 
     function renderDisponivel() {
         const box = document.getElementById("listaDisponivel");
+        document.querySelectorAll("[data-qtd]").forEach((input) => {
+            rascunhoQtd.set(chave(input.dataset.qtd), input.value);
+        });
+        const ativo = document.activeElement;
+        const colunaAtiva = ativo && ativo.dataset ? ativo.dataset.filtroColuna : "";
+        const cursor = colunaAtiva ? ativo.selectionStart : 0;
         if (!estoque.length) {
             box.innerHTML = '<p class="req-vazio">Clique em Gerar lista para carregar os produtos com saldo.</p>';
             return;
         }
         const linhas = filtrados();
-        if (!linhas.length) {
-            box.innerHTML = '<p class="req-vazio">Nenhum produto com esse texto.</p>';
-            return;
-        }
         const visiveis = linhas.slice(0, LIMITE);
-        const aviso = linhas.length > LIMITE
-            ? `<p class="req-vazio">Mostrando ${LIMITE} de ${linhas.length}. Digite o código ou parte da descrição para reduzir a lista.</p>`
-            : `<p class="req-vazio">${linhas.length} produto(s).</p>`;
-        box.innerHTML = aviso + `<div class="req-scroll"><table>
-            <thead><tr>
-                <th>#</th><th>Código</th><th>Descrição</th><th>Tipo</th><th>Curva</th><th>Saldo</th><th>Quantidade</th><th></th>
-            </tr></thead><tbody>
-            ${visiveis.map((item, indice) => {
+        const aviso = !linhas.length
+            ? '<p class="req-vazio">Nenhum produto com esse filtro.</p>'
+            : linhas.length > LIMITE
+                ? `<p class="req-vazio">Mostrando ${LIMITE} de ${linhas.length}. Use as caixas do cabeçalho para reduzir a lista.</p>`
+                : `<p class="req-vazio">${linhas.length} produto(s).</p>`;
+        const corpo = visiveis.length
+            ? visiveis.map((item, indice) => {
                 const ja = pedido.get(chave(item.CODIGO));
                 const curva = item.CURVA_A_B_C || "C";
                 const curvaClass = curva === "A" ? "curva-a" : curva === "B" ? "curva-b" : "curva-c";
@@ -81,11 +101,31 @@
                     <td><span class="badge" style="background:#6c757d">${escapar(item.TIPO || "N/A")}</span></td>
                     <td><span class="badge ${curvaClass}">${escapar(curva)}</span></td>
                     <td><strong>${fmt(item.SALDO)}</strong></td>
-                    <td><input class="req-qtd" type="number" min="0" max="${Number(item.SALDO)}" step="any" value="${ja ? ja.quantidade : ""}" data-qtd="${escapar(item.CODIGO)}" /></td>
+                    <td><input class="req-qtd" type="number" min="0" max="${Number(item.SALDO)}" step="any" value="${ja ? ja.quantidade : escapar(rascunhoQtd.get(chave(item.CODIGO)) || "")}" data-qtd="${escapar(item.CODIGO)}" /></td>
                     <td><button type="button" class="btn-incluir" data-incluir="${escapar(item.CODIGO)}">${ja ? "Atualizar" : "Incluir"}</button></td>
                 </tr>`;
-            }).join("")}
+            }).join("")
+            : '<tr><td colspan="8" class="req-vazio">Nenhum produto com esse filtro.</td></tr>';
+        box.innerHTML = aviso + `<div class="req-scroll"><table>
+            <thead><tr>
+                <th>#</th>
+                ${caixaColuna("codigo", "Código")}
+                ${caixaColuna("descricao", "Descrição")}
+                ${caixaColuna("tipo", "Tipo")}
+                ${caixaColuna("curva", "Curva")}
+                ${caixaColuna("saldo", "Saldo")}
+                <th>Quantidade</th><th></th>
+            </tr></thead><tbody>
+            ${corpo}
             </tbody></table></div>`;
+        if (colunaAtiva) {
+            const novo = box.querySelector('[data-filtro-coluna="' + colunaAtiva + '"]');
+            if (novo) {
+                novo.focus();
+                const pos = Math.min(cursor || 0, novo.value.length);
+                novo.setSelectionRange(pos, pos);
+            }
+        }
     }
 
     function renderPedido() {
@@ -146,8 +186,22 @@
         incluir(botao.dataset.incluir);
     });
 
+    function aoFiltrarColuna(e) {
+        const input = e.target.closest("[data-filtro-coluna]");
+        if (!input || !Object.prototype.hasOwnProperty.call(filtrosColuna, input.dataset.filtroColuna)) return;
+        filtrosColuna[input.dataset.filtroColuna] = input.value;
+        renderDisponivel();
+    }
+
+    document.getElementById("listaDisponivel").addEventListener("input", aoFiltrarColuna);
+    document.getElementById("listaDisponivel").addEventListener("search", aoFiltrarColuna);
+
     document.getElementById("listaDisponivel").addEventListener("keydown", (e) => {
         if (e.key !== "Enter") return;
+        if (e.target.closest("[data-filtro-coluna]")) {
+            e.preventDefault();
+            return;
+        }
         const input = e.target.closest("[data-qtd]");
         if (!input) return;
         e.preventDefault();
@@ -221,7 +275,7 @@
             estoque = data.itens || [];
             avisar(
                 estoque.length
-                    ? estoque.length + " produto(s) com saldo. Filtre pelo código ou por parte da descrição."
+                    ? estoque.length + " produto(s) com saldo. Filtre nas caixas do cabeçalho."
                     : "Nenhum produto ativo com saldo para esses filtros.",
                 estoque.length ? "info" : "erro"
             );
