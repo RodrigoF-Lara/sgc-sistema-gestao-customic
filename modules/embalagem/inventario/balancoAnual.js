@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     async function api(method, body) {
-        const response = await fetch("/api/embalagem/balancoAnual", {
+        const response = await fetch("/api/embalagem/inventarioCiclico?rota=balanco", {
             method,
             headers: authHeaders(),
             body: body ? JSON.stringify(body) : undefined

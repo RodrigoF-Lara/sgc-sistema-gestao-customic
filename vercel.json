@@ -7,9 +7,6 @@
     "api/embalagem/inventarioCiclico.js": {
       "maxDuration": 60
     },
-    "api/embalagem/balancoAnual.js": {
-      "maxDuration": 60
-    },
     "api/embalagem/inventory.js": {
       "maxDuration": 60
     },

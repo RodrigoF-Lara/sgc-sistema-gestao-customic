@@ -1,8 +1,13 @@
 import { getConnection, sql } from "../../db.js";
 import { exigirPermissao } from "../../lib/permissoesHelper.js";
 import { anoKardex } from "../../lib/kardex.js";
+import balancoAnual from "../../lib/balancoAnualApi.js";
 
 export default async function handler(req, res) {
+    if (req.query.rota === "balanco") {
+        return balancoAnual(req, res);
+    }
+
     const { acao } = req.query;
 
     // GET: Gerar, Listar ou Abrir inventário

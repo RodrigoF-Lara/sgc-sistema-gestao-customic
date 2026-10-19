@@ -151,7 +151,7 @@ flowchart LR
 
 ### Balanço anual
 
-A tela [modules/embalagem/inventario/balancoAnual.html](./inventario/balancoAnual.html) é a contagem geral de fim de ano. Ela não grava em `TB_INVENTARIO_CICLICO`.
+A tela [modules/embalagem/inventario/balancoAnual.html](./inventario/balancoAnual.html) é a contagem geral de fim de ano. Ela não grava em `TB_INVENTARIO_CICLICO`. A API fica em `inventarioCiclico.js` com `?rota=balanco`, para não criar outra função serverless. O plano Hobby da Vercel aceita 12 funções por implantação.
 
 O operador abre o ano novo, lança ou importa a contagem (código, armazém, endereço, quantidade) e salva. Isso só escreve `TB_BALANCO_ANUAL` e `TB_BALANCO_ANUAL_ITEM`. A revisão aponta código inexistente, quantidade vazia ou negativa, linha repetida e endereço que ainda tem saldo no ano vivo e não entrou na contagem.
 
