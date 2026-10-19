@@ -72,7 +72,9 @@ modules/embalagem/
 | `TB_REQUISICOES` | Cabeçalho das requisições, incluindo `DT_CONCLUSAO` para medir lead time de atendimento |
 | `TB_REQ_ITEM` | Itens das requisições |
 | `TB_REQ_DELETE_LOG` | Log de auditoria de exclusões de requisições (somente ADMIN) |
-| `KARDEX_2026` | Movimentações e saldos de estoque (versionada por ano) |
+| `KARDEX_LOTE` | Estoque por lote e endereço. O saldo da linha é `QNT - QNT_SAIDA`. O ano fica na coluna `KARDEX` | 
+| `KARDEX_MOVIMENTO` | Entrada e saída de cada lote (`ID_TB_RESUMO`). O ano fica na coluna `KARDEX` | 
+| `TB_KARDEX_ANO` | Ano vivo do estoque. Visões `KARDEX_2026` e `KARDEX_2026_EMBALAGEM` apontam para as tabelas novas até o código terminar de migrar |
 | `TB_INVENTARIO_CICLICO_LOG` | Histórico de contagens |
 | `TB_INVENTARIO_CICLICO_ITEM` | Itens contados |
 | `TB_CONFIG_INVENTARIO` | Quantidades por bloco (1–5) |
