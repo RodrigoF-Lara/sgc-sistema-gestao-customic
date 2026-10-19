@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', function() {
         painel.status.textContent = '';
         if (girando) {
             const icone = document.createElement('i');
-            icone.className = 'fa-solid fa-spinner fa-spin';
+            icone.className = 'fa-solid fa-spinner sgc-giro';
             icone.setAttribute('aria-hidden', 'true');
             painel.status.appendChild(icone);
             painel.status.appendChild(document.createTextNode(' ' + texto));
@@ -920,8 +920,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btnExportar.disabled = travado;
         btnImportar.disabled = travado;
         if (travado) {
-            btnExportar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguardando...';
-            btnImportar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguardando...';
+            btnExportar.innerHTML = '<i class="fa-solid fa-spinner sgc-giro"></i> Aguardando...';
+            btnImportar.innerHTML = '<i class="fa-solid fa-spinner sgc-giro"></i> Aguardando...';
         } else {
             btnExportar.innerHTML = htmlExportar;
             btnImportar.innerHTML = htmlImportar;
