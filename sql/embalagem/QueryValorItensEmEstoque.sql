@@ -34,8 +34,9 @@ SaldoAtual AS (
     SELECT 
         CODIGO,
         ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-    FROM [dbo].[KARDEX_2026_EMBALAGEM]
+    FROM [dbo].[KARDEX_LOTE]
     WHERE D_E_L_E_T_ <> '*'
+        AND KARDEX = (SELECT ANO_VIVO FROM dbo.TB_KARDEX_ANO WHERE ID = 1)
         AND CODIGO IN ('307992',
                        '303874',
                        '303830',

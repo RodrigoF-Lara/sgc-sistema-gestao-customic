@@ -503,7 +503,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ${dados.dataHora}
             </div>
             <div class="footer-right">
-                ${dados.usuario} | KARDEX 2026
+                ${dados.usuario} | KARDEX ${dados.ano || ""}
             </div>
         </div>
     </div>

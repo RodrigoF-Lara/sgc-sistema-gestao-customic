@@ -1,6 +1,7 @@
 import { getConnection, sql } from "../../db.js";
 import { exigirPermissao, exigirQualquerPermissao } from "../../lib/permissoesHelper.js";
 import { handleMapaEnderecos } from "../../lib/mapaEnderecosApi.js";
+import { anoKardex } from "../../lib/kardex.js";
 
 function agoraSaoPaulo() {
   return {
@@ -14,7 +15,7 @@ function agoraSaoPaulo() {
  * O laço antigo (update + insert por lote) passava de 60s na Vercel
  * quando o endereço tinha muitos lotes e a plataforma devolvia texto, não JSON.
  */
-async function zerarSaldos(transaction, { codigo, usuario, motivo, observacao, armazem, endereco }) {
+async function zerarSaldos(transaction, { codigo, usuario, motivo, observacao, armazem, endereco, ano }) {
   const { dt, hr } = agoraSaoPaulo();
   const filtraEndereco = armazem != null && endereco != null;
   const request = transaction.request();
@@ -47,21 +48,21 @@ async function zerarSaldos(transaction, { codigo, usuario, motivo, observacao, a
           [HR_SAIDA] = @HR
       OUTPUT inserted.[ID], deleted.[SALDO], inserted.[QNT], inserted.[ENDERECO], inserted.[ARMAZEM]
       INTO @zerados (ID, SALDO, QNT, ENDERECO, ARMAZEM)
-      FROM [dbo].[KARDEX_2026_EMBALAGEM] e
+      FROM [dbo].[KARDEX_LOTE] e
       WHERE e.[D_E_L_E_T_] = ''
         AND e.[CODIGO] = @CODIGO
         AND e.[SALDO] > 0
-        AND e.[KARDEX] = 2026
+        AND e.[KARDEX] = ${ano}
         AND (
           @FILTRA_ENDERECO = 0
           OR (e.[ARMAZEM] = @ARMAZEM AND e.[ENDERECO] = @ENDERECO)
         );
 
-      INSERT INTO [dbo].[KARDEX_2026]
+      INSERT INTO [dbo].[KARDEX_MOVIMENTO]
         ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
       SELECT
         '', 'SGC-WEB', z.ID, @CODIGO, ISNULL(z.ENDERECO, ''), ISNULL(z.ARMAZEM, ''),
-        -z.SALDO, 'SAÍDA', @USUARIO, @DT, @HR, @MOTIVO, @OBS, 2026, z.QNT
+        -z.SALDO, 'SAÍDA', @USUARIO, @DT, @HR, @MOTIVO, @OBS, ${ano}, z.QNT
       FROM @zerados z;
 
       SELECT COUNT(*) AS LOTES, ISNULL(SUM(SALDO), 0) AS TOTAL FROM @zerados;
@@ -90,6 +91,7 @@ export default async function handler(req, res) {
     const pool = await getConnection();
 
     if (req.method === "GET") {
+      const ano = await anoKardex(pool);
       const { codigo, action } = req.query;
 
       if (action && String(action).startsWith("mapa")) {
@@ -107,11 +109,11 @@ export default async function handler(req, res) {
               QNT AS TAM_LOTE,
               COUNT(*) AS QNT_CAIXAS,
               SUM(SALDO) AS SALDO
-            FROM [dbo].[KARDEX_2026_EMBALAGEM]
+            FROM [dbo].[KARDEX_LOTE]
             WHERE [D_E_L_E_T_] = '' 
               AND CODIGO = @CODIGO 
               AND SALDO > 0
-              AND KARDEX = 2026
+              AND KARDEX = ${ano}
             GROUP BY ARMAZEM, ENDERECO, QNT
             ORDER BY ARMAZEM, ENDERECO
           `);
@@ -132,9 +134,9 @@ export default async function handler(req, res) {
               k.SALDO,
               k.QNT_SAIDA,
               cp.DESCRICAO
-            FROM [dbo].[KARDEX_2026_EMBALAGEM] k
+            FROM [dbo].[KARDEX_LOTE] k
             LEFT JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = k.CODIGO
-            WHERE k.ID = @ID AND k.D_E_L_E_T_ <> '*'
+            WHERE k.ID = @ID AND k.D_E_L_E_T_ <> '*' AND k.KARDEX = ${ano}
           `);
         if (result.recordset.length === 0) {
           return res.status(404).json({ message: 'Lote não encontrado' });
@@ -153,11 +155,11 @@ export default async function handler(req, res) {
               ENDERECO,
               QNT AS TAM_LOTE,
               SALDO
-            FROM [dbo].[KARDEX_2026_EMBALAGEM]
+            FROM [dbo].[KARDEX_LOTE]
             WHERE [D_E_L_E_T_] = '' 
               AND CODIGO = @CODIGO 
               AND SALDO > 0
-              AND KARDEX = 2026
+              AND KARDEX = ${ano}
             ORDER BY ID DESC
           `);
         return res.status(200).json({ lotes: result.recordset });
@@ -182,7 +184,7 @@ export default async function handler(req, res) {
 
       const saldoRes = await pool.request()
         .input("CODIGO", sql.VarChar(10), codigoQuery)
-        .query("SELECT ISNULL(SUM(SALDO),0) AS SALDO FROM [dbo].[KARDEX_2026_EMBALAGEM] WHERE CODIGO = @CODIGO AND D_E_L_E_T_ <> '*' AND KARDEX = 2026");
+        .query(`SELECT ISNULL(SUM(SALDO),0) AS SALDO FROM [dbo].[KARDEX_LOTE] WHERE CODIGO = @CODIGO AND D_E_L_E_T_ <> '*' AND KARDEX = ${ano}`);
 
       // Totais reais no kardex do ano (não limitados ao TOP do histórico).
       // Aceita SAÍDA / SAIDA (com ou sem acento) e usa QNT < 0 como fallback.
@@ -211,11 +213,11 @@ export default async function handler(req, res) {
                   THEN ABS(QNT) ELSE 0
                 END), 0) AS QTD_SAIDAS,
             convert(varchar, MAX(DT), 23) AS ULTIMA_DT
-          FROM [dbo].[KARDEX_2026]
+          FROM [dbo].[KARDEX_MOVIMENTO]
           WHERE CODIGO = @CODIGO
             AND D_E_L_E_T_ <> '*'
             AND USUARIO <> 'BJULHAO'
-            AND KARDEX = 2026
+            AND KARDEX = ${ano}
         `);
 
       // Histórico recente (limite maior para não “esconder” saídas entre muitas entradas)
@@ -234,11 +236,11 @@ export default async function handler(req, res) {
             convert(varchar, HR, 8) AS HR, 
             MOTIVO, 
             ID_TB_RESUMO
-          FROM [dbo].[KARDEX_2026]
+          FROM [dbo].[KARDEX_MOVIMENTO]
           WHERE CODIGO = @CODIGO 
             AND D_E_L_E_T_ <> '*' 
             AND USUARIO <> 'BJULHAO'
-            AND KARDEX = 2026
+            AND KARDEX = ${ano}
           ORDER BY DT DESC, HR DESC, ID DESC
         `);
 
@@ -316,6 +318,7 @@ export default async function handler(req, res) {
       
       try {
         await transaction.begin();
+        const ano = await anoKardex(transaction);
 
         if (operacao === 'ENTRADA') {
           // Lógica de ENTRADA
@@ -335,9 +338,9 @@ export default async function handler(req, res) {
             .input("USUARIO_SAIDA", sql.VarChar, "")
             .input("DT_SAIDA", sql.VarChar, "")
             .input("HR_SAIDA", sql.VarChar, "")
-            .input("KARDEX", sql.Int, 2026)
+            .input("KARDEX", sql.Int, ano)
             .query(`
-              INSERT INTO [dbo].[KARDEX_2026_EMBALAGEM] 
+              INSERT INTO [dbo].[KARDEX_LOTE] 
               ([D_E_L_E_T_], [CODIGO], [ENDERECO], [ARMAZEM], [QNT], [USUARIO], [DT], [HR], [MOTIVO], [OBS], [QNT_SAIDA], [USUARIO_SAIDA], [DT_SAIDA], [HR_SAIDA], [KARDEX])
               OUTPUT INSERTED.ID
               VALUES (@D_E_L_E_T_, @CODIGO, @ENDERECO, @ARMAZEM, @QNT, @USUARIO, @DT, @HR, @MOTIVO, @OBS, @QNT_SAIDA, @USUARIO_SAIDA, @DT_SAIDA, @HR_SAIDA, @KARDEX);
@@ -348,7 +351,7 @@ export default async function handler(req, res) {
             throw new Error("Falha ao obter o ID da inserção em EMBALAGEM.");
           }
 
-          // Inserir em KARDEX_2026
+          // Inserir em KARDEX_MOVIMENTO
           await transaction
             .request()
             .input("D_E_L_E_T_", sql.VarChar, "")
@@ -364,10 +367,10 @@ export default async function handler(req, res) {
             .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
             .input("MOTIVO_log", sql.VarChar, "NOVO")
             .input("OBS_log", sql.VarChar, observacao || "")
-            .input("KARDEX_log", sql.Int, 2026)
+            .input("KARDEX_log", sql.Int, ano)
             .input("CAIXA_log", sql.VarChar, "")
             .query(`
-              INSERT INTO [dbo].[KARDEX_2026] 
+              INSERT INTO [dbo].[KARDEX_MOVIMENTO] 
               ([D_E_L_E_T_], [APLICATIVO], [ID_TB_RESUMO], [CODIGO], [ENDERECO], [ARMAZEM], [QNT], [OPERACAO], [USUARIO], [DT], [HR], [MOTIVO], [OBS], [KARDEX], [CAIXA])
               VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
             `);
@@ -387,7 +390,8 @@ export default async function handler(req, res) {
               armazem: armazem || '',
               usuario: usuario,
               dataHora: null, // será preenchido pelo frontend com horário local
-              tipoMovimento: 'ENTRADA'
+              tipoMovimento: 'ENTRADA',
+              ano
           };
 
         } else if (operacao === 'SAIDA') {
@@ -398,10 +402,13 @@ export default async function handler(req, res) {
 
           const loteInfo = await transaction.request()
             .input('ID', sql.Int, idTbResumo)
-            .query("SELECT SALDO, QNT_SAIDA, ENDERECO, ARMAZEM, QNT FROM [dbo].[KARDEX_2026_EMBALAGEM] WHERE ID = @ID");
+            .query(`SELECT SALDO, QNT_SAIDA, ENDERECO, ARMAZEM, QNT, KARDEX FROM [dbo].[KARDEX_LOTE] WHERE ID = @ID AND D_E_L_E_T_ <> '*'`);
 
           if (loteInfo.recordset.length === 0) {
             throw new Error(`Lote com ID ${idTbResumo} não encontrado.`);
+          }
+          if (Number(loteInfo.recordset[0].KARDEX) !== ano) {
+            throw new Error(`Este lote é do ano ${loteInfo.recordset[0].KARDEX}. O estoque vivo é ${ano}.`);
           }
 
           const { SALDO, QNT_SAIDA, ENDERECO, ARMAZEM, QNT: TAM_LOTE } = loteInfo.recordset[0];
@@ -419,12 +426,12 @@ export default async function handler(req, res) {
             .input('DT_SAIDA', sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
             .input('HR_SAIDA', sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
             .query(`
-                UPDATE [dbo].[KARDEX_2026_EMBALAGEM] 
+                UPDATE [dbo].[KARDEX_LOTE] 
                 SET [QNT_SAIDA] = @NOVA_QNT_SAIDA,
                     [USUARIO_SAIDA] = @USUARIO_SAIDA,
                     [DT_SAIDA] = @DT_SAIDA,
                     [HR_SAIDA] = @HR_SAIDA 
-                WHERE ID = @ID_upd
+                WHERE ID = @ID_upd AND KARDEX = ${ano}
             `);
 
           await transaction.request()
@@ -441,10 +448,10 @@ export default async function handler(req, res) {
             .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
             .input("MOTIVO_log", sql.VarChar, "")
             .input("OBS_log", sql.VarChar, observacao || "")
-            .input("KARDEX_log", sql.Int, 2026)
+            .input("KARDEX_log", sql.Int, ano)
             .input("CAIXA_log", sql.Float, TAM_LOTE)
             .query(`
-                INSERT INTO [dbo].[KARDEX_2026] 
+                INSERT INTO [dbo].[KARDEX_MOVIMENTO] 
                 ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
                 VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
             `);
@@ -460,6 +467,7 @@ export default async function handler(req, res) {
             observacao,
             armazem: arm,
             endereco: end,
+            ano,
           });
           if (!lotes) {
             throw new Error("Nenhum lote com saldo encontrado neste endereço.");
@@ -471,6 +479,7 @@ export default async function handler(req, res) {
             usuario,
             motivo: "ZERAR CÓDIGO",
             observacao,
+            ano,
           });
           if (!lotes) {
             throw new Error("Nenhum lote com saldo encontrado para este código.");
@@ -491,13 +500,13 @@ export default async function handler(req, res) {
             .input("ENDERECO", sql.VarChar(50), endAtual)
             .query(`
               SELECT ID, SALDO, QNT_SAIDA, QNT
-              FROM [dbo].[KARDEX_2026_EMBALAGEM]
+              FROM [dbo].[KARDEX_LOTE]
               WHERE [D_E_L_E_T_] = ''
                 AND CODIGO = @CODIGO
                 AND ARMAZEM = @ARMAZEM
                 AND ENDERECO = @ENDERECO
                 AND SALDO > 0
-                AND KARDEX = 2026
+                AND KARDEX = ${ano}
             `);
 
           if (lotesResult.recordset.length === 0) {
@@ -517,15 +526,15 @@ export default async function handler(req, res) {
               .input('DT_SAIDA', sql.Date, new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })))
               .input('HR_SAIDA', sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
               .query(`
-                UPDATE [dbo].[KARDEX_2026_EMBALAGEM]
+                UPDATE [dbo].[KARDEX_LOTE]
                 SET [QNT_SAIDA] = @NOVA_QNT_SAIDA,
                     [USUARIO_SAIDA] = @USUARIO_SAIDA,
                     [DT_SAIDA] = @DT_SAIDA,
                     [HR_SAIDA] = @HR_SAIDA
-                WHERE ID = @ID_upd
+                WHERE ID = @ID_upd AND KARDEX = ${ano}
               `);
 
-            // 2. Log de SAÍDA no KARDEX_2026
+            // 2. Log de SAÍDA no KARDEX_MOVIMENTO
             await transaction.request()
               .input("D_E_L_E_T_", sql.VarChar, "")
               .input("APLICATIVO", sql.VarChar, "SGC-WEB")
@@ -540,10 +549,10 @@ export default async function handler(req, res) {
               .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
               .input("MOTIVO_log", sql.VarChar, "ALTERAR ENDEREÇO")
               .input("OBS_log", sql.VarChar, obsTransferencia)
-              .input("KARDEX_log", sql.Int, 2026)
+              .input("KARDEX_log", sql.Int, ano)
               .input("CAIXA_log", sql.Float, TAM_LOTE)
               .query(`
-                INSERT INTO [dbo].[KARDEX_2026]
+                INSERT INTO [dbo].[KARDEX_MOVIMENTO]
                 ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
                 VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
               `);
@@ -564,9 +573,9 @@ export default async function handler(req, res) {
               .input("USUARIO_SAIDA", sql.VarChar, "")
               .input("DT_SAIDA", sql.VarChar, "")
               .input("HR_SAIDA", sql.VarChar, "")
-              .input("KARDEX", sql.Int, 2026)
+              .input("KARDEX", sql.Int, ano)
               .query(`
-                INSERT INTO [dbo].[KARDEX_2026_EMBALAGEM]
+                INSERT INTO [dbo].[KARDEX_LOTE]
                 ([D_E_L_E_T_],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[QNT_SAIDA],[USUARIO_SAIDA],[DT_SAIDA],[HR_SAIDA],[KARDEX])
                 OUTPUT INSERTED.ID
                 VALUES (@D_E_L_E_T_, @CODIGO, @ENDERECO, @ARMAZEM, @QNT, @USUARIO, @DT, @HR, @MOTIVO, @OBS, @QNT_SAIDA, @USUARIO_SAIDA, @DT_SAIDA, @HR_SAIDA, @KARDEX);
@@ -574,7 +583,7 @@ export default async function handler(req, res) {
 
             const novoId = embNovoResult.recordset[0]?.ID;
 
-            // 4. Log de ENTRADA no KARDEX_2026
+            // 4. Log de ENTRADA no KARDEX_MOVIMENTO
             await transaction.request()
               .input("D_E_L_E_T_", sql.VarChar, "")
               .input("APLICATIVO", sql.VarChar, "SGC-WEB")
@@ -589,10 +598,10 @@ export default async function handler(req, res) {
               .input("HR_log", sql.VarChar, new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false }))
               .input("MOTIVO_log", sql.VarChar, "ALTERAR ENDEREÇO")
               .input("OBS_log", sql.VarChar, obsTransferencia)
-              .input("KARDEX_log", sql.Int, 2026)
+              .input("KARDEX_log", sql.Int, ano)
               .input("CAIXA_log", sql.Float, TAM_LOTE)
               .query(`
-                INSERT INTO [dbo].[KARDEX_2026]
+                INSERT INTO [dbo].[KARDEX_MOVIMENTO]
                 ([D_E_L_E_T_],[APLICATIVO],[ID_TB_RESUMO],[CODIGO],[ENDERECO],[ARMAZEM],[QNT],[OPERACAO],[USUARIO],[DT],[HR],[MOTIVO],[OBS],[KARDEX],[CAIXA])
                 VALUES (@D_E_L_E_T_, @APLICATIVO, @ID_TB_RESUMO, @CODIGO_log, @ENDERECO_log, @ARMAZEM_log, @QNT_log, @OPERACAO_log, @USUARIO_log, @DT_log, @HR_log, @MOTIVO_log, @OBS_log, @KARDEX_log, @CAIXA_log);
               `);

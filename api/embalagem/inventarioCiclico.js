@@ -1,5 +1,6 @@
 import { getConnection, sql } from "../../db.js";
 import { exigirPermissao } from "../../lib/permissoesHelper.js";
+import { anoKardex } from "../../lib/kardex.js";
 
 export default async function handler(req, res) {
     const { acao } = req.query;
@@ -132,6 +133,7 @@ async function recalcularInventario(req, res) {
 async function gerarListaInventario(req, res) {
     try {
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
         let todosItens = [];
         
         // BUSCA AS CONFIGURAÇÕES SALVAS
@@ -220,8 +222,8 @@ async function gerarListaInventario(req, res) {
                         SELECT 
                             CODIGO,
                             ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                        FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                        WHERE D_E_L_E_T_ <> '*'
+                        FROM [dbo].[KARDEX_LOTE]
+                        WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                         GROUP BY CODIGO
                     ),
                     CustoUnitario AS (
@@ -270,18 +272,19 @@ async function gerarListaInventario(req, res) {
                         k.CODIGO,
                         COUNT(*) AS TOTAL_MOVIMENTACOES,
                         SUM(ABS(k.QNT)) AS TOTAL_QUANTIDADE_MOVIMENTADA
-                    FROM [dbo].[KARDEX_2026] k
+                    FROM [dbo].[KARDEX_MOVIMENTO] k
                     WHERE 
                         k.DT >= DATEADD(DAY, -@DIAS, GETDATE())
                         AND k.D_E_L_E_T_ <> '*'
+                        AND k.KARDEX = ${anoEstoque}
                     GROUP BY k.CODIGO
                 ),
                 SaldoAtual AS (
                     SELECT 
                         CODIGO,
                         ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*'
+                    FROM [dbo].[KARDEX_LOTE]
+                    WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                     GROUP BY CODIGO
                 ),
                 CustoUnitario AS (
@@ -343,8 +346,8 @@ async function gerarListaInventario(req, res) {
                     SELECT 
                         CODIGO,
                         ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*'
+                    FROM [dbo].[KARDEX_LOTE]
+                    WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                     GROUP BY CODIGO
                     HAVING ISNULL(SUM(SALDO), 0) > 0
                 ),
@@ -405,8 +408,8 @@ async function gerarListaInventario(req, res) {
                     SELECT 
                         CODIGO,
                         ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*'
+                    FROM [dbo].[KARDEX_LOTE]
+                    WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                     GROUP BY CODIGO
                 )
                 SELECT TOP (@QTD_ITENS)
@@ -457,8 +460,8 @@ async function gerarListaInventario(req, res) {
                     SELECT 
                         CODIGO,
                         ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*'
+                    FROM [dbo].[KARDEX_LOTE]
+                    WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                     GROUP BY CODIGO
                     HAVING ISNULL(SUM(SALDO), 0) > 0
                 ),
@@ -519,8 +522,8 @@ async function gerarListaInventario(req, res) {
                 const locResult = await pool.request().query(`
                     WITH SaldoPorEndereco AS (
                         SELECT CODIGO, ARMAZEM, ENDERECO, SUM(SALDO) AS SALDO_END
-                        FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                        WHERE D_E_L_E_T_ <> '*'
+                        FROM [dbo].[KARDEX_LOTE]
+                        WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                           AND CODIGO IN (${codigosParam})
                           AND ISNULL(ENDERECO,'') <> ''
                         GROUP BY CODIGO, ARMAZEM, ENDERECO
@@ -698,6 +701,7 @@ async function abrirInventario(req, res) {
     try {
         const { id } = req.query;
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
 
         // Busca o cabeçalho
         const headerResult = await pool.request()
@@ -736,8 +740,8 @@ async function abrirInventario(req, res) {
                 const locResult = await pool.request().query(`
                     WITH SaldoPorEndereco AS (
                         SELECT CODIGO, ARMAZEM, ENDERECO, SUM(SALDO) AS SALDO_END
-                        FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                        WHERE D_E_L_E_T_ <> '*'
+                        FROM [dbo].[KARDEX_LOTE]
+                        WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                           AND CODIGO IN (${codigosParam})
                           AND ISNULL(ENDERECO,'') <> ''
                         GROUP BY CODIGO, ARMAZEM, ENDERECO
@@ -1039,6 +1043,7 @@ async function buscarProduto(req, res) {
     try {
         const { codigo } = req.query;
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
 
         const result = await pool.request()
             .input('CODIGO', sql.NVarChar, codigo)
@@ -1059,8 +1064,8 @@ async function buscarProduto(req, res) {
                     SELECT 
                         CODIGO,
                         ISNULL(SUM(SALDO), 0) AS SALDO_ATUAL
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                    WHERE D_E_L_E_T_ <> '*' AND CODIGO = @CODIGO
+                    FROM [dbo].[KARDEX_LOTE]
+                    WHERE D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque} AND CODIGO = @CODIGO
                     GROUP BY CODIGO
                 )
                 SELECT 

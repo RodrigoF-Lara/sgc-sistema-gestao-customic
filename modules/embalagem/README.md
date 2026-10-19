@@ -74,7 +74,9 @@ modules/embalagem/
 | `TB_REQ_DELETE_LOG` | Log de auditoria de exclusões de requisições (somente ADMIN) |
 | `KARDEX_LOTE` | Estoque por lote e endereço. O saldo da linha é `QNT - QNT_SAIDA`. O ano fica na coluna `KARDEX` | 
 | `KARDEX_MOVIMENTO` | Entrada e saída de cada lote (`ID_TB_RESUMO`). O ano fica na coluna `KARDEX` | 
-| `TB_KARDEX_ANO` | Ano vivo do estoque. Visões `KARDEX_2026` e `KARDEX_2026_EMBALAGEM` apontam para as tabelas novas até o código terminar de migrar |
+| `TB_KARDEX_ANO` | Ano vivo do estoque (`ANO_VIVO`). As telas filtram a coluna `KARDEX` por esse ano. As visões `KARDEX_2026` e `KARDEX_2026_EMBALAGEM` continuam apontando para as tabelas novas, para consulta antiga |
+| `TB_BALANCO_ANUAL` | Cabeçalho do balanço de fim de ano. Um aberto ou finalizado por ano |
+| `TB_BALANCO_ANUAL_ITEM` | Contagem do balanço (código, armazém, endereço, quantidade). Não altera o estoque até a subida |
 | `TB_INVENTARIO_CICLICO_LOG` | Histórico de contagens |
 | `TB_INVENTARIO_CICLICO_ITEM` | Itens contados |
 | `TB_CONFIG_INVENTARIO` | Quantidades por bloco (1–5) |
@@ -147,6 +149,14 @@ flowchart LR
 
 > Detalhes em [CHANGELOG_BLOCOS_4_5.md](../../CHANGELOG_BLOCOS_4_5.md).
 
+### Balanço anual
+
+A tela [modules/embalagem/inventario/balancoAnual.html](./inventario/balancoAnual.html) é a contagem geral de fim de ano. Ela não grava em `TB_INVENTARIO_CICLICO`.
+
+O operador abre o ano novo, lança ou importa a contagem (código, armazém, endereço, quantidade) e salva. Isso só escreve `TB_BALANCO_ANUAL` e `TB_BALANCO_ANUAL_ITEM`. A revisão aponta código inexistente, quantidade vazia ou negativa, linha repetida e endereço que ainda tem saldo no ano vivo e não entrou na contagem.
+
+O botão **Subir saldo e virar o ano** (permissão `balanco-subir`) só roda com o armazém parado. Numa transação só, cria um lote novo por linha com quantidade maior que zero (`MOTIVO = inventario`, `QNT` = contagem, `QNT_SAIDA` = 0), grava a entrada em `KARDEX_MOVIMENTO`, muda `TB_KARDEX_ANO.ANO_VIVO` e marca o balanço como `FINALIZADO`. O ano anterior não é apagado nem zerado. Quantidade zero não vira lote. A simulação não grava estoque.
+
 ### Status de NF (Lead Time por Etapa)
 
 - A tela [modules/embalagem/nf/statusNF.html](./nf/statusNF.html) exibe o **Lead Time Total** por item de NF (par `NF + CODIGO`), calculado entre o primeiro e o último evento em `TB_LOG_NF`.
@@ -159,7 +169,7 @@ flowchart LR
 
 ### Necessidade de Compras (Termômetro)
 
-- Fonte de saldo atual: `KARDEX_2026_EMBALAGEM`
+- Fonte de saldo atual: `KARDEX_LOTE` do ano vivo (`TB_KARDEX_ANO`)
 - Fonte de parâmetros: `CAD_PROD.ESTOQUE_MINIMO`, `CAD_PROD.ESTOQUE_IDEAL`, `CAD_PROD.ESTOQUE_MAXIMO`
 - Classificações: `ABAIXO DO MINIMO`, `NO MINIMO`, `REGULAR`, `EXCEDENTE`, `SEM PARAMETRO`
 - Necessidade de compra: diferença entre saldo atual e estoque ideal quando o saldo estiver abaixo do ideal

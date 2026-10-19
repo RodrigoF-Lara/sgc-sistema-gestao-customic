@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Balanço Anual - Kardex</title>
+    <link rel="stylesheet" href="/shared/frontend/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <div class="main-content">
+      <div class="container">
+        <h1>Balanço Anual</h1>
+
+        <div class="card">
+          <p>
+            Contagem geral de fim de ano. Não é o inventário cíclico. A lista fica salva nesta tela.
+            O estoque só muda no botão <strong>Subir saldo e virar o ano</strong>: cada linha com quantidade
+            vira um lote novo, com motivo <strong>inventario</strong>. O ano anterior permanece no banco.
+          </p>
+          <p id="anoVivoTexto">Ano vivo do estoque: —</p>
+        </div>
+
+        <div class="card" id="painelAbrir">
+          <h2>Abrir contagem</h2>
+          <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+            <div>
+              <label for="anoBalanco">Ano do saldo novo</label>
+              <input type="number" id="anoBalanco" class="form-control" min="2000" max="2100" style="width: 140px;" />
+            </div>
+            <button id="abrirBtn" class="btn-destaque" type="button">
+              <i class="fa-solid fa-folder-open"></i> Abrir balanço
+            </button>
+          </div>
+        </div>
+
+        <div id="painelContagem" style="display: none;">
+          <div class="card">
+            <div class="inventario-header">
+              <div>
+                <h2 id="tituloAno">Contagem</h2>
+                <div id="resumo" class="info-lista"></div>
+              </div>
+              <div class="inventario-acoes" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button id="adicionarBtn" class="btn-success" type="button">
+                  <i class="fa-solid fa-plus"></i> Linha
+                </button>
+                <button id="modeloBtn" class="btn-secundario" type="button">
+                  <i class="fa-solid fa-file-excel"></i> Modelo
+                </button>
+                <button id="escolherPlanilhaBtn" class="btn-secundario" type="button">
+                  <i class="fa-solid fa-file-import"></i> Importar
+                </button>
+                <input id="arquivo" type="file" accept=".xlsx,.xls,.csv" style="display: none;" />
+                <button id="exportarBtn" class="btn-secundario" type="button">
+                  <i class="fa-solid fa-download"></i> Exportar
+                </button>
+                <button id="limparBtn" class="btn-secundario" type="button">
+                  <i class="fa-solid fa-eraser"></i> Limpar
+                </button>
+              </div>
+            </div>
+
+            <div style="margin: 12px 0;">
+              <input id="filtro" class="form-control" type="search" placeholder="Filtrar por código, endereço ou descrição" />
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table id="grade">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Armazém</th>
+                    <th>Endereço</th>
+                    <th>Quantidade</th>
+                    <th>Saldo atual</th>
+                    <th>Diferença</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;">
+              <button id="salvarBtn" class="btn-destaque" type="button">
+                <i class="fa-solid fa-save"></i> Salvar contagem
+              </button>
+              <button id="revisarBtn" class="btn-secundario" type="button">
+                <i class="fa-solid fa-list-check"></i> Revisar
+              </button>
+              <button id="simularBtn" class="btn-secundario" type="button">
+                <i class="fa-solid fa-flask"></i> Simular
+              </button>
+              <button id="subirBtn" class="btn-sucesso" type="button" style="display: none;">
+                <i class="fa-solid fa-upload"></i> Subir saldo e virar o ano
+              </button>
+            </div>
+            <p id="avisoParado" style="margin-top: 12px;">
+              Pare o armazém antes de subir o saldo. A simulação não grava estoque.
+              Endereço com saldo que não entrar na contagem não passa para o ano novo.
+              Quantidade com decimal usa vírgula, como em 1.234,5. Zero não vira lote.
+            </p>
+          </div>
+
+          <div class="card" id="painelAnalise" style="display: none;">
+            <h2>Revisão</h2>
+            <div id="analise"></div>
+          </div>
+        </div>
+
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="/shared/frontend/permissoes.js"></script>
+    <script src="balancoAnual.js"></script>
+    <script src="/shared/frontend/layout.js"></script>
+    <script src="/shared/frontend/fundos.js"></script>
+  </body>
+</html>

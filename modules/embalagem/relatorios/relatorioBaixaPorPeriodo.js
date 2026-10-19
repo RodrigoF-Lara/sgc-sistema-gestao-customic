@@ -69,6 +69,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             let url = `/api/embalagem/relatorios?acao=baixaPorPeriodo&dataInicio=${inicio}&dataFim=${fim}`;
+            const ano = document.getElementById("anoEstoque").value.trim();
+            if (ano) url += `&ano=${encodeURIComponent(ano)}`;
             if (tipo) {
                 url += `&tipoProduto=${encodeURIComponent(tipo)}`;
             }

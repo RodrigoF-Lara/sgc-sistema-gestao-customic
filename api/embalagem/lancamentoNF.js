@@ -1,4 +1,5 @@
 import { getConnection, sql } from "../../db.js";
+import { anoKardex } from "../../lib/kardex.js";
 
 /** Data/hora de São Paulo como strings (evita bug de fuso no Vercel UTC). */
 function obterDataHoraSaoPaulo() {
@@ -164,6 +165,7 @@ export default async function handler(req, res) {
                 const codigo = req.query.codigo;
                 if (!codigo) return res.status(400).json({ message: "ParÃ¢metro 'codigo' obrigatÃ³rio." });
 
+                const anoEstoque = await anoKardex(pool);
                 const [descResult, saldoResult, custoResult] = await Promise.all([
                     pool.request()
                         .input("COD", sql.VarChar, codigo)
@@ -173,8 +175,8 @@ export default async function handler(req, res) {
                         .input("COD", sql.VarChar, codigo)
                         .query(`
                             SELECT ISNULL(SUM(SALDO), 0) AS SALDO
-                            FROM [dbo].[KARDEX_2026_EMBALAGEM]
-                            WHERE CODIGO = @COD AND D_E_L_E_T_ <> '*' AND KARDEX = 2026
+                            FROM [dbo].[KARDEX_LOTE]
+                            WHERE CODIGO = @COD AND D_E_L_E_T_ <> '*' AND KARDEX = ${anoEstoque}
                         `),
 
                     pool.request()

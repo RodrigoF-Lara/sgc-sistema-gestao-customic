@@ -1,5 +1,6 @@
 import { getConnection, sql } from "../../db.js";
 import { exigirPermissao, podeAcessar, nivelDoRequest } from "../../lib/permissoesHelper.js";
+import { anoKardex } from "../../lib/kardex.js";
 
 export const config = { maxDuration: 60 };
 
@@ -60,6 +61,7 @@ async function listarItensDisponiveis(req, res) {
     if (!(await podeMontarRequisicao(req, res))) return;
     const { curvaABC, tipoProduto } = req.query;
     const pool = await getConnection();
+    const anoEstoque = await anoKardex(pool);
     const pedido = pool.request();
     pedido.timeout = 20000;
     let query = `
@@ -72,9 +74,9 @@ async function listarItensDisponiveis(req, res) {
         FROM [dbo].[CAD_PROD] cp WITH (NOLOCK)
         LEFT JOIN (
             SELECT CODIGO, SUM(SALDO) AS SALDO
-            FROM [dbo].[KARDEX_2026_EMBALAGEM] WITH (NOLOCK)
+            FROM [dbo].[KARDEX_LOTE] WITH (NOLOCK)
             WHERE D_E_L_E_T_ <> '*'
-              AND KARDEX = 2026
+              AND KARDEX = ${anoEstoque}
             GROUP BY CODIGO
         ) k ON cp.CODIGO = k.CODIGO
         WHERE ISNULL(cp.ATIVO, 1) = 1
@@ -107,6 +109,7 @@ async function listarItensDisponiveis(req, res) {
 }
 
 async function saldosPorCodigo(pool, codigos) {
+    const anoEstoque = await anoKardex(pool);
     const mapa = new Map();
     for (let i = 0; i < codigos.length; i += 400) {
         const fatia = codigos.slice(i, i + 400);
@@ -117,9 +120,9 @@ async function saldosPorCodigo(pool, codigos) {
         });
         const result = await pedido.query(`
             SELECT CODIGO, SUM(SALDO) AS SALDO
-            FROM [dbo].[KARDEX_2026_EMBALAGEM] WITH (NOLOCK)
+            FROM [dbo].[KARDEX_LOTE] WITH (NOLOCK)
             WHERE D_E_L_E_T_ <> '*'
-              AND KARDEX = 2026
+              AND KARDEX = ${anoEstoque}
               AND CODIGO IN (${params.join(", ")})
             GROUP BY CODIGO
         `);
@@ -177,6 +180,7 @@ async function handleGet(req, res) {
 
     const { id, idReqItemLog, idReqLog } = req.query;
     const pool = await getConnection();
+    const anoEstoque = await anoKardex(pool);
     if (id) {
         const headerResult = await pool.request().input('idReq', sql.Int, id).query("SELECT * FROM [dbo].[TB_REQUISICOES] WHERE ID_REQ = @idReq");
         if (headerResult.recordset.length === 0) return res.status(404).json({ message: "Requisição não encontrada" });
@@ -186,21 +190,21 @@ async function handleGet(req, res) {
                 P.DESCRICAO AS DESCRICAO_PRODUTO,
                 ISNULL((
                     SELECT SUM(ISNULL(K3.SALDO, 0))
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM] K3
+                    FROM [dbo].[KARDEX_LOTE] K3
                     WHERE K3.CODIGO = I.CODIGO
                       AND K3.D_E_L_E_T_ = ''
-                      AND K3.KARDEX = 2026
+                      AND K3.KARDEX = ${anoEstoque}
                 ), 0) AS SALDO_ESTOQUE,
                 STUFF((
                     SELECT ', ' + ENDERECO_ARM
                     FROM (
                         SELECT DISTINCT 
                             ISNULL(K2.ENDERECO, '-') + ' (ARM:' + ISNULL(CAST(K2.ARMAZEM AS VARCHAR), '-') + ')' AS ENDERECO_ARM
-                        FROM [dbo].[KARDEX_2026_EMBALAGEM] K2
+                        FROM [dbo].[KARDEX_LOTE] K2
                         WHERE K2.CODIGO = I.CODIGO 
                           AND K2.SALDO > 0
                           AND K2.D_E_L_E_T_ = ''
-                          AND K2.KARDEX = 2026
+                          AND K2.KARDEX = ${anoEstoque}
                     ) AS EnderecosDist
                     ORDER BY ENDERECO_ARM
                     FOR XML PATH('')

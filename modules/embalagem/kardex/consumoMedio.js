@@ -393,14 +393,16 @@ document.addEventListener('DOMContentLoaded', function() {
     async function abrirModalMovimentacoes(codigo, descricao, janelaDias, label) {
         const corpo = document.getElementById('modal-mov-corpo');
         document.getElementById('modal-mov-titulo').textContent = `${codigo} — ${descricao}`;
-        document.getElementById('modal-mov-subtitulo').textContent = `Movimentações usadas no cálculo do Consumo Médio ${label} (últimos ${janelaDias} dias, a partir de 01/04/2026)`;
+        document.getElementById('modal-mov-subtitulo').textContent = `Movimentações usadas no cálculo do Consumo Médio ${label} (últimos ${janelaDias} dias)`;
         corpo.innerHTML = '<p style="color:#888; padding:20px 0; text-align:center;"><i class="fa fa-spinner fa-spin"></i> Carregando...</p>';
         modalMov.style.display = 'flex';
 
         try {
             const resp = await fetch(`/api/embalagem/relatorios?acao=movimentacoesProduto&codigo=${encodeURIComponent(codigo)}&janela=${janelaDias}`);
             if (!resp.ok) throw new Error('Erro ao buscar movimentações');
-            const { movimentacoes, totalSaidas } = await resp.json();
+            const { movimentacoes, totalSaidas, ano } = await resp.json();
+            const piso = Number(ano) === 2026 ? ", a partir de 01/04/2026" : "";
+            document.getElementById('modal-mov-subtitulo').textContent = `Movimentações do ano ${ano || "vivo"} usadas no Consumo Médio ${label} (últimos ${janelaDias} dias${piso})`;
 
             if (!movimentacoes.length) {
                 corpo.innerHTML = '<p style="text-align:center; color:#888; padding:20px 0;">Nenhuma movimentação encontrada neste período.</p>';

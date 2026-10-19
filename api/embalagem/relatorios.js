@@ -1,4 +1,5 @@
 import { getConnection, resetPool, sql } from "../../db.js";
+import { anoKardex, anoInformado, pisoConsumo } from "../../lib/kardex.js";
 
 // Vercel: permite até 60s (plano Pro). Hobby fica no limite da conta.
 export const config = {
@@ -85,6 +86,7 @@ async function relatorioBaixaPorPeriodo(req, res) {
         }
 
         const pool = await getConnection();
+        const anoEstoque = anoInformado(req.query.ano, await anoKardex(pool));
         
         // Converte strings para Date corretamente SEM subtrair dias
         const dataInicioObj = new Date(dataInicio + 'T00:00:00Z');
@@ -103,12 +105,13 @@ async function relatorioBaixaPorPeriodo(req, res) {
         // Query base para verificação
         let queryVerificacao = `
             SELECT COUNT(*) as TOTAL
-            FROM [dbo].[KARDEX_2026] k
+            FROM [dbo].[KARDEX_MOVIMENTO] k
             LEFT JOIN [dbo].[CAD_PROD] cp ON k.CODIGO = cp.CODIGO
             WHERE k.OPERACAO = 'SAÍDA'
                 AND k.USUARIO <> 'BEATRIZ JULHAO'
                 AND k.DT >= @DATA_INICIO
-                AND k.DT < @DATA_FIM`;
+                AND k.DT < @DATA_FIM
+                AND k.KARDEX = ${anoEstoque}`;
         
         // Adiciona filtro de tipo se especificado
         if (tipoProduto && tipoProduto.trim()) {
@@ -137,12 +140,13 @@ async function relatorioBaixaPorPeriodo(req, res) {
                     COUNT(*) AS QUANTIDADE_MOVIMENTACOES,
                     MIN(k.DT) AS PRIMEIRA_BAIXA,
                     MAX(k.DT) AS ULTIMA_BAIXA
-                FROM [dbo].[KARDEX_2026] k
+                FROM [dbo].[KARDEX_MOVIMENTO] k
                 LEFT JOIN [dbo].[CAD_PROD] cp ON k.CODIGO = cp.CODIGO
                 WHERE k.OPERACAO = 'SAÍDA'
                     AND k.USUARIO <> 'BEATRIZ JULHAO'
                     AND k.DT >= @DATA_INICIO
-                    AND k.DT < @DATA_FIM`;
+                    AND k.DT < @DATA_FIM
+                    AND k.KARDEX = ${anoEstoque}`;
         
         // Adiciona filtro de tipo se especificado
         if (tipoProduto && tipoProduto.trim()) {
@@ -244,6 +248,7 @@ async function gerarRelatorioConsumo(req, res) {
         debug.etapa = 'conectando_banco';
         const tConn = Date.now();
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
         debug.tempos.conexaoMs = Date.now() - tConn;
         console.log('[consumoMedio] conexao', debug.tempos.conexaoMs, 'ms');
 
@@ -265,10 +270,10 @@ async function gerarRelatorioConsumo(req, res) {
                 ISNULL(SUM(k.SALDO), 0) AS SALDO_ATUAL,
                 ISNULL(cp.DESCRICAO, 'SEM DESCRIÇÃO') AS DESCRICAO,
                 ISNULL(cp.TIPO, 'NÃO INFORMADO') AS TIPO
-            FROM [dbo].[KARDEX_2026_EMBALAGEM] k WITH (NOLOCK)
+            FROM [dbo].[KARDEX_LOTE] k WITH (NOLOCK)
             INNER JOIN [dbo].[CAD_PROD] cp WITH (NOLOCK) ON cp.CODIGO = k.CODIGO
             WHERE k.D_E_L_E_T_ <> '*'
-              AND k.KARDEX = 2026
+              AND k.KARDEX = ${anoEstoque}
               ${temTipo ? `AND cp.TIPO = N'${tipoLit}'` : ''}
             GROUP BY k.CODIGO, cp.DESCRICAO, cp.TIPO
             HAVING ISNULL(SUM(k.SALDO), 0) > 0
@@ -353,12 +358,13 @@ async function gerarRelatorioConsumo(req, res) {
                 ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -60,  GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 60, 0) AS CONSUMO_BIMESTRAL,
                 ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -180, GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 180, 0) AS CONSUMO_SEMESTRAL,
                 ISNULL(SUM(CASE WHEN k.DT >= DATEADD(DAY, -365, GETDATE()) THEN ABS(k.QNT) ELSE 0 END) * 30.0 / 365, 0) AS CONSUMO_ANUAL
-            FROM [dbo].[KARDEX_2026] k WITH (NOLOCK)
+            FROM [dbo].[KARDEX_MOVIMENTO] k WITH (NOLOCK)
             WHERE k.CODIGO IN (${codigosSql})
               AND (k.OPERACAO = N'SAÍDA' OR k.OPERACAO = N'SAIDA')
               AND k.USUARIO <> N'BEATRIZ JULHAO'
               AND k.USUARIO <> N'BJULHAO'
-              AND k.DT >= '2026-04-01'
+              AND k.KARDEX = ${anoEstoque}
+              ${pisoConsumo(anoEstoque, "k")}
             GROUP BY k.CODIGO
         `;
 
@@ -478,9 +484,9 @@ async function movimentacoesProduto(req, res) {
         if (!codigo) return res.status(400).json({ message: 'Código é obrigatório' });
 
         const janelaDias = parseInt(janela) || 30;
-        const DATA_CORTE = '2026-04-01';
 
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
         const result = await pool.request()
             .input('CODIGO', sql.VarChar(20), codigo)
             .input('JANELA', sql.Int, janelaDias)
@@ -493,11 +499,12 @@ async function movimentacoesProduto(req, res) {
                     QNT,
                     USUARIO,
                     MOTIVO
-                FROM [dbo].[KARDEX_2026]
+                FROM [dbo].[KARDEX_MOVIMENTO]
                 WHERE CODIGO = @CODIGO
                     AND OPERACAO = 'SAÍDA'
                     AND USUARIO <> 'BEATRIZ JULHAO'
-                    AND CONVERT(DATE, DT) >= '2026-04-01'
+                    AND KARDEX = ${anoEstoque}
+                    ${pisoConsumo(anoEstoque, "")}
                     AND CONVERT(DATE, DT) >= CONVERT(DATE, DATEADD(DAY, -@JANELA, GETDATE()))
                 ORDER BY DT DESC, HR DESC
             `);
@@ -506,7 +513,8 @@ async function movimentacoesProduto(req, res) {
 
         return res.status(200).json({
             movimentacoes: result.recordset,
-            totalSaidas
+            totalSaidas,
+            ano: anoEstoque
         });
     } catch (error) {
         console.error('? Erro ao buscar movimentações:', error);
@@ -547,6 +555,7 @@ async function relatorioSaldoEstoque(req, res) {
         const esc = (s) => String(s).replace(/'/g, "''");
 
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
 
         console.log('[saldoEstoque] Filtros:', {
             curvaABC: curvaABC || 'Todas',
@@ -571,9 +580,9 @@ async function relatorioSaldoEstoque(req, res) {
                 SELECT
                     CODIGO,
                     SUM(SALDO) AS SALDO
-                FROM [dbo].[KARDEX_2026_EMBALAGEM] WITH (NOLOCK)
+                FROM [dbo].[KARDEX_LOTE] WITH (NOLOCK)
                 WHERE D_E_L_E_T_ <> '*'
-                    AND KARDEX = 2026
+                    AND KARDEX = ${anoEstoque}
                 GROUP BY CODIGO
             ) k ON cp.CODIGO = k.CODIGO
             WHERE (
@@ -765,6 +774,7 @@ async function relatorioNecessidadeCompras(req, res) {
         const { curvaABC, tipoProduto, statusTermometro, ativos, inativos } = req.query;
 
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
 
         let query = `
             WITH Base AS (
@@ -795,9 +805,9 @@ async function relatorioNecessidadeCompras(req, res) {
                     SELECT
                         CODIGO,
                         SUM(SALDO) AS SALDO
-                    FROM [dbo].[KARDEX_2026_EMBALAGEM]
+                    FROM [dbo].[KARDEX_LOTE]
                     WHERE D_E_L_E_T_ <> '*'
-                        AND KARDEX = 2026
+                        AND KARDEX = ${anoEstoque}
                     GROUP BY CODIGO
                 ) k ON cp.CODIGO = k.CODIGO
                 WHERE (
@@ -1196,6 +1206,7 @@ async function relatorioMovimentoDiario(req, res) {
         }
 
         const pool = await getConnection();
+        const anoEstoque = anoInformado(req.query.ano, await anoKardex(pool));
         const dataObj = new Date(data + 'T00:00:00Z');
 
         console.log('?? Movimento Diário - Data:', data, '| Tipo:', tipoProduto || 'EMBALAGEM');
@@ -1236,9 +1247,10 @@ async function relatorioMovimentoDiario(req, res) {
                           AND D.PROD_DT_EMISSAO <= @DT_POS
                         ORDER BY D.PROD_DT_EMISSAO DESC
                     ) AS CUSTO_PAGO
-                FROM [dbo].[KARDEX_2026] A
+                FROM [dbo].[KARDEX_MOVIMENTO] A
                 INNER JOIN [dbo].[CAD_PROD] B ON B.CODIGO = A.CODIGO
                 WHERE A.DT = @DT_POS
+                  AND A.KARDEX = ${anoEstoque}
         `;
 
         if (tipoProduto && tipoProduto.trim()) {
@@ -1353,6 +1365,7 @@ async function savingList(req, res) {
             return res.status(400).json({ message: "Parâmetro 'anoMesMeta' obrigatório no formato YYYY-MM." });
         }
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
 
         const itensResult = await pool.request().query(`
             SELECT CODIGO, DESCRICAO
@@ -1489,12 +1502,13 @@ async function savingList(req, res) {
             SELECT
                 k.CODIGO,
                 ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
-            FROM [dbo].[KARDEX_2026] k
+            FROM [dbo].[KARDEX_MOVIMENTO] k
             INNER JOIN [dbo].[CAD_PROD] cp ON cp.CODIGO = k.CODIGO
             WHERE k.OPERACAO = 'SAÍDA'
               AND k.USUARIO <> 'BEATRIZ JULHAO'
               AND k.DT >= DATEADD(DAY, -365, GETDATE())
-              AND k.DT >= '2026-04-01'
+              AND k.KARDEX = ${anoEstoque}
+              ${pisoConsumo(anoEstoque, "k")}
               AND cp.CURVA_A_B_C = 'A' AND cp.ATIVO = 1
             GROUP BY k.CODIGO
         `);
@@ -1578,6 +1592,7 @@ async function savingIndicador(req, res) {
             return res.status(400).json({ message: "Parâmetro 'anoMes' obrigatório no formato YYYY-MM." });
         }
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
         const [ano, mes] = anoMes.split("-").map(Number);
 
         console.log(`[savingIndicador] Processando anoMes=${anoMes}, ano=${ano}, mes=${mes}`);
@@ -1635,12 +1650,13 @@ async function savingIndicador(req, res) {
                     SELECT
                         k.CODIGO,
                         ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
-                    FROM [dbo].[KARDEX_2026] k
+                    FROM [dbo].[KARDEX_MOVIMENTO] k
                     INNER JOIN MetasMes m ON m.CODIGO = k.CODIGO
                     WHERE k.OPERACAO = 'SAÍDA'
                       AND k.USUARIO <> 'BEATRIZ JULHAO'
                       AND k.DT >= DATEADD(DAY, -365, GETDATE())
-                      AND k.DT >= '2026-04-01'
+                      AND k.KARDEX = ${anoEstoque}
+                      ${pisoConsumo(anoEstoque, "k")}
                     GROUP BY k.CODIGO
                 )
                 SELECT m.CODIGO, cp.DESCRICAO, m.META_PCT, m.CUSTO_BASE,
@@ -1795,6 +1811,7 @@ async function savingIndicador(req, res) {
 async function savingResumoMeses(req, res) {
     try {
         const pool = await getConnection();
+        const anoEstoque = await anoKardex(pool);
 
         // PASSO 1: descobrir range de datas das metas e códigos envolvidos
         const rangeResult = await pool.request().query(`
@@ -1826,12 +1843,13 @@ async function savingResumoMeses(req, res) {
                 SELECT
                     k.CODIGO,
                     ISNULL(SUM(ABS(k.QNT)) * 30.0 / 365, 0) AS CONSUMO_MENSAL
-                FROM [dbo].[KARDEX_2026] k
+                FROM [dbo].[KARDEX_MOVIMENTO] k
                 INNER JOIN [dbo].[TB_SAVING_META] m ON m.CODIGO = k.CODIGO
                 WHERE k.OPERACAO = 'SAÍDA'
                   AND k.USUARIO <> 'BEATRIZ JULHAO'
                   AND k.DT >= DATEADD(DAY, -365, GETDATE())
-                  AND k.DT >= '2026-04-01'
+                  AND k.KARDEX = ${anoEstoque}
+                  ${pisoConsumo(anoEstoque, "k")}
                 GROUP BY k.CODIGO
             ),
             -- Pré-agrega NFs por (CODIGO, ANO_MES) — escaneia NF_PRODUTOS uma única vez
