@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orçamentos - SGC</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    .orc h1 { text-align: left; margin-bottom: 6px; }
+    .orc .hint { color: #546e7a; margin: 0 0 16px; max-width: 760px; }
+    .aviso {
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-weight: 600;
+    }
+    .aviso.erro { background: #ffebee; color: #b71c1c; }
+    .aviso.ok { background: #e8f5e9; color: #1b5e20; }
+    .resumo-linha { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .orc .resumo,
+    .orc button.resumo,
+    .orc button.resumo:hover {
+      flex: 1 1 140px; text-align: left; background: #fff; color: #263238;
+      border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .orc button.resumo.ativo,
+    .orc button.resumo.ativo:hover { border-color: #1976d2; box-shadow: inset 0 0 0 1px #1976d2; }
+    .resumo .rotulo { display: block; color: #607d8b; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+    .resumo .valor { display: block; margin-top: 4px; font-size: 1.25rem; font-weight: 700; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+    .toolbar label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: #546e7a; font-weight: 700; }
+    .toolbar input, .toolbar select { min-width: 140px; padding: 8px 10px; }
+    .toolbar input[type="search"] { min-width: 220px; flex: 1; }
+    .orc button.sec, .orc button.sec:hover {
+      background: #fff; color: #263238; border: 1px solid #cfd8dc;
+    }
+    .orc button.ok, .orc button.ok:hover { background: #2e7d32; color: #fff; border: none; }
+    .orc button.no, .orc button.no:hover { background: #c62828; color: #fff; border: none; }
+    .orc button.ghost, .orc button.ghost:hover {
+      background: #fff; color: #c62828; border: 1px solid #ffcdd2;
+    }
+    .orc button:disabled, .orc button:disabled:hover {
+      background: #eceff1; color: #90a4ae; border-color: #eceff1; cursor: not-allowed;
+    }
+    .card-lista, .card-ficha {
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .wrap-table { overflow: auto; }
+    table.lista { min-width: 860px; }
+    table.lista tbody tr { cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .tag.aberto { background: #fff3cd; color: #856404; }
+    .tag.aprovado { background: #d4edda; color: #155724; }
+    .tag.reprovado { background: #f8d7da; color: #721c24; }
+    .produtos { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vazio { text-align: center; color: #78909c; padding: 28px; }
+    .topo-ficha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .topo-ficha h2 { margin: 0; font-size: 1.25rem; }
+    .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .grade { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .campo.largo { grid-column: span 2; }
+    .campo.cheio { grid-column: 1 / -1; }
+    .campo label { font-size: 0.8rem; font-weight: 700; color: #546e7a; }
+    .campo input, .campo textarea, .campo select { width: 100%; padding: 8px 10px; font: inherit; }
+    .campo textarea { min-height: 72px; resize: vertical; border: 1px solid #dee2e6; border-radius: 5px; }
+    .campo input[readonly] { background: #f7f9fb; color: #455a64; }
+    .busca { position: relative; }
+    .itens { width: 100%; min-width: 760px; }
+    .itens input { width: 100%; padding: 8px; }
+    .itens td.num, .itens th.num { text-align: right; }
+    .itens .total { text-align: right; font-weight: 700; white-space: nowrap; }
+    .orc button.icone, .orc button.icone:hover {
+      background: #fff; color: #c62828; border: 1px solid #ffcdd2; padding: 8px 10px;
+    }
+    .rodape-itens { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+    .total-geral { font-size: 1.15rem; font-weight: 700; }
+    .nota-box {
+      margin-top: 16px; background: #f7f9fb; border: 1px dashed #cfd8dc; border-radius: 8px; padding: 12px 14px;
+    }
+    .nota-box strong { display: block; margin-bottom: 4px; }
+    .nota-box p { margin: 0; color: #546e7a; }
+    .auditoria { margin-top: 8px; color: #78909c; font-size: 0.85rem; }
+    .sug {
+      position: fixed; z-index: 80; background: #fff; border: 1px solid #cfd8dc;
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); max-height: 240px; overflow: auto;
+    }
+    button.sug-item,
+    button.sug-item:hover {
+      display: block; width: 100%; text-align: left; background: #fff; color: #263238;
+      border: none; border-radius: 0; padding: 8px 10px; font-weight: 500; box-shadow: none;
+    }
+    button.sug-item:hover { background: #e3f2fd; color: #263238; }
+    .orc input.campo-erro { border-color: #c62828; }
+    .orc input:disabled, .orc textarea:disabled { background: #f4f6f8; color: #607d8b; }
+    .sug small { display: block; color: #607d8b; font-weight: 500; }
+    .truncado { color: #ef6c00; font-size: 0.85rem; margin-top: 8px; }
+    @media (max-width: 900px) {
+      .grade { grid-template-columns: 1fr 1fr; }
+      .campo.largo { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      .grade, .campo.largo { grid-template-columns: 1fr; }
+      .campo.largo { grid-column: auto; }
+      .toolbar input, .toolbar select, .toolbar input[type="search"] { width: 100%; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <div class="main-content">
+    <div class="container orc">
+      <h1><i class="fa-solid fa-file-signature"></i> Orçamentos</h1>
+      <p class="hint">Registre a cotação de compras: fornecedor, produtos, valores e prazo de entrega. Depois marque se o orçamento foi aprovado. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
+      <div id="aviso" class="aviso" hidden></div>
+
+      <section id="painelLista">
+        <div class="resumo-linha" id="resumo"></div>
+        <div class="toolbar">
+          <label>Busca
+            <input type="search" id="busca" placeholder="Número, fornecedor ou produto" />
+          </label>
+          <label>De
+            <input type="date" id="filtroDe" />
+          </label>
+          <label>Até
+            <input type="date" id="filtroAte" />
+          </label>
+          <button type="button" class="sec" id="btnFiltrar">Filtrar</button>
+          <button type="button" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo orçamento</button>
+        </div>
+        <div class="card-lista">
+          <div class="wrap-table">
+            <table class="lista">
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Data</th>
+                  <th>Fornecedor</th>
+                  <th>Produtos</th>
+                  <th>Valor</th>
+                  <th>Prazo</th>
+                  <th>Status</th>
+                  <th>Nota</th>
+                </tr>
+              </thead>
+              <tbody id="corpoLista"></tbody>
+            </table>
+          </div>
+          <p id="vazioLista" class="vazio" hidden>Nenhum orçamento neste filtro.</p>
+          <p id="truncado" class="truncado" hidden></p>
+        </div>
+      </section>
+
+      <section id="painelFicha" hidden>
+        <div class="card-ficha">
+          <div class="topo-ficha">
+            <div>
+              <h2 id="tituloFicha">Novo orçamento</h2>
+              <div id="badgeStatus"></div>
+            </div>
+            <div class="acoes">
+              <button type="button" class="sec" id="btnVoltar"><i class="fa-solid fa-arrow-left"></i> Lista</button>
+              <button type="button" class="ghost" id="btnExcluir" hidden>Excluir</button>
+              <button type="button" class="sec" id="btnReabrir" hidden>Reabrir</button>
+              <button type="button" class="no" id="btnReprovar">Reprovar</button>
+              <button type="button" class="ok" id="btnAprovar">Aprovar</button>
+              <button type="button" id="btnSalvar">Salvar</button>
+            </div>
+          </div>
+
+          <input type="hidden" id="orcId" />
+          <div class="grade" id="blocoDados">
+            <div class="campo">
+              <label for="codForn">Fornecedor</label>
+              <input id="codForn" inputmode="numeric" autocomplete="off" placeholder="Código" />
+            </div>
+            <div class="campo largo">
+              <label for="razaoForn">Razão social</label>
+              <input id="razaoForn" readonly tabindex="-1" placeholder="Preenchida ao localizar o fornecedor" />
+            </div>
+            <div class="campo">
+              <label for="numero">Número</label>
+              <input id="numero" maxlength="40" placeholder="Gerado se ficar em branco" />
+            </div>
+            <div class="campo">
+              <label for="dataOrc">Data do orçamento</label>
+              <input id="dataOrc" type="date" />
+            </div>
+            <div class="campo">
+              <label for="prazoDias">Prazo de entrega (dias)</label>
+              <input id="prazoDias" inputmode="numeric" placeholder="Ex.: 15" />
+            </div>
+            <div class="campo">
+              <label for="dataEntrega">Previsão de entrega</label>
+              <input id="dataEntrega" type="date" />
+            </div>
+            <div class="campo cheio">
+              <label for="obs">Observação</label>
+              <textarea id="obs" maxlength="1000" placeholder="Condição comercial, frete, validade da proposta"></textarea>
+            </div>
+            <div class="campo cheio">
+              <label for="motivo">Motivo da decisão</label>
+              <textarea id="motivo" maxlength="500" placeholder="Obrigatório ao reprovar"></textarea>
+            </div>
+          </div>
+          <p id="auditoria" class="auditoria"></p>
+
+          <h3 style="margin: 18px 0 8px;">Produtos</h3>
+          <div class="wrap-table">
+            <table class="itens">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th class="num">Quantidade</th>
+                  <th class="num">Valor unitário</th>
+                  <th class="num">Total</th>
+                  <th class="num">Prazo (dias)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="corpoItens"></tbody>
+            </table>
+          </div>
+          <div class="rodape-itens">
+            <button type="button" class="sec" id="btnAdd"><i class="fa-solid fa-plus"></i> Adicionar produto</button>
+            <div class="total-geral">Total <span id="totalGeral">R$ 0,00</span></div>
+          </div>
+
+          <div class="nota-box" id="notaBox">
+            <strong><i class="fa-solid fa-file-invoice"></i> Nota fiscal</strong>
+            <p id="notaTexto">Este orçamento ainda não está ligado a uma nota. Quando a compra for lançada, ele poderá ser vinculado à NF.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/shared/frontend/permissoes.js"></script>
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/modules/embalagem/orcamentos/orcamentos.js"></script>
+</body>
+</html>

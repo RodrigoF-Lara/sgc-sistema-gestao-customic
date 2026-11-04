@@ -18,6 +18,9 @@
     },
     "api/embalagem/requisicao.js": {
       "maxDuration": 60
+    },
+    "api/embalagem/orcamento.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
