@@ -77,6 +77,26 @@
     }
     .rodape-itens { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
     .total-geral { font-size: 1.15rem; font-weight: 700; }
+    .anexos { margin-top: 18px; }
+    .anexos-topo { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+    .anexos-topo h3 { margin: 0; }
+    .anexos-hint, .anexo-trava { color: #607d8b; font-size: 0.85rem; margin: 6px 0 10px; }
+    .anexo-trava { color: #ef6c00; font-weight: 600; }
+    .vazio-anexo { color: #78909c; margin: 8px 0 0; }
+    .grade-anexos { display: flex; flex-wrap: wrap; gap: 10px; }
+    .anexo-card {
+      width: 180px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px;
+      display: flex; flex-direction: column; gap: 6px; background: #fff;
+    }
+    .anexo-card img, .anexo-pdf {
+      width: 100%; height: 110px; border-radius: 6px; background: #f4f6f8; object-fit: cover;
+    }
+    .anexo-pdf { display: flex; align-items: center; justify-content: center; color: #c62828; font-size: 2rem; }
+    .anexo-nome { font-size: 0.78rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .anexo-meta { color: #78909c; font-size: 0.75rem; }
+    .anexo-botoes { display: flex; gap: 6px; }
+    .anexo-botoes button { flex: 1; padding: 6px 8px; font-size: 0.78rem; }
+    .qtd-anexo { display: block; color: #607d8b; font-size: 0.75rem; font-weight: 600; }
     .nota-box {
       margin-top: 16px; background: #f7f9fb; border: 1px dashed #cfd8dc; border-radius: 8px; padding: 12px 14px;
     }
@@ -229,6 +249,21 @@
             <button type="button" class="sec" id="btnAdd"><i class="fa-solid fa-plus"></i> Adicionar produto</button>
             <div class="total-geral">Total <span id="totalGeral">R$ 0,00</span></div>
           </div>
+
+          <section class="anexos" id="blocoAnexos">
+            <div class="anexos-topo">
+              <h3>Anexos</h3>
+              <div class="acoes">
+                <button type="button" class="sec" id="btnAnexarPdf"><i class="fa-solid fa-file-pdf"></i> Anexar PDF</button>
+                <button type="button" class="sec" id="btnAnexarFoto"><i class="fa-solid fa-image"></i> Anexar foto</button>
+              </div>
+            </div>
+            <p class="anexos-hint">PDF da proposta e fotos (JPG, PNG, GIF ou WEBP). Cada arquivo até 3 MB, no máximo 5 PDFs e 10 fotos. No orçamento novo, os dados são salvos ao anexar.</p>
+            <p class="anexo-trava" id="anexoTrava" hidden>Orçamento ligado a uma nota. Os anexos podem ser abertos, mas não alterados.</p>
+            <input type="file" id="filePdf" accept="application/pdf,.pdf" multiple hidden />
+            <input type="file" id="fileFoto" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" multiple hidden />
+            <div id="listaAnexos"></div>
+          </section>
 
           <div class="nota-box" id="notaBox">
             <strong><i class="fa-solid fa-file-invoice"></i> Nota fiscal</strong>

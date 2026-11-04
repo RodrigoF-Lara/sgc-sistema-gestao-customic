@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const API = "/api/embalagem/orcamento";
+  const LIMITE_ANEXO = 3 * 1024 * 1024;
   const STATUS = {
     ABERTO: "Aberto",
     APROVADO: "Aprovado",
@@ -24,6 +25,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let ocupado = false;
   let filtroStatus = "";
   let ficha = null;
+  let geracaoAnexos = 0;
+  const thumbs = new Map();
 
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
@@ -140,6 +143,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     return base + extra;
   }
 
+  function textoAnexos(qtd) {
+    const n = Number(qtd) || 0;
+    return n === 1 ? "1 anexo" : `${n} anexos`;
+  }
+
+  function textoTamanho(n) {
+    const b = Number(n) || 0;
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${Math.round(b / 1024).toLocaleString("pt-BR")} KB`;
+    return `${(b / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+  }
+
   function textoNf(row) {
     if (!row.idNf) return "—";
     return row.numNf ? `NF ${row.numNf}` : `NF #${row.idNf}`;
@@ -203,7 +218,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("vazioLista").hidden = true;
     corpoLista.innerHTML = linhas.map((row) => `
       <tr data-id="${row.id}">
-        <td><strong>${escapeHtml(row.numero || "#" + row.id)}</strong></td>
+        <td><strong>${escapeHtml(row.numero || "#" + row.id)}</strong>${row.qtdAnexos ? `<span class="qtd-anexo">${escapeHtml(textoAnexos(row.qtdAnexos))}</span>` : ""}</td>
         <td>${escapeHtml(fmtData(row.dataOrcamento))}</td>
         <td>${escapeHtml(row.codFornecedor)} — ${escapeHtml(row.razaoSocial || "Sem nome")}</td>
         <td class="produtos" title="${escapeHtml(textoProdutos(row))}">${escapeHtml(textoProdutos(row))}</td>
@@ -238,6 +253,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     painelFicha.hidden = true;
     painelLista.hidden = false;
     ficha = null;
+    geracaoAnexos += 1;
+    soltarThumbs(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("id");
     history.replaceState(null, "", url.pathname + url.search);
@@ -352,7 +369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       el.disabled = !aberto;
     });
-    ["btnVoltar", "btnExcluir", "btnReabrir", "btnReprovar", "btnAprovar", "btnSalvar", "btnAdd"].forEach((id) => {
+    ["btnVoltar", "btnExcluir", "btnReabrir", "btnReprovar", "btnAprovar", "btnSalvar", "btnAdd", "btnAnexarPdf", "btnAnexarFoto"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.disabled = false;
     });
@@ -379,6 +396,227 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       notaTexto.textContent = "Este orçamento ainda não está ligado a uma nota. Quando a compra for lançada, ele poderá ser vinculado à NF.";
     }
+    travarAnexos(data);
+  }
+
+  function soltarThumbs(manter) {
+    for (const [id, url] of thumbs) {
+      if (manter && manter.has(id)) continue;
+      URL.revokeObjectURL(url);
+      thumbs.delete(id);
+    }
+  }
+
+  function travarAnexos(data) {
+    const bloqueado = !!(data && data.idNf);
+    const pdf = document.getElementById("btnAnexarPdf");
+    const foto = document.getElementById("btnAnexarFoto");
+    if (pdf) pdf.disabled = bloqueado;
+    if (foto) foto.disabled = bloqueado;
+    const trava = document.getElementById("anexoTrava");
+    if (trava) trava.hidden = !bloqueado;
+    document.querySelectorAll("#listaAnexos .remover-anexo").forEach((botao) => {
+      botao.hidden = bloqueado;
+      botao.disabled = bloqueado;
+    });
+  }
+
+  function botaoAnexo(classe, rotulo, aoClicar) {
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = classe;
+    botao.textContent = rotulo;
+    botao.addEventListener("click", aoClicar);
+    return botao;
+  }
+
+  async function obterBlob(anexo) {
+    const q = new URLSearchParams({
+      acao: "anexo",
+      id: String(ficha.id),
+      anexoId: String(anexo.id),
+    });
+    const nivel = localStorage.getItem("userLevel");
+    if (nivel) q.set("userLevel", nivel);
+    const headers = authHeaders();
+    delete headers["Content-Type"];
+    const res = await fetch(`${API}?${q}`, { headers });
+    if (!res.ok) {
+      let msg = "Não foi possível abrir o anexo.";
+      try {
+        const data = await res.json();
+        if (data.error) msg = data.error;
+      } catch (_) { /* corpo binário */ }
+      throw new Error(msg);
+    }
+    return res.blob();
+  }
+
+  async function abrirAnexo(anexo) {
+    try {
+      const blob = await obterBlob(anexo);
+      const url = URL.createObjectURL(blob);
+      const janela = window.open(url, "_blank", "noopener");
+      if (!janela) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+    } catch (err) {
+      aviso(err.message);
+    }
+  }
+
+  async function baixarArquivo(anexo) {
+    try {
+      const blob = await obterBlob(anexo);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = anexo.nome || (anexo.tipo === "PDF" ? "orcamento.pdf" : "foto");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      aviso(err.message);
+    }
+  }
+
+  async function carregarThumb(anexo, geracao) {
+    if (thumbs.has(anexo.id)) return;
+    try {
+      const blob = await obterBlob(anexo);
+      if (geracao !== geracaoAnexos) return;
+      const url = URL.createObjectURL(blob);
+      const img = document.querySelector(`#listaAnexos img[data-id="${anexo.id}"]`);
+      if (!img) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      thumbs.set(anexo.id, url);
+      img.src = url;
+    } catch (_) { /* Abrir continua disponível */ }
+  }
+
+  function renderAnexos() {
+    const geracao = ++geracaoAnexos;
+    const box = document.getElementById("listaAnexos");
+    const lista = ficha && Array.isArray(ficha.anexos) ? ficha.anexos : [];
+    soltarThumbs(new Set(lista.map((anexo) => anexo.id)));
+    box.replaceChildren();
+    if (!lista.length) {
+      const vazio = document.createElement("p");
+      vazio.className = "vazio-anexo";
+      vazio.textContent = "Nenhum PDF ou foto anexado.";
+      box.appendChild(vazio);
+      return;
+    }
+    const grade = document.createElement("div");
+    grade.className = "grade-anexos";
+    const bloqueado = !!(ficha && ficha.idNf);
+    lista.forEach((anexo) => {
+      const card = document.createElement("article");
+      card.className = "anexo-card";
+      if (anexo.tipo === "IMAGEM") {
+        const img = document.createElement("img");
+        img.alt = anexo.nome || "Foto";
+        img.dataset.id = String(anexo.id);
+        if (thumbs.has(anexo.id)) img.src = thumbs.get(anexo.id);
+        card.appendChild(img);
+        carregarThumb(anexo, geracao);
+      } else {
+        const ico = document.createElement("div");
+        ico.className = "anexo-pdf";
+        ico.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
+        card.appendChild(ico);
+      }
+      const nome = document.createElement("div");
+      nome.className = "anexo-nome";
+      nome.textContent = anexo.nome || (anexo.tipo === "PDF" ? "PDF" : "Foto");
+      nome.title = nome.textContent;
+      const meta = document.createElement("div");
+      meta.className = "anexo-meta";
+      meta.textContent = textoTamanho(anexo.tamanho);
+      const acoes = document.createElement("div");
+      acoes.className = "anexo-botoes";
+      acoes.appendChild(botaoAnexo("sec", "Abrir", () => abrirAnexo(anexo)));
+      acoes.appendChild(botaoAnexo("sec", "Baixar", () => baixarArquivo(anexo)));
+      const remover = botaoAnexo("icone remover-anexo", "", () => removerAnexo(anexo));
+      remover.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      remover.setAttribute("aria-label", "Remover anexo");
+      remover.hidden = bloqueado;
+      acoes.appendChild(remover);
+      card.append(nome, meta, acoes);
+      grade.appendChild(card);
+    });
+    box.appendChild(grade);
+  }
+
+  function lerDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function escolherArquivos(input) {
+    if (!(ficha && ficha.id)) {
+      const erro = validar(coletar(), false);
+      if (erro) {
+        aviso(erro);
+        return;
+      }
+    }
+    if (ficha && ficha.idNf) return;
+    input.value = "";
+    input.click();
+  }
+
+  async function enviarArquivos(files) {
+    const lista = [...files];
+    if (!lista.length) return;
+    for (const file of lista) {
+      if (!file.size) throw new Error(`"${file.name || "Arquivo"}" está vazio.`);
+      if (file.size > LIMITE_ANEXO) throw new Error(`"${file.name || "Arquivo"}" passa de 3 MB.`);
+    }
+    await comOcupacao(async () => {
+      let id = ficha && ficha.id;
+      if (!id) {
+        const salvo = await salvarAtual();
+        preencher(salvo);
+        id = salvo.id;
+        ocuparBotoes();
+      }
+      for (const file of lista) {
+        const data = await lerDataUrl(file);
+        const resp = await api("POST", "anexo", {
+          body: { id, nome: file.name, mime: file.type || "", data },
+        });
+        if (ficha) ficha.anexos = resp.data || [];
+        renderAnexos();
+        ocuparBotoes();
+      }
+      aviso(lista.length === 1 ? "Anexo enviado." : "Anexos enviados.", "ok");
+    });
+  }
+
+  function removerAnexo(anexo) {
+    comOcupacao(async () => {
+      if (!ficha || !ficha.id) return;
+      if (!window.confirm("Remover este anexo?")) return;
+      const resp = await api("POST", "excluirAnexo", { body: { id: ficha.id, anexoId: anexo.id } });
+      ficha.anexos = resp.data || [];
+      renderAnexos();
+      aviso("Anexo removido.", "ok");
+    });
   }
 
   function preencher(data) {
@@ -394,6 +632,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("obs").value = data && data.observacao ? data.observacao : "";
     document.getElementById("motivo").value = data && data.motivo ? data.motivo : "";
     renderItens(data && data.itens && data.itens.length ? data.itens : [{}]);
+    renderAnexos();
     aplicarTrava(data || { status: "ABERTO" });
     mostrarFicha();
     if (data && data.id) {
@@ -454,10 +693,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     return resp.data;
   }
 
+  function ocuparBotoes() {
+    document.querySelectorAll("#painelFicha .acoes button, #btnAdd, #listaAnexos button").forEach((b) => { b.disabled = true; });
+  }
+
   async function comOcupacao(fn) {
     if (ocupado) return;
     ocupado = true;
-    document.querySelectorAll("#painelFicha .acoes button, #btnAdd").forEach((b) => { b.disabled = true; });
+    ocuparBotoes();
     try {
       await fn();
     } catch (err) {
@@ -592,6 +835,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     preencher(data.data);
     aviso("Orçamento reaberto.", "ok");
   }));
+  document.getElementById("btnAnexarPdf").addEventListener("click", () => {
+    escolherArquivos(document.getElementById("filePdf"));
+  });
+  document.getElementById("btnAnexarFoto").addEventListener("click", () => {
+    escolherArquivos(document.getElementById("fileFoto"));
+  });
+  document.getElementById("filePdf").addEventListener("change", (e) => {
+    enviarArquivos(e.target.files).catch((err) => aviso(err.message));
+  });
+  document.getElementById("fileFoto").addEventListener("change", (e) => {
+    enviarArquivos(e.target.files).catch((err) => aviso(err.message));
+  });
   document.getElementById("btnExcluir").addEventListener("click", () => comOcupacao(async () => {
     if (!ficha || !ficha.id) return;
     if (!window.confirm("Excluir este orçamento? Essa ação não pode ser desfeita.")) return;

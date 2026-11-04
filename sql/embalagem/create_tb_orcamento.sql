@@ -1,6 +1,7 @@
--- Orçamentos de compras (cabeçalho + itens).
+-- Orçamentos de compras (cabeçalho, itens e anexos).
 -- ID_NF fica nulo até o vínculo com NF_CABECALHO.CAB_ID_NF, numa etapa seguinte.
 -- A API também cria estas tabelas na primeira gravação.
+-- Cada anexo cabe em 3 MB (PDF ou imagem). O arquivo em si não entra neste script.
 
 IF OBJECT_ID(N'dbo.EMB_ORCAMENTO', N'U') IS NULL
 BEGIN
@@ -52,6 +53,28 @@ BEGIN
 
     CREATE INDEX IX_EMB_ORC_ITEM_ORC ON dbo.EMB_ORCAMENTO_ITEM (ORCAMENTO_ID, ORDEM, ID);
     CREATE INDEX IX_EMB_ORC_ITEM_COD ON dbo.EMB_ORCAMENTO_ITEM (CODIGO);
+END
+GO
+
+IF OBJECT_ID(N'dbo.EMB_ORCAMENTO_ANEXO', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.EMB_ORCAMENTO_ANEXO (
+        ID             INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        ORCAMENTO_ID   INT            NOT NULL,
+        TIPO           NVARCHAR(20)   NOT NULL,
+        NOME_ARQUIVO   NVARCHAR(255)  NOT NULL,
+        MIME           NVARCHAR(80)   NOT NULL,
+        CONTEUDO       VARBINARY(MAX) NOT NULL,
+        TAMANHO        INT            NOT NULL,
+        CRIADO_EM      DATETIME       NOT NULL CONSTRAINT DF_EMB_ORC_ANEXO_CR DEFAULT (GETDATE()),
+        CRIADO_POR     NVARCHAR(100)  NULL,
+        CONSTRAINT FK_EMB_ORC_ANEXO_ORC FOREIGN KEY (ORCAMENTO_ID)
+            REFERENCES dbo.EMB_ORCAMENTO (ID) ON DELETE CASCADE,
+        CONSTRAINT CK_EMB_ORC_ANEXO_TIPO CHECK (TIPO IN (N'PDF', N'IMAGEM')),
+        CONSTRAINT CK_EMB_ORC_ANEXO_TAM CHECK (TAMANHO > 0 AND TAMANHO <= 3145728)
+    );
+
+    CREATE INDEX IX_EMB_ORC_ANEXO_ORC ON dbo.EMB_ORCAMENTO_ANEXO (ORCAMENTO_ID, ID);
 END
 GO
 
