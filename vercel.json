@@ -18,13 +18,11 @@
     },
     "api/embalagem/requisicao.js": {
       "maxDuration": 60
-    },
-    "api/embalagem/orcamento.js": {
-      "maxDuration": 60
     }
   },
   "rewrites": [
     { "source": "/menu", "destination": "/menu.html" },
+    { "source": "/api/embalagem/orcamento", "destination": "/api/shared/config?tipo=orcamento" },
     { "source": "/index", "destination": "/index.html" },
     { "source": "/api/comercial/pedidos", "destination": "/api/shared/config?tipo=pedidoCapa" },
     { "source": "/api/comercial/depara", "destination": "/api/shared/config?tipo=capaDePara" },
