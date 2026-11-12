@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <a href="/modules/embalagem/inventario/inventarioCiclico.html" id="nav-inventario-ciclico"><i class="fa fa-clipboard-check"></i> Inventário Cíclico</a>
           <a href="/modules/embalagem/inventario/balancoAnual.html" id="nav-balanco-anual"><i class="fa fa-scale-balanced"></i> Balanço Anual</a>
           <a href="/modules/embalagem/orcamentos/orcamentos.html" id="nav-orcamentos"><i class="fa fa-file-signature"></i> Orçamentos</a>
+          <a href="/modules/embalagem/racional/racional.html" id="nav-racional"><i class="fa fa-calculator"></i> Racional de compras</a>
           <a href="/modules/embalagem/nf/lancamentoNF.html" id="nav-lancamento-nf"><i class="fa fa-file-invoice"></i> Lançamento NF</a>
           <a href="/modules/embalagem/nf/statusNF.html" id="nav-status-nf"><i class="fa fa-barcode"></i> Status NF</a>
           <a href="/modules/embalagem/relatorios/relatorios.html" id="nav-relatorios"><i class="fa fa-chart-bar"></i> Relatórios</a>
@@ -105,6 +106,7 @@ function inicializarSidebar() {
     'inventariociclico': 'nav-inventario-ciclico',
     'balancoanual': 'nav-balanco-anual',
     'orcamentos': 'nav-orcamentos',
+    'racional': 'nav-racional',
     'relatorios': 'nav-relatorios',
     'relatorionecessidadecompras': 'nav-relatorios',
     'relatoriobaixaporperiodo': 'nav-relatorios',

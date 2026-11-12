@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Racional de compras - SGC</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    .rac h1 { text-align: left; margin-bottom: 6px; }
+    .rac .hint { color: #546e7a; margin: 0 0 16px; max-width: 860px; }
+    .aviso { border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-weight: 600; }
+    .aviso.erro { background: #ffebee; color: #b71c1c; }
+    .aviso.ok { background: #e8f5e9; color: #1b5e20; }
+    .resumo-linha { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .rac .resumo,
+    .rac button.resumo,
+    .rac button.resumo:hover {
+      flex: 1 1 140px; text-align: left; background: #fff; color: #263238;
+      border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .rac button.resumo.ativo,
+    .rac button.resumo.ativo:hover { border-color: #1976d2; box-shadow: inset 0 0 0 1px #1976d2; }
+    .resumo .rotulo { display: block; color: #607d8b; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+    .resumo .valor { display: block; margin-top: 4px; font-size: 1.25rem; font-weight: 700; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+    .toolbar label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: #546e7a; font-weight: 700; }
+    .toolbar input, .toolbar select { min-width: 140px; padding: 8px 10px; }
+    .toolbar input[type="search"] { min-width: 220px; flex: 1; }
+    .rac button.sec, .rac button.sec:hover { background: #fff; color: #263238; border: 1px solid #cfd8dc; }
+    .rac button.ok, .rac button.ok:hover { background: #2e7d32; color: #fff; border: none; }
+    .rac button.no, .rac button.no:hover { background: #c62828; color: #fff; border: none; }
+    .rac button.ghost, .rac button.ghost:hover { background: #fff; color: #c62828; border: 1px solid #ffcdd2; }
+    .rac button:disabled, .rac button:disabled:hover {
+      background: #eceff1; color: #90a4ae; border-color: #eceff1; cursor: not-allowed;
+    }
+    .card-lista, .card-ficha {
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .wrap-table { overflow: auto; }
+    .wrap-itens { overflow: auto; max-height: calc(100vh - 280px); }
+    table.lista { min-width: 860px; width: 100%; border-collapse: collapse; }
+    table.lista tbody tr { cursor: pointer; }
+    .rac th, .rac td { border-bottom: 1px solid #eceff1; padding: 6px 8px; vertical-align: middle; }
+    .rac th {
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em;
+      color: #607d8b; text-align: left; white-space: nowrap; background: #fff;
+    }
+    .wrap-itens thead th { position: sticky; top: 0; z-index: 2; }
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .tag.aberto { background: #fff3cd; color: #856404; }
+    .tag.fechado { background: #d4edda; color: #155724; }
+    .vazio { text-align: center; color: #78909c; padding: 28px; }
+    .topo-ficha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .topo-ficha h2 { margin: 0; font-size: 1.25rem; }
+    .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .grade { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .campo.largo { grid-column: span 2; }
+    .campo.cheio { grid-column: 1 / -1; }
+    .campo label { font-size: 0.8rem; font-weight: 700; color: #546e7a; }
+    .campo input, .campo textarea, .campo select { width: 100%; padding: 8px 10px; font: inherit; }
+    .campo textarea { min-height: 72px; resize: vertical; border: 1px solid #dee2e6; border-radius: 5px; }
+    .auditoria { margin-top: 8px; color: #78909c; font-size: 0.85rem; }
+    .itens-topo { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; justify-content: space-between; margin: 18px 0 8px; }
+    .itens-topo h3 { margin: 0; }
+    .busca-item { min-width: 220px; padding: 8px 10px; }
+    .legenda { color: #607d8b; font-size: 0.85rem; margin: 0 0 10px; }
+    .itens { width: 100%; min-width: 1280px; border-collapse: collapse; }
+    .itens input { width: 100%; padding: 7px 8px; font: inherit; }
+    .itens td.num, .itens th.num { text-align: right; }
+    .itens .cod { min-width: 110px; }
+    .itens .desc { min-width: 180px; background: #f7f9fb; color: #455a64; }
+    .itens .q { min-width: 84px; text-align: right; }
+    .itens .obs { min-width: 140px; }
+    .itens .total, .itens .comprar { text-align: right; font-weight: 700; white-space: nowrap; }
+    .itens tr.abaixo .comprar { background: #ffebee; color: #c62828; }
+    .itens tr.ok .comprar { color: #1b5e20; }
+    .itens tr.sem-plano .comprar, .itens tr.sem-plano .total { color: #90a4ae; font-weight: 600; }
+    .rac button.icone, .rac button.icone:hover {
+      background: #fff; color: #c62828; border: 1px solid #ffcdd2; padding: 8px 10px;
+    }
+    .rodape-itens { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+    .totais { display: flex; flex-wrap: wrap; gap: 16px; font-weight: 700; }
+    .totais .alerta { color: #c62828; }
+    .colar {
+      margin-top: 12px; background: #f7f9fb; border: 1px dashed #cfd8dc; border-radius: 8px; padding: 12px;
+    }
+    .colar p { margin: 0 0 8px; color: #607d8b; font-size: 0.85rem; }
+    .colar textarea { width: 100%; min-height: 110px; padding: 8px 10px; font: inherit; border: 1px solid #dee2e6; border-radius: 5px; }
+    .colar .acoes { margin-top: 8px; }
+    .sug {
+      position: fixed; z-index: 80; background: #fff; border: 1px solid #cfd8dc;
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); max-height: 240px; overflow: auto;
+    }
+    button.sug-item, button.sug-item:hover {
+      display: block; width: 100%; text-align: left; background: #fff; color: #263238;
+      border: none; border-radius: 0; padding: 8px 10px; font-weight: 500; box-shadow: none;
+    }
+    button.sug-item:hover { background: #e3f2fd; color: #263238; }
+    .sug small { display: block; color: #607d8b; font-weight: 500; }
+    .rac input.campo-erro { border-color: #c62828; }
+    .rac input:disabled, .rac textarea:disabled { background: #f4f6f8; color: #607d8b; }
+    .truncado { color: #ef6c00; font-size: 0.85rem; margin-top: 8px; }
+    .num-abaixo { color: #c62828; font-weight: 700; }
+    @media (max-width: 900px) {
+      .grade { grid-template-columns: 1fr 1fr; }
+      .campo.largo { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      .grade, .campo.largo { grid-template-columns: 1fr; }
+      .campo.largo { grid-column: auto; }
+      .toolbar input, .toolbar select, .toolbar input[type="search"] { width: 100%; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <div class="main-content">
+    <div class="container rac">
+      <h1><i class="fa-solid fa-calculator"></i> Racional de compras</h1>
+      <p class="hint">O comercial informa quanto cada canal pretende vender. Compras usa esse plano, compara com o MOQ e fecha a quantidade da compra ou da importação.</p>
+      <div id="aviso" class="aviso" hidden></div>
+
+      <section id="painelLista">
+        <div class="resumo-linha" id="resumo"></div>
+        <div class="toolbar">
+          <label>Busca
+            <input type="search" id="busca" placeholder="Título, pedido, SKU ou descrição" />
+          </label>
+          <label>Mês
+            <input type="month" id="filtroMes" />
+          </label>
+          <button type="button" class="sec" id="btnFiltrar">Filtrar</button>
+          <button type="button" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo racional</button>
+        </div>
+        <div class="card-lista">
+          <div class="wrap-table">
+            <table class="lista">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Mês</th>
+                  <th class="num">SKUs</th>
+                  <th class="num">Total</th>
+                  <th class="num">A comprar</th>
+                  <th class="num">Abaixo do MOQ</th>
+                  <th>Pedido</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="corpoLista"></tbody>
+            </table>
+          </div>
+          <p id="vazioLista" class="vazio" hidden>Nenhum racional neste filtro.</p>
+          <p id="truncado" class="truncado" hidden></p>
+        </div>
+      </section>
+
+      <section id="painelFicha" hidden>
+        <div class="card-ficha">
+          <div class="topo-ficha">
+            <div>
+              <h2 id="tituloFicha">Novo racional</h2>
+              <div id="badgeStatus"></div>
+            </div>
+            <div class="acoes">
+              <button type="button" class="sec" id="btnVoltar"><i class="fa-solid fa-arrow-left"></i> Lista</button>
+              <button type="button" class="ghost" id="btnExcluir" hidden>Excluir</button>
+              <button type="button" class="sec" id="btnDuplicar" hidden>Duplicar</button>
+              <button type="button" class="sec" id="btnReabrir" hidden>Reabrir</button>
+              <button type="button" class="ok" id="btnFechar">Fechar</button>
+              <button type="button" id="btnSalvar">Salvar</button>
+            </div>
+          </div>
+
+          <input type="hidden" id="racId" />
+          <div class="grade" id="blocoDados">
+            <div class="campo largo">
+              <label for="titulo">Título</label>
+              <input id="titulo" maxlength="120" placeholder="Ex.: Importação março/2026" />
+            </div>
+            <div class="campo">
+              <label for="referencia">Mês de referência</label>
+              <input id="referencia" type="month" />
+            </div>
+            <div class="campo">
+              <label for="pedido">Pedido do fornecedor</label>
+              <input id="pedido" maxlength="80" placeholder="Número do pedido, se já existir" />
+            </div>
+            <div class="campo cheio">
+              <label for="obs">Observação</label>
+              <textarea id="obs" maxlength="1000" placeholder="Fornecedor, condição da importação, o que o comercial ainda precisa confirmar"></textarea>
+            </div>
+          </div>
+          <p id="auditoria" class="auditoria"></p>
+
+          <div class="itens-topo">
+            <h3>Produtos</h3>
+            <input type="search" id="buscaItem" class="busca-item" placeholder="Buscar SKU nesta lista" />
+          </div>
+          <p class="legenda">Total soma Claro, Vivo, Comercial, On line, Quiosque e Est. adicional. MOQ fica de fora. Se o total for maior que zero e menor que o MOQ, A comprar sobe até o mínimo.</p>
+          <div class="wrap-table wrap-itens">
+            <table class="itens">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Descrição</th>
+                  <th class="num" title="Quantidade mínima de compra. Não entra no total.">MOQ</th>
+                  <th class="num">Claro</th>
+                  <th class="num">Vivo</th>
+                  <th class="num">Comercial</th>
+                  <th class="num">On line</th>
+                  <th class="num">Quiosque</th>
+                  <th class="num" title="Estoque adicional pedido por compras, além dos canais.">Est. adicional</th>
+                  <th class="num">Total</th>
+                  <th class="num" title="Total, ou o MOQ quando o plano fica abaixo do mínimo.">A comprar</th>
+                  <th>Obs.</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="corpoItens"></tbody>
+            </table>
+          </div>
+          <div class="rodape-itens">
+            <div class="acoes">
+              <button type="button" class="sec" id="btnAdd"><i class="fa-solid fa-plus"></i> Adicionar produto</button>
+              <button type="button" class="sec" id="btnColar"><i class="fa-solid fa-paste"></i> Colar planilha</button>
+            </div>
+            <div class="totais">
+              <span>Total <span id="totalPlanejado">0</span></span>
+              <span>A comprar <span id="totalComprar">0</span></span>
+              <span class="alerta" id="totalAbaixo" hidden></span>
+            </div>
+          </div>
+          <div class="colar" id="painelColar" hidden>
+            <p>Cole do Excel: SKU, MOQ, Claro, Vivo, Comercial, On line, Quiosque, Est. adicional e uma observação. Uma linha por produto. Se o SKU já estiver na grade, as quantidades são atualizadas.</p>
+            <textarea id="textoColar" placeholder="SKU&#9;MOQ&#9;Claro&#9;Vivo&#9;Comercial&#9;On line&#9;Quiosque&#9;Est. adicional"></textarea>
+            <div class="acoes">
+              <button type="button" id="btnAplicarColar">Adicionar à grade</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/shared/frontend/permissoes.js"></script>
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/modules/embalagem/racional/racional.js"></script>
+</body>
+</html>

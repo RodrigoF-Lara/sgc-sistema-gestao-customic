@@ -6,6 +6,7 @@ import { handleCapaDePara } from "../../lib/capaDeParaApi.js";
 import { handleMockups } from "../../lib/mockupsApi.js";
 import { handleProjetos } from "../../lib/projetosApi.js";
 import { handleOrcamento } from "../../lib/orcamentoApi.js";
+import { handleRacional } from "../../lib/racionalApi.js";
 
 /**
  * API unificada de Configurações (+ cargos/permissões)
@@ -17,6 +18,7 @@ import { handleOrcamento } from "../../lib/orcamentoApi.js";
  * - /api/shared/config?tipo=niveis
  * - /api/shared/config?tipo=permissoes&action=minhas|matriz|catalogo|check
  * - /api/embalagem/orcamento reescreve para tipo=orcamento (não é função extra)
+ * - /api/embalagem/racional reescreve para tipo=racional (não é função extra)
  *
  * Cargos e permissões vivem aqui (não em api/shared/niveis|permissoes.js)
  * para respeitar o limite de 12 Serverless Functions do Vercel Hobby.
@@ -54,9 +56,11 @@ export default async function handler(req, res) {
       return await handleProjetos(req, res);
     } else if (tipo === "orcamento") {
       return await handleOrcamento(req, res);
+    } else if (tipo === "racional") {
+      return await handleRacional(req, res);
     } else {
       return res.status(400).json({
-        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis, permissoes, pedidoCapa, capaDePara, mockups, projetos ou orcamento)"
+        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis, permissoes, pedidoCapa, capaDePara, mockups, projetos, orcamento ou racional)"
       });
     }
   } catch (error) {
