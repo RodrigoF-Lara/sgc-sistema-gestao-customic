@@ -24,6 +24,86 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/"/g, '&quot;');
     }
 
+    const LIMITE_FOTO = 3 * 1024 * 1024;
+    let fotoNovoArquivo = null;
+    let fotoNovoUrl = null;
+    let fotoEditUrl = null;
+    let geracaoFoto = 0;
+
+    function lerArquivo(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("Não foi possível ler a foto."));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function mostrarPreview(img, vazio, url) {
+        if (url) {
+            img.src = url;
+            img.hidden = false;
+            vazio.hidden = true;
+        } else {
+            img.removeAttribute("src");
+            img.hidden = true;
+            vazio.hidden = false;
+        }
+    }
+
+    function soltarUrl(url) {
+        if (url) URL.revokeObjectURL(url);
+    }
+
+    function validarArquivoFoto(file) {
+        if (!file || !file.size) throw new Error("Foto vazia.");
+        if (file.size > LIMITE_FOTO) throw new Error("A foto passa de 3 MB.");
+    }
+
+    async function postarFoto(acao, body) {
+        const res = await fetch("/api/shared/cadastros?tipo=produtos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ acao, ...body }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Não foi possível salvar a foto.");
+        return data;
+    }
+
+    async function enviarFotoProduto(codigo, file) {
+        validarArquivoFoto(file);
+        const data = await lerArquivo(file);
+        return postarFoto("foto", { codigo, nome: file.name, mime: file.type || "", data });
+    }
+
+    function marcarIconeFoto(codigo, tem) {
+        const produto = produtosCarregados.find((p) => p.CODIGO === codigo);
+        if (produto) produto.TEM_FOTO = tem ? 1 : 0;
+        const celula = document.querySelector(`#tabelaProdutos tr[data-codigo="${CSS.escape(codigo)}"] .col-foto`);
+        if (celula) celula.innerHTML = tem ? '<i class="fa-solid fa-camera" title="Com foto"></i>' : "";
+    }
+
+    function limparFotoNovo() {
+        fotoNovoArquivo = null;
+        soltarUrl(fotoNovoUrl);
+        fotoNovoUrl = null;
+        const img = document.getElementById("novoFotoImg");
+        const vazio = document.getElementById("novoFotoVazio");
+        const limpar = document.getElementById("btnNovoFotoLimpar");
+        if (img && vazio) mostrarPreview(img, vazio, "");
+        if (limpar) limpar.hidden = true;
+        const input = document.getElementById("novoFotoArquivo");
+        if (input) input.value = "";
+    }
+
+    function escolherFotoLocal(file, img, vazio, guardar) {
+        validarArquivoFoto(file);
+        const url = URL.createObjectURL(file);
+        guardar(url);
+        mostrarPreview(img, vazio, url);
+    }
+
     function opcoesSelect(select, itens, atual) {
         const valor = atual || '';
         const nomes = itens.map((item) => item.nome);
@@ -138,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mostrarAba(modalNovoProduto, 'geral');
         modalMsg.textContent = '';
         modalMsg.style.color = '';
+        limparFotoNovo();
         modalNovoProduto.style.display = 'flex';
         setTimeout(() => novoCodigo.focus(), 50);
     }
@@ -178,15 +259,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 modalMsg.textContent = data.message || 'Erro ao criar produto.';
                 return;
             }
-            modalMsg.style.color = '#2e7d32';
-            modalMsg.textContent = data.message || 'Produto criado com sucesso!';
-            mostrarMensagem(`Produto ${codigo} criado com sucesso!`, 'success');
-            setTimeout(() => {
+            let avisoFoto = '';
+            if (fotoNovoArquivo) {
+                modalMsg.textContent = 'Enviando a foto...';
+                try {
+                    await enviarFotoProduto(codigo, fotoNovoArquivo);
+                } catch (errFoto) {
+                    avisoFoto = ' A foto não foi salva: ' + errFoto.message;
+                }
+            }
+            modalMsg.style.color = avisoFoto ? '#e65100' : '#2e7d32';
+            modalMsg.textContent = (data.message || 'Produto criado com sucesso!') + avisoFoto;
+            mostrarMensagem(`Produto ${codigo} criado com sucesso!` + avisoFoto, avisoFoto ? 'info' : 'success');
+            setTimeout(async () => {
                 fecharModal();
-                // Recarrega a busca para mostrar o novo item
                 filtroCodigo.value = codigo;
-                buscarProdutos();
-            }, 800);
+                await buscarProdutos();
+                if (avisoFoto) mostrarMensagem(`Produto ${codigo} criado.` + avisoFoto, 'info');
+            }, avisoFoto ? 1600 : 800);
         } catch (err) {
             modalMsg.style.color = '#c62828';
             modalMsg.textContent = 'Erro: ' + err.message;
@@ -194,6 +284,76 @@ document.addEventListener('DOMContentLoaded', function() {
             btnSalvarNovo.disabled = false;
         }
     }
+    document.getElementById("btnNovoFoto").addEventListener("click", () => {
+        document.getElementById("novoFotoArquivo").click();
+    });
+    document.getElementById("novoFotoArquivo").addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = "";
+        if (!file) return;
+        try {
+            soltarUrl(fotoNovoUrl);
+            escolherFotoLocal(file, document.getElementById("novoFotoImg"), document.getElementById("novoFotoVazio"), (url) => {
+                fotoNovoUrl = url;
+            });
+            fotoNovoArquivo = file;
+            document.getElementById("btnNovoFotoLimpar").hidden = false;
+            modalMsg.textContent = "";
+        } catch (err) {
+            modalMsg.style.color = "#c62828";
+            modalMsg.textContent = err.message;
+        }
+    });
+    document.getElementById("btnNovoFotoLimpar").addEventListener("click", limparFotoNovo);
+    document.getElementById("btnEditFoto").addEventListener("click", () => {
+        document.getElementById("editFotoArquivo").click();
+    });
+    document.getElementById("editFotoArquivo").addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = "";
+        if (!file || !produtoEmEdicao) return;
+        const botao = document.getElementById("btnEditFoto");
+        botao.disabled = true;
+        editModalMsg.style.color = "#1976d2";
+        editModalMsg.textContent = "Enviando a foto...";
+        try {
+            validarArquivoFoto(file);
+            await enviarFotoProduto(produtoEmEdicao.CODIGO, file);
+            soltarUrl(fotoEditUrl);
+            fotoEditUrl = URL.createObjectURL(file);
+            mostrarPreview(document.getElementById("editFotoImg"), document.getElementById("editFotoVazio"), fotoEditUrl);
+            document.getElementById("btnEditFotoRemover").hidden = false;
+            marcarIconeFoto(produtoEmEdicao.CODIGO, true);
+            editModalMsg.style.color = "#2e7d32";
+            editModalMsg.textContent = "Foto salva.";
+        } catch (err) {
+            editModalMsg.style.color = "#c62828";
+            editModalMsg.textContent = err.message;
+        } finally {
+            botao.disabled = false;
+        }
+    });
+    document.getElementById("btnEditFotoRemover").addEventListener("click", async () => {
+        if (!produtoEmEdicao) return;
+        if (!window.confirm("Remover a foto deste produto?")) return;
+        const botao = document.getElementById("btnEditFotoRemover");
+        botao.disabled = true;
+        try {
+            await postarFoto("excluirFoto", { codigo: produtoEmEdicao.CODIGO });
+            soltarUrl(fotoEditUrl);
+            fotoEditUrl = null;
+            mostrarPreview(document.getElementById("editFotoImg"), document.getElementById("editFotoVazio"), "");
+            botao.hidden = true;
+            marcarIconeFoto(produtoEmEdicao.CODIGO, false);
+            editModalMsg.style.color = "#2e7d32";
+            editModalMsg.textContent = "Foto removida.";
+        } catch (err) {
+            editModalMsg.style.color = "#c62828";
+            editModalMsg.textContent = err.message;
+        } finally {
+            botao.disabled = false;
+        }
+    });
     if (btnSalvarNovo) btnSalvarNovo.addEventListener('click', salvarNovoProduto);
     ligarAbas(modalNovoProduto);
     novoCodigo.addEventListener('keypress', (e) => { if (e.key === 'Enter') salvarNovoProduto(); });
@@ -274,6 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <thead>
                     <tr>
                         <th>Código</th>
+                        <th class="col-foto">Foto</th>
                         <th>Descrição</th>
                         <th>Tipo</th>
                         <th style="width: 200px;">Curva ABC</th>
@@ -290,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return `
                         <tr data-codigo="${produto.CODIGO}">
                             <td><strong>${produto.CODIGO}</strong></td>
+                            <td class="col-foto">${produto.TEM_FOTO ? '<i class="fa-solid fa-camera" title="Com foto"></i>' : ''}</td>
                             <td>${produto.DESCRICAO || 'SEM DESCRIÇÃO'}</td>
                             <td>${produto.TIPO || 'N/A'}</td>
                             <td>
@@ -446,9 +608,34 @@ document.addEventListener('DOMContentLoaded', function() {
         mostrarAba(modalEditar, 'geral');
         editModalMsg.textContent = '';
         modalEditar.style.display = 'flex';
+        carregarFotoEdicao(produto.CODIGO);
         setTimeout(() => editDescricao.focus(), 50);
     }
+    async function carregarFotoEdicao(codigo) {
+        const geracao = ++geracaoFoto;
+        soltarUrl(fotoEditUrl);
+        fotoEditUrl = null;
+        const img = document.getElementById("editFotoImg");
+        const vazio = document.getElementById("editFotoVazio");
+        const remover = document.getElementById("btnEditFotoRemover");
+        if (img && vazio) mostrarPreview(img, vazio, "");
+        if (remover) remover.hidden = true;
+        try {
+            const res = await fetch(`/api/shared/cadastros?tipo=produtos&acao=foto&codigo=${encodeURIComponent(codigo)}`);
+            if (geracao !== geracaoFoto) return;
+            if (!res.ok) return;
+            const blob = await res.blob();
+            if (geracao !== geracaoFoto) return;
+            fotoEditUrl = URL.createObjectURL(blob);
+            if (img && vazio) mostrarPreview(img, vazio, fotoEditUrl);
+            if (remover) remover.hidden = false;
+            marcarIconeFoto(codigo, true);
+        } catch (_) { /* a ficha abre mesmo sem a miniatura */ }
+    }
     function fecharModalEditar() {
+        geracaoFoto += 1;
+        soltarUrl(fotoEditUrl);
+        fotoEditUrl = null;
         modalEditar.style.display = 'none';
         produtoEmEdicao = null;
     }

@@ -26,6 +26,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     let itens = [];
     let sujo = false;
     let comparativoAtual = null;
+    const fotosConhecidas = new Map();
+    const fotosUrl = new Map();
+    let observadorFotos = null;
 
     function authHeaders() {
         const h = { "Content-Type": "application/json" };
@@ -112,20 +115,116 @@ document.addEventListener("DOMContentLoaded", async function () {
         return data;
     }
 
+    async function baixarFoto(codigo) {
+        const q = new URLSearchParams({ rota: "balanco", acao: "foto", codigo });
+        const headers = authHeaders();
+        delete headers["Content-Type"];
+        const res = await fetch("/api/embalagem/inventarioCiclico?" + q.toString(), { headers });
+        if (!res.ok) throw new Error("Produto sem foto.");
+        return res.blob();
+    }
+
+    async function consultarFotos(codigos) {
+        const faltam = [...new Set(codigos.map((codigo) => String(codigo || "").trim().toUpperCase()).filter((codigo) => codigo && !fotosConhecidas.has(codigo)))];
+        for (let i = 0; i < faltam.length; i += 400) {
+            const fatia = faltam.slice(i, i + 400);
+            const data = await api("POST", { acao: "quaisFotos", codigos: fatia });
+            const tem = new Set((data.codigos || []).map((codigo) => String(codigo).trim().toUpperCase()));
+            fatia.forEach((codigo) => fotosConhecidas.set(codigo, tem.has(codigo)));
+        }
+    }
+
+    function htmlFoto(codigo) {
+        const chave = String(codigo || "").trim().toUpperCase();
+        if (!chave || !fotosConhecidas.get(chave)) return '<td class="bal-foto">—</td>';
+        return `<td class="bal-foto"><button type="button" class="bal-foto-btn" data-foto="${esc(chave)}" aria-label="Ver foto de ${esc(chave)}"><img alt="" /></button></td>`;
+    }
+
+    function observarFotos() {
+        if (observadorFotos) observadorFotos.disconnect();
+        observadorFotos = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                observadorFotos.unobserve(entry.target);
+                carregarThumb(entry.target);
+            });
+        }, { rootMargin: "300px" });
+        gradeBody.querySelectorAll(".bal-foto-btn").forEach((btn) => {
+            const codigo = btn.getAttribute("data-foto");
+            if (fotosUrl.has(codigo)) btn.querySelector("img").src = fotosUrl.get(codigo);
+            else observadorFotos.observe(btn);
+        });
+    }
+
+    async function carregarThumb(btn) {
+        const codigo = btn.getAttribute("data-foto");
+        if (!codigo) return;
+        const img = btn.querySelector("img");
+        if (fotosUrl.has(codigo)) {
+            if (img) img.src = fotosUrl.get(codigo);
+            return;
+        }
+        if (btn.dataset.carregando === "1") return;
+        btn.dataset.carregando = "1";
+        try {
+            const blob = await baixarFoto(codigo);
+            const url = URL.createObjectURL(blob);
+            fotosUrl.set(codigo, url);
+            const atual = btn.isConnected ? btn.querySelector("img") : null;
+            if (atual) atual.src = url;
+        } catch (_) {
+            fotosConhecidas.set(codigo, false);
+            if (btn.isConnected) btn.replaceWith(document.createTextNode("—"));
+        } finally {
+            btn.dataset.carregando = "0";
+        }
+    }
+
+    function abrirZoom(codigo, descricao) {
+        const url = fotosUrl.get(codigo);
+        if (!url) return;
+        document.getElementById("fotoZoomImg").src = url;
+        document.getElementById("fotoZoomTexto").textContent = descricao ? `${codigo} — ${descricao}` : codigo;
+        document.getElementById("fotoZoom").hidden = false;
+    }
+
+    async function atualizarFotoDaLinha(tr) {
+        const codigo = tr.querySelector('[data-campo="codigo"]').value.trim().toUpperCase();
+        const idx = Number(tr.dataset.idx);
+        if (itens[idx]) itens[idx].codigo = codigo;
+        try {
+            if (codigo) await consultarFotos([codigo]);
+        } catch (err) {
+            mostrar(err.message, "error");
+        }
+        if (itens[idx]) itens[idx].temFoto = !!fotosConhecidas.get(codigo);
+        const celula = tr.querySelector(".bal-foto");
+        if (!celula) return;
+        celula.outerHTML = htmlFoto(codigo);
+        const btn = tr.querySelector(".bal-foto-btn");
+        if (btn) carregarThumb(btn);
+    }
+
     function linhaVazia() {
         return { codigo: "", descricao: "", armazem: "", endereco: "", quantidade: "", saldoRef: null };
     }
 
     function aplicarBalanco(novo) {
         balanco = novo;
-        itens = (novo.itens || []).map((item) => ({
-            codigo: item.CODIGO || "",
-            descricao: item.DESCRICAO || "",
-            armazem: item.ARMAZEM || "",
-            endereco: item.ENDERECO || "",
-            quantidade: item.QUANTIDADE === null || item.QUANTIDADE === undefined ? "" : fmt(item.QUANTIDADE),
-            saldoRef: item.SALDO_REF === null || item.SALDO_REF === undefined ? null : Number(item.SALDO_REF)
-        }));
+        itens = (novo.itens || []).map((item) => {
+            const codigo = String(item.CODIGO || "").trim().toUpperCase();
+            const temFoto = Number(item.TEM_FOTO) === 1;
+            if (codigo) fotosConhecidas.set(codigo, temFoto);
+            return {
+                codigo,
+                descricao: item.DESCRICAO || "",
+                armazem: item.ARMAZEM || "",
+                endereco: item.ENDERECO || "",
+                quantidade: item.QUANTIDADE === null || item.QUANTIDADE === undefined ? "" : fmt(item.QUANTIDADE),
+                saldoRef: item.SALDO_REF === null || item.SALDO_REF === undefined ? null : Number(item.SALDO_REF),
+                temFoto
+            };
+        });
         sujo = false;
         painelContagem.style.display = "block";
         tituloAno.textContent = "Contagem de " + novo.ANO;
@@ -156,6 +255,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             const qtd = numero(item.quantidade);
             const dif = item.saldoRef === null || qtd === null ? "" : fmt(qtd - item.saldoRef);
             return `<tr data-idx="${idx}">
+                ${htmlFoto(item.codigo)}
                 <td><input data-campo="codigo" value="${esc(item.codigo)}" style="width: 110px;" /></td>
                 <td>${esc(item.descricao)}</td>
                 <td><input data-campo="armazem" value="${esc(item.armazem)}" style="width: 80px;" /></td>
@@ -166,7 +266,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <td><button type="button" data-acao="excluir" class="btn-secundario">Excluir</button></td>
             </tr>`;
         }).join("");
-        gradeBody.innerHTML = html || `<tr><td colspan="8">Nenhuma linha na contagem.</td></tr>`;
+        gradeBody.innerHTML = html || `<tr><td colspan="9">Nenhuma linha na contagem.</td></tr>`;
+        observarFotos();
         atualizarResumo();
     }
 
@@ -487,6 +588,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         itens = novo;
         sujo = true;
         render();
+        consultarFotos(novo.map((item) => item.codigo))
+            .then(() => render())
+            .catch((err) => mostrar(err.message, "error"));
         mostrar(novo.length.toLocaleString("pt-BR") + " linhas importadas. Salve para gravar a contagem.", "info");
     }
 
@@ -568,6 +672,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         render();
     });
     gradeBody.addEventListener("click", (e) => {
+        const fotoBtn = e.target.closest(".bal-foto-btn");
+        if (fotoBtn) {
+            const codigo = fotoBtn.getAttribute("data-foto");
+            const idx = Number(fotoBtn.closest("tr").dataset.idx);
+            const descricao = itens[idx] ? itens[idx].descricao : "";
+            carregarThumb(fotoBtn).then(() => abrirZoom(codigo, descricao));
+            return;
+        }
         const btn = e.target.closest("[data-acao='excluir']");
         if (!btn) return;
         lerGrade();
@@ -576,9 +688,19 @@ document.addEventListener("DOMContentLoaded", async function () {
         sujo = true;
         render();
     });
-    gradeBody.addEventListener("change", () => {
+    gradeBody.addEventListener("change", (e) => {
         lerGrade();
         atualizarResumo();
+        const tr = e.target.closest("tr");
+        if (tr && e.target.matches('[data-campo="codigo"]')) {
+            atualizarFotoDaLinha(tr);
+        }
+    });
+    document.getElementById("fotoZoom").addEventListener("click", () => {
+        document.getElementById("fotoZoom").hidden = true;
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") document.getElementById("fotoZoom").hidden = true;
     });
 
     try {

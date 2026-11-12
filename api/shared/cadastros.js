@@ -1,4 +1,12 @@
 import { getConnection, sql } from "../../db.js";
+import {
+  FotoErro,
+  ensureFotoProduto,
+  salvarFotoProduto,
+  excluirFotoProduto,
+  lerFotoProduto,
+  enviarFoto,
+} from "../../lib/produtoFoto.js";
 
 export const config = { maxDuration: 60 };
 
@@ -774,12 +782,53 @@ async function gravarPlanejamento(conn, codigo, plano) {
     `);
 }
 
+function autorCadastro(req) {
+  const h = req.headers || {};
+  let nome = h["x-user-name"] || h["X-User-Name"] || "";
+  try { nome = decodeURIComponent(String(nome)); } catch (_) { /* mantém */ }
+  return String(nome || "SGC").trim().slice(0, 100) || "SGC";
+}
+
+async function responderFoto(res, pool, codigo) {
+  const arquivo = await lerFotoProduto(pool, codigo);
+  if (!arquivo) return res.status(404).json({ message: "Produto sem foto." });
+  return enviarFoto(res, arquivo);
+}
+
+async function gravarFotoProduto(req, res, pool) {
+  try {
+    const body = req.body || {};
+    const codigo = await salvarFotoProduto(pool, body.codigo, body.data, body.mime, body.nome, autorCadastro(req));
+    return res.status(200).json({ success: true, codigo, temFoto: true });
+  } catch (err) {
+    if (err instanceof FotoErro) return res.status(err.status).json({ message: err.message });
+    console.error("foto produto", err);
+    return res.status(500).json({ message: "Não foi possível salvar a foto." });
+  }
+}
+
+async function removerFotoProduto(req, res, pool) {
+  try {
+    const body = req.body || {};
+    const resultado = await excluirFotoProduto(pool, body.codigo);
+    return res.status(200).json({ success: true, ...resultado, temFoto: false });
+  } catch (err) {
+    if (err instanceof FotoErro) return res.status(err.status).json({ message: err.message });
+    console.error("foto produto", err);
+    return res.status(500).json({ message: "Não foi possível remover a foto." });
+  }
+}
+
 async function handleProdutos(req, res, pool, method) {
   await ensurePlanejamento(pool);
+  await ensureFotoProduto(pool);
   if (method === 'GET') {
+    if (req.query.acao === "foto") return await responderFoto(res, pool, req.query.codigo);
     return await listarProdutos(req, res, pool);
   } else if (method === 'POST') {
     const acao = req.body && req.body.acao;
+    if (acao === 'foto') return await gravarFotoProduto(req, res, pool);
+    if (acao === 'excluirFoto') return await removerFotoProduto(req, res, pool);
     if (acao === 'criar') {
       return await criarProduto(req, res, pool);
     }
@@ -827,7 +876,11 @@ async function listarProdutos(req, res, pool) {
              p.ESTOQUE_MINIMO, p.ESTOQUE_IDEAL, p.ESTOQUE_MAXIMO,
              pl.LINHA AS PLN_LINHA, pl.MARCA AS PLN_MARCA, pl.MODELO AS PLN_MODELO,
              pl.COR AS PLN_COR, pl.EAN AS PLN_EAN, pl.NCM AS PLN_NCM,
-             pl.SAP_VIVO AS PLN_SAP_VIVO, pl.COD_CLARO AS PLN_COD_CLARO
+             pl.SAP_VIVO AS PLN_SAP_VIVO, pl.COD_CLARO AS PLN_COD_CLARO,
+             CASE WHEN EXISTS (
+               SELECT 1 FROM dbo.CAD_PROD_FOTO f
+               WHERE UPPER(LTRIM(RTRIM(f.CODIGO))) = UPPER(LTRIM(RTRIM(CONVERT(NVARCHAR(100), p.CODIGO))))
+             ) THEN 1 ELSE 0 END AS TEM_FOTO
       FROM [dbo].[CAD_PROD] p
       LEFT JOIN dbo.CAD_PROD_PLANEJAMENTO pl ON pl.CODIGO = p.CODIGO
       ${whereSql}
