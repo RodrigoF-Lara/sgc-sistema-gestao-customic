@@ -25,6 +25,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let ocupado = false;
   let filtroStatus = "";
   let ficha = null;
+  const comprasCache = new Map();
+  const comprasPendentes = new Set();
+  const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   let geracaoAnexos = 0;
   const thumbs = new Map();
 
@@ -98,6 +101,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function moeda(n) {
     return Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  function moeda4(n) {
+    return Number(n || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
+  }
+
+  function rotuloMes(ano, mes) {
+    const nome = MESES[(Number(mes) || 1) - 1] || "";
+    return `${nome}/${String(ano || "").slice(-2)}`;
+  }
+
+  function textoComparacao(cotado, ultimo) {
+    if (!Number.isFinite(cotado) || !Number.isFinite(ultimo) || ultimo <= 0) return null;
+    const pct = ((cotado - ultimo) / ultimo) * 100;
+    const textoPct = Math.abs(pct).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    if (Math.abs(pct) < 0.05) return { cls: "igual", texto: "igual à última compra" };
+    if (pct > 0) return { cls: "acima", texto: `${textoPct}% acima da última` };
+    return { cls: "abaixo", texto: `${textoPct}% abaixo da última` };
   }
 
   function fmtNum(n, casas) {
@@ -272,6 +298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <td><input class="desc" readonly tabindex="-1" aria-label="Descrição" value="${escapeHtml(item.descricao || "")}" /></td>
       <td><input class="qtd" inputmode="decimal" aria-label="Quantidade" value="${escapeHtml(item.quantidade != null && item.quantidade !== "" ? fmtNum(item.quantidade, 4) : "")}" /></td>
       <td><input class="vu" inputmode="decimal" aria-label="Valor unitário" value="${escapeHtml(item.valorUnitario != null && item.valorUnitario !== "" ? fmtNum(item.valorUnitario, 6) : "")}" /></td>
+      <td class="compras"></td>
       <td class="total"></td>
       <td><input class="pz" inputmode="numeric" aria-label="Prazo do item em dias" placeholder="igual" value="${escapeHtml(item.prazoDias != null && item.prazoDias !== "" ? item.prazoDias : "")}" /></td>
       <td><button type="button" class="icone remover" aria-label="Remover produto"><i class="fa-solid fa-trash"></i></button></td>
@@ -282,6 +309,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     cod.addEventListener("input", () => {
       clearTimeout(timer);
       const q = cod.value.trim();
+      const celula = tr.querySelector(".compras");
+      if (celula && celula.dataset.codigo !== q.toUpperCase()) {
+        celula.dataset.codigo = "";
+        celula.dataset.estado = "";
+        celula.innerHTML = `<span class="vazio">—</span>`;
+      }
       if (q.length < 2) {
         fecharSug();
         return;
@@ -299,6 +332,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             cod.value = p.codigo;
             desc.value = p.descricao || "";
             atualizarTotais();
+            pedirComprasDaTela();
           });
         } catch (err) {
           aviso(err.message);
@@ -316,9 +350,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         cod.value = data.data.codigo;
         desc.value = data.data.descricao || "";
         cod.classList.remove("campo-erro");
+        pedirComprasDaTela();
       } catch (_) {
         desc.value = "";
         cod.classList.add("campo-erro");
+        pedirComprasDaTela();
       }
     });
     tr.querySelector(".qtd").addEventListener("input", atualizarTotais);
@@ -340,6 +376,68 @@ document.addEventListener("DOMContentLoaded", async () => {
     corpoItens.innerHTML = "";
     (itens.length ? itens : [{}]).forEach((item) => corpoItens.appendChild(linhaItem(item)));
     atualizarTotais();
+    pedirComprasDaTela();
+  }
+
+  function pintarCompras(tr) {
+    const celula = tr.querySelector(".compras");
+    if (!celula) return;
+    const codigo = tr.querySelector(".cod").value.trim().toUpperCase();
+    if (!codigo) {
+      celula.dataset.estado = "";
+      celula.innerHTML = `<span class="vazio">—</span>`;
+      return;
+    }
+    if (!comprasCache.has(codigo)) {
+      if (!comprasPendentes.has(codigo)) return;
+      if (celula.dataset.estado !== "busca") {
+        celula.dataset.estado = "busca";
+        celula.innerHTML = `<span class="vazio">Buscando…</span>`;
+      }
+      return;
+    }
+    const lista = comprasCache.get(codigo) || [];
+    celula.dataset.estado = "ok";
+    celula.dataset.codigo = codigo;
+    if (!lista.length) {
+      celula.innerHTML = `<span class="vazio">Sem compra nos últimos 3 anos</span>`;
+      return;
+    }
+    const linhas = lista.map((mes) => `
+      <div class="mes"><span>${escapeHtml(rotuloMes(mes.ano, mes.mes))}</span><strong>${escapeHtml(moeda4(mes.custo))}</strong></div>
+    `).join("");
+    const cotado = parseNum(tr.querySelector(".vu").value);
+    const cmp = textoComparacao(cotado, Number(lista[0].custo));
+    const extra = cmp ? `<div class="cmp ${cmp.cls}">${escapeHtml(cmp.texto)}</div>` : "";
+    celula.innerHTML = linhas + extra;
+  }
+
+  function pedirComprasDaTela() {
+    const codigos = [...corpoItens.querySelectorAll(".cod")]
+      .map((input) => input.value.trim().toUpperCase())
+      .filter(Boolean);
+    carregarCompras(codigos);
+  }
+
+  async function carregarCompras(codigos) {
+    const lista = [...new Set(codigos)].filter((codigo) => codigo && !comprasCache.has(codigo) && !comprasPendentes.has(codigo));
+    pintarTodasCompras();
+    if (!lista.length) return;
+    lista.forEach((codigo) => comprasPendentes.add(codigo));
+    try {
+      const resp = await api("POST", "compras", { body: { codigos: lista } });
+      const dados = resp.data || {};
+      lista.forEach((codigo) => comprasCache.set(codigo, dados[codigo] || []));
+    } catch (err) {
+      aviso(err.message);
+    } finally {
+      lista.forEach((codigo) => comprasPendentes.delete(codigo));
+      pintarTodasCompras();
+    }
+  }
+
+  function pintarTodasCompras() {
+    corpoItens.querySelectorAll("tr").forEach(pintarCompras);
   }
 
   function atualizarTotais() {
@@ -350,11 +448,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const celula = tr.querySelector(".total");
       if (!Number.isFinite(qtd) || !Number.isFinite(vu)) {
         celula.textContent = "—";
-        return;
+      } else {
+        const total = qtd * vu;
+        soma += total;
+        celula.textContent = moeda(total);
       }
-      const total = qtd * vu;
-      soma += total;
-      celula.textContent = moeda(total);
+      pintarCompras(tr);
     });
     document.getElementById("totalGeral").textContent = moeda(soma);
   }
