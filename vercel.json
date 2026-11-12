@@ -24,6 +24,7 @@
     { "source": "/menu", "destination": "/menu.html" },
     { "source": "/api/embalagem/orcamento", "destination": "/api/shared/config?tipo=orcamento" },
     { "source": "/api/embalagem/racional", "destination": "/api/shared/config?tipo=racional" },
+    { "source": "/api/embalagem/engenharia", "destination": "/api/shared/config?tipo=engenharia" },
     { "source": "/index", "destination": "/index.html" },
     { "source": "/api/comercial/pedidos", "destination": "/api/shared/config?tipo=pedidoCapa" },
     { "source": "/api/comercial/depara", "destination": "/api/shared/config?tipo=capaDePara" },

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Desenvolvimento de embalagens - SGC</title>
+  <link rel="stylesheet" href="/shared/frontend/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    .eng h1 { text-align: left; margin-bottom: 6px; }
+    .eng .hint { color: #546e7a; margin: 0 0 16px; max-width: 920px; }
+    .aviso { border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-weight: 600; }
+    .aviso.erro { background: #ffebee; color: #b71c1c; }
+    .aviso.ok { background: #e8f5e9; color: #1b5e20; }
+    .aviso.estudo { background: #fff8e1; color: #6d4c00; font-weight: 600; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+    .toolbar label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: #546e7a; font-weight: 700; }
+    .toolbar input, .toolbar select { min-width: 140px; padding: 8px 10px; }
+    .toolbar input[type="search"] { min-width: 220px; flex: 1; }
+    .eng button.sec, .eng button.sec:hover { background: #fff; color: #263238; border: 1px solid #cfd8dc; }
+    .eng button.ok, .eng button.ok:hover { background: #2e7d32; color: #fff; border: none; }
+    .eng button.ghost, .eng button.ghost:hover { background: #fff; color: #c62828; border: 1px solid #ffcdd2; }
+    .eng button:disabled, .eng button:disabled:hover {
+      background: #eceff1; color: #90a4ae; border-color: #eceff1; cursor: not-allowed;
+    }
+    .card-lista, .card-ficha {
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .wrap-table { overflow: auto; }
+    table.lista { min-width: 860px; width: 100%; border-collapse: collapse; }
+    table.lista tbody tr { cursor: pointer; }
+    .eng th, .eng td { border-bottom: 1px solid #eceff1; padding: 8px; vertical-align: middle; }
+    .eng th {
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em;
+      color: #607d8b; text-align: left; white-space: nowrap; background: #fff;
+    }
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .tag.rascunho { background: #fff3cd; color: #856404; }
+    .tag.aprovado { background: #d4edda; color: #155724; }
+    .vazio { text-align: center; color: #78909c; padding: 28px; }
+    .topo-ficha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+    .topo-ficha h2 { margin: 0 0 6px; font-size: 1.25rem; }
+    .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .versoes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .eng button.ver, .eng button.ver:hover {
+      background: #fff; color: #455a64; border: 1px solid #cfd8dc; padding: 6px 10px; font-weight: 700;
+    }
+    .eng button.ver.ativo, .eng button.ver.ativo:hover { border-color: #1976d2; color: #1565c0; }
+    .colunas { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr); gap: 16px; align-items: start; }
+    .grade { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; position: relative; }
+    .campo.largo { grid-column: span 2; }
+    .campo.cheio { grid-column: 1 / -1; }
+    .campo label { font-size: 0.8rem; font-weight: 700; color: #546e7a; }
+    .campo input, .campo textarea, .campo select { width: 100%; padding: 8px 10px; font: inherit; }
+    .campo textarea { min-height: 72px; resize: vertical; border: 1px solid #dee2e6; border-radius: 5px; }
+    .checks { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+    .checks label { display: flex; gap: 6px; align-items: center; font-weight: 600; color: #37474f; font-size: 0.92rem; }
+    .origem { display: flex; flex-wrap: wrap; gap: 14px; }
+    .origem label { display: flex; gap: 6px; align-items: center; font-weight: 700; color: #37474f; }
+    .nota { color: #78909c; font-size: 0.82rem; margin: 0; }
+    .auditoria { margin-top: 8px; color: #78909c; font-size: 0.85rem; }
+    .painel-desenho, .painel-3d, .painel-est {
+      border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafbfc;
+    }
+    .painel-desenho h3, .painel-3d h3, .painel-est h3 { margin: 0 0 8px; font-size: 1rem; }
+    #facaHost { background: #fff; border: 1px solid #eceff1; border-radius: 8px; min-height: 180px; overflow: auto; }
+    #facaHost svg { display: block; width: 100%; height: auto; max-height: 420px; }
+    .legenda-faca { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.82rem; color: #455a64; }
+    .sw { display: inline-block; width: 18px; height: 4px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+    .sw.corte { background: #e53935; }
+    .sw.vinco { background: #1565c0; }
+    .sw.cola { background: #80deea; }
+    #caixa3d { width: 100%; height: 260px; background: #fff; border: 1px solid #eceff1; border-radius: 8px; touch-action: none; cursor: grab; }
+    .medidas-folha { margin: 8px 0 0; color: #455a64; font-size: 0.88rem; }
+    .sug {
+      position: absolute; z-index: 20; left: 0; right: 0; top: 100%;
+      background: #fff; border: 1px solid #cfd8dc; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12); max-height: 240px; overflow: auto;
+    }
+    button.sug-item, button.sug-item:hover {
+      display: block; width: 100%; text-align: left; background: #fff; color: #263238;
+      border: none; border-radius: 0; padding: 8px 10px; font-weight: 600; box-shadow: none;
+    }
+    button.sug-item:hover { background: #e3f2fd; }
+    .sug small { display: block; color: #607d8b; font-weight: 500; }
+    .memoria { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .memoria td.num, .memoria th.num { text-align: right; white-space: nowrap; }
+    .motivos { margin: 8px 0 0; padding-left: 18px; color: #6d4c00; }
+    .anexos { margin-top: 16px; }
+    .anexo-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eceff1; }
+    .eng input:disabled, .eng textarea:disabled, .eng select:disabled { background: #f4f6f8; color: #607d8b; }
+    @media (max-width: 980px) {
+      .colunas { grid-template-columns: 1fr; }
+      .grade { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .grade, .campo.largo { grid-template-columns: 1fr; }
+      .campo.largo, .campo.cheio { grid-column: auto; }
+      .toolbar input, .toolbar select, .toolbar input[type="search"] { width: 100%; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <div class="main-content">
+    <div class="container eng">
+      <h1><i class="fa-solid fa-pen-ruler"></i> Desenvolvimento de embalagens</h1>
+      <p class="hint">Biblioteca do cartucho, faca de estudo e pré-orçamento. A planificação é um cartucho simples. A faca de produção continua sendo o arquivo enviado pela engenharia.</p>
+      <div id="aviso" class="aviso" hidden></div>
+
+      <section id="painelLista">
+        <div class="toolbar">
+          <label>Busca
+            <input type="search" id="busca" placeholder="SKU, título, cliente ou descrição" />
+          </label>
+          <label>Status
+            <select id="filtroStatus">
+              <option value="">Todos</option>
+              <option value="RASCUNHO">Rascunho</option>
+              <option value="APROVADO">Aprovado</option>
+            </select>
+          </label>
+          <button type="button" class="sec" id="btnFiltrar">Filtrar</button>
+          <button type="button" class="sec" id="btnPrecos"><i class="fa-solid fa-table"></i> Preços médios</button>
+          <button type="button" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo projeto</button>
+        </div>
+        <div class="card-lista">
+          <div class="wrap-table">
+            <table class="lista">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Título</th>
+                  <th>Família</th>
+                  <th>Medidas internas</th>
+                  <th>Versão</th>
+                  <th>Status</th>
+                  <th>Atualizado</th>
+                </tr>
+              </thead>
+              <tbody id="corpoLista"></tbody>
+            </table>
+          </div>
+          <p id="vazioLista" class="vazio" hidden>Nenhum projeto neste filtro.</p>
+        </div>
+      </section>
+
+      <section id="painelPrecos" hidden>
+        <div class="card-ficha">
+          <div class="topo-ficha">
+            <div>
+              <h2>Preços médios</h2>
+              <p class="nota">Um preço médio por item. A estimativa continua marcada como incompleta enquanto faltarem imposição, máquina e fibra.</p>
+            </div>
+            <div class="acoes">
+              <button type="button" class="sec" id="btnVoltarPrecos"><i class="fa-solid fa-arrow-left"></i> Lista</button>
+              <button type="button" id="btnSalvarPrecos">Salvar preços</button>
+            </div>
+          </div>
+          <div class="wrap-table">
+            <table class="lista">
+              <thead>
+                <tr>
+                  <th>Grupo</th>
+                  <th>Item</th>
+                  <th>Unidade</th>
+                  <th>Preço</th>
+                </tr>
+              </thead>
+              <tbody id="corpoPrecos"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="painelFicha" hidden>
+        <div class="card-ficha">
+          <div class="topo-ficha">
+            <div>
+              <h2 id="tituloFicha">Novo projeto</h2>
+              <div id="badgeStatus"></div>
+            </div>
+            <div class="acoes">
+              <button type="button" class="sec" id="btnVoltar"><i class="fa-solid fa-arrow-left"></i> Lista</button>
+              <button type="button" class="ghost" id="btnExcluir" hidden>Excluir rascunho</button>
+              <button type="button" class="sec" id="btnNova" hidden>Nova versão</button>
+              <button type="button" class="ok" id="btnAprovar" hidden>Aprovar</button>
+              <button type="button" id="btnSalvar">Salvar</button>
+            </div>
+          </div>
+          <div id="versoes" class="versoes"></div>
+          <p id="avisoVersao" class="nota" hidden></p>
+
+          <div class="colunas">
+            <div>
+              <div class="grade" id="blocoDados">
+                <div class="campo largo">
+                  <label for="sku">SKU</label>
+                  <input id="sku" maxlength="100" autocomplete="off" placeholder="Código do cadastro de produtos" />
+                  <div id="sugestoes" class="sug" hidden></div>
+                </div>
+                <div class="campo largo">
+                  <label for="titulo">Título</label>
+                  <input id="titulo" maxlength="120" placeholder="Nome do projeto" />
+                </div>
+                <div class="campo largo">
+                  <label for="cliente">Cliente</label>
+                  <input id="cliente" maxlength="120" />
+                </div>
+                <div class="campo">
+                  <label>Família</label>
+                  <input id="familia" value="CARTUCHO" disabled />
+                </div>
+                <div class="campo cheio">
+                  <span class="nota">Origem da faca</span>
+                  <div class="origem">
+                    <label><input type="radio" name="origem" value="PARAMETRICO" checked /> Cartucho paramétrico</label>
+                    <label><input type="radio" name="origem" value="ARQUIVO" /> Faca enviada</label>
+                  </div>
+                </div>
+                <div class="campo">
+                  <label for="comprimento">Comprimento (mm)</label>
+                  <input id="comprimento" inputmode="decimal" placeholder="Interno" />
+                </div>
+                <div class="campo">
+                  <label for="largura">Largura (mm)</label>
+                  <input id="largura" inputmode="decimal" placeholder="Interno" />
+                </div>
+                <div class="campo">
+                  <label for="altura">Altura (mm)</label>
+                  <input id="altura" inputmode="decimal" placeholder="Interno" />
+                </div>
+                <div class="campo">
+                  <label for="espessura">Espessura (mm)</label>
+                  <input id="espessura" inputmode="decimal" />
+                </div>
+                <div class="campo cheio">
+                  <p class="nota">A espessura fica registrada e ainda não altera a faca. A compensação de vinco não foi validada.</p>
+                </div>
+                <div class="campo">
+                  <label for="folhaLargura">Folha — largura (mm)</label>
+                  <input id="folhaLargura" inputmode="decimal" />
+                </div>
+                <div class="campo">
+                  <label for="folhaAltura">Folha — altura (mm)</label>
+                  <input id="folhaAltura" inputmode="decimal" />
+                </div>
+                <div class="campo">
+                  <label for="material">Material</label>
+                  <input id="material" maxlength="80" placeholder="Ex.: cartão" />
+                </div>
+                <div class="campo">
+                  <label for="gramatura">Gramatura (g/m²)</label>
+                  <input id="gramatura" inputmode="decimal" />
+                </div>
+                <div class="campo">
+                  <label for="impressao">Impressão</label>
+                  <input id="impressao" maxlength="40" placeholder="Ex.: offset" />
+                </div>
+                <div class="campo">
+                  <label for="pantone">Pantone</label>
+                  <input id="pantone" maxlength="200" />
+                </div>
+                <div class="campo cheio">
+                  <div class="checks">
+                    <label><input type="checkbox" id="laminacao" /> Laminação</label>
+                    <label><input type="checkbox" id="verniz" /> Verniz</label>
+                    <label><input type="checkbox" id="janela" /> Janela de acetato</label>
+                  </div>
+                </div>
+                <div class="campo">
+                  <label for="quantidade">Quantidade</label>
+                  <input id="quantidade" inputmode="numeric" value="1000" />
+                </div>
+                <div class="campo">
+                  <label for="poses">Poses</label>
+                  <input id="poses" inputmode="numeric" value="1" />
+                </div>
+                <div class="campo">
+                  <label for="perda">Perda técnica (%)</label>
+                  <input id="perda" inputmode="decimal" placeholder="Vazio usa a tabela" />
+                </div>
+                <div class="campo cheio">
+                  <label for="observacao">Observação</label>
+                  <textarea id="observacao" maxlength="1000"></textarea>
+                </div>
+              </div>
+              <p id="auditoria" class="auditoria"></p>
+
+              <div class="anexos">
+                <h3>Arquivos da versão</h3>
+                <p class="nota">PDF, SVG, JPG ou PNG, até 3 MB. No máximo 8 arquivos. A versão aprovada não recebe arquivo novo.</p>
+                <div id="listaAnexos"></div>
+                <div id="painelAnexo" class="toolbar">
+                  <label>Uso
+                    <select id="usoAnexo">
+                      <option value="FACA">Faca</option>
+                      <option value="ARTE">Arte</option>
+                      <option value="VERNIZ">Verniz</option>
+                      <option value="OUTRO">Outro</option>
+                    </select>
+                  </label>
+                  <label>Arquivo
+                    <input type="file" id="arquivoAnexo" accept=".pdf,.svg,.jpg,.jpeg,.png,application/pdf,image/svg+xml,image/png,image/jpeg" />
+                  </label>
+                  <button type="button" class="sec" id="btnAnexar">Enviar arquivo</button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="painel-desenho" id="vistaFaca">
+                <h3>Faca de estudo</h3>
+                <div id="facaHost"></div>
+                <p id="medidasFolha" class="medidas-folha"></p>
+                <div class="legenda-faca">
+                  <span><i class="sw corte"></i>Corte</span>
+                  <span><i class="sw vinco"></i>Vinco</span>
+                  <span><i class="sw cola"></i>Cola</span>
+                </div>
+                <p class="nota">Cartucho simplificado, sem compensação de espessura e sem sangria. Não é a faca de produção.</p>
+                <div class="acoes" style="margin-top:8px">
+                  <button type="button" class="sec" id="btnBaixarSvg" hidden>Baixar SVG</button>
+                </div>
+              </div>
+              <div class="aviso estudo" id="avisoArquivo" hidden>
+                Esta versão guarda a faca enviada. A planificação automática fica desligada.
+              </div>
+              <div class="painel-3d">
+                <h3>Prévia ilustrativa</h3>
+                <canvas id="caixa3d" width="640" height="520"></canvas>
+                <p class="nota">Arraste para girar. A caixa usa só comprimento, largura e altura. Não é a faca dobrada.</p>
+              </div>
+              <div class="painel-est">
+                <h3>Pré-orçamento</h3>
+                <div id="blocoEstimativa" class="nota">Informe as medidas para calcular a estimativa.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/shared/frontend/permissoes.js"></script>
+  <script src="/shared/frontend/layout.js"></script>
+  <script src="/modules/embalagem/engenharia/engenharia.js"></script>
+</body>
+</html>
