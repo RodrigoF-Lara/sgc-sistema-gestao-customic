@@ -10,7 +10,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const API = "/api/embalagem/racional";
   const STATUS = { ABERTO: "Aberto", FECHADO: "Fechado" };
-  const CANAIS = ["claro", "vivo", "comercial", "online", "quiosque", "est"];
+  const CANAIS = [
+    { classe: "claro", chave: "claro", rotulo: "Claro" },
+    { classe: "vivo", chave: "vivo", rotulo: "Vivo" },
+    { classe: "comercial", chave: "comercial", rotulo: "Comercial" },
+    { classe: "online", chave: "online", rotulo: "On line" },
+    { classe: "quiosque", chave: "quiosque", rotulo: "Quiosque" },
+    { classe: "est", chave: "estAdicional", rotulo: "Est. adicional" },
+  ];
 
   const avisoEl = document.getElementById("aviso");
   const painelLista = document.getElementById("painelLista");
@@ -138,6 +145,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
   }
 
+  function agoraTela() {
+    const partes = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date());
+    const map = Object.fromEntries(partes.map((p) => [p.type, p.value]));
+    const hora = map.hour === "24" ? "00" : map.hour;
+    return fmtDataHora(`${map.year}-${map.month}-${map.day} ${hora}:${map.minute}`);
+  }
+
   function hojeMes() {
     const d = new Date();
     const z = (n) => String(n).padStart(2, "0");
@@ -209,6 +231,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="num">${escapeHtml(fmtQtd(row.total))}</td>
         <td class="num">${escapeHtml(fmtQtd(row.aComprar))}</td>
         <td class="num">${row.qtdAbaixo ? `<span class="num-abaixo">${escapeHtml(fmtQtd(row.qtdAbaixo))}</span>` : "0"}</td>
+        <td class="num">${textoValidacao(row)}</td>
         <td>${escapeHtml(row.pedido || "—")}</td>
         <td>${tag(row.status)}</td>
       </tr>
@@ -245,6 +268,54 @@ document.addEventListener("DOMContentLoaded", async () => {
     painelFicha.hidden = false;
   }
 
+  function textoValidacao(row) {
+    const total = Number(row.qtdSlots) || 0;
+    const ok = Number(row.qtdValidada) || 0;
+    if (!total) return "—";
+    const cls = ok >= total ? "val-ok" : (ok > 0 ? "val-parcial" : "");
+    return `<span class="${cls}">${ok}/${total}</span>`;
+  }
+
+  function tituloValidacao(canal, por, em) {
+    if (!por) return `Validar a quantidade de ${canal.rotulo}`;
+    return `Validado por ${por}${em ? " em " + em : ""}`;
+  }
+
+  function pintarValidacao(td) {
+    const box = td.querySelector(".ok");
+    const input = td.querySelector(".q");
+    const canal = CANAIS.find((item) => input.classList.contains(item.classe)) || { rotulo: "canal" };
+    td.classList.toggle("validado", box.checked);
+    const titulo = box.checked
+      ? tituloValidacao(canal, box.dataset.por || usuario(), box.dataset.em || "")
+      : tituloValidacao(canal, "", "");
+    box.title = titulo;
+    input.title = box.checked ? titulo : "";
+  }
+
+  function limparValidacao(td) {
+    const box = td.querySelector(".ok");
+    if (!box || !box.checked) return;
+    box.checked = false;
+    box.dataset.por = "";
+    box.dataset.em = "";
+    box.dataset.qtd = "";
+    pintarValidacao(td);
+  }
+
+  function htmlCanal(canal, item) {
+    const info = item.validacao && item.validacao[canal.chave];
+    const ok = !!(info && info.ok);
+    const por = ok ? (info.por || "") : "";
+    const em = ok ? fmtDataHora(info.em) : "";
+    const qtd = campoQtd(item[canal.chave]);
+    const titulo = tituloValidacao(canal, por, em);
+    return `<td class="canal${ok ? " validado" : ""}">
+      <input class="q ${canal.classe}" inputmode="decimal" aria-label="${escapeHtml(canal.rotulo)}" value="${escapeHtml(qtd)}" title="${escapeHtml(ok ? titulo : "")}" />
+      <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""} data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
+    </td>`;
+  }
+
   function linhaItem(item) {
     const tr = document.createElement("tr");
     const codigo = item.codigo || "";
@@ -254,12 +325,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <td><input class="cod" autocomplete="off" aria-label="SKU" value="${escapeHtml(codigo)}" /></td>
       <td><input class="desc" readonly tabindex="-1" aria-label="Descrição" value="${escapeHtml(item.descricao || "")}" /></td>
       <td><input class="q moq" inputmode="decimal" aria-label="MOQ" value="${escapeHtml(campoQtd(item.moq))}" /></td>
-      <td><input class="q claro" inputmode="decimal" aria-label="Claro" value="${escapeHtml(campoQtd(item.claro))}" /></td>
-      <td><input class="q vivo" inputmode="decimal" aria-label="Vivo" value="${escapeHtml(campoQtd(item.vivo))}" /></td>
-      <td><input class="q comercial" inputmode="decimal" aria-label="Comercial" value="${escapeHtml(campoQtd(item.comercial))}" /></td>
-      <td><input class="q online" inputmode="decimal" aria-label="On line" value="${escapeHtml(campoQtd(item.online))}" /></td>
-      <td><input class="q quiosque" inputmode="decimal" aria-label="Quiosque" value="${escapeHtml(campoQtd(item.quiosque))}" /></td>
-      <td><input class="q est" inputmode="decimal" aria-label="Estoque adicional" value="${escapeHtml(campoQtd(item.estAdicional))}" /></td>
+      ${CANAIS.map((canal) => htmlCanal(canal, item)).join("")}
       <td class="total"></td>
       <td class="comprar"></td>
       <td><input class="obs" maxlength="300" aria-label="Observação do produto" value="${escapeHtml(item.observacao || "")}" /></td>
@@ -319,7 +385,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         tr.dataset.codigo = "";
       }
     });
-    tr.querySelectorAll(".q").forEach((input) => input.addEventListener("input", atualizarTotais));
+    tr.querySelector(".moq").addEventListener("input", atualizarTotais);
+    tr.querySelectorAll("td.canal").forEach((td) => {
+      const input = td.querySelector(".q");
+      const box = td.querySelector(".ok");
+      input.addEventListener("input", () => {
+        if (box.checked && input.value.trim() !== (box.dataset.qtd || "")) limparValidacao(td);
+        atualizarTotais();
+      });
+      box.addEventListener("change", () => {
+        if (box.checked) {
+          box.dataset.por = usuario();
+          box.dataset.em = agoraTela();
+          box.dataset.qtd = input.value.trim();
+        } else {
+          box.dataset.por = "";
+          box.dataset.em = "";
+          box.dataset.qtd = "";
+        }
+        pintarValidacao(td);
+      });
+    });
     tr.querySelector(".remover").addEventListener("click", () => {
       tr.remove();
       if (!corpoItens.children.length) adicionarItem({});
@@ -348,7 +434,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let abaixo = 0;
     corpoItens.querySelectorAll("tr").forEach((tr) => {
       const moq = lerQtd(tr.querySelector(".moq"));
-      const valores = CANAIS.map((classe) => lerQtd(tr.querySelector("." + classe)));
+      const valores = CANAIS.map((canal) => lerQtd(tr.querySelector("." + canal.classe)));
       const celulaTotal = tr.querySelector(".total");
       const celulaComprar = tr.querySelector(".comprar");
       if (moq == null || valores.some((n) => n == null)) {
@@ -443,7 +529,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const cod = tr.querySelector(".cod").value.trim();
     const obs = tr.querySelector(".obs").value.trim();
     const moq = tr.querySelector(".moq").value.trim();
-    const algumCanal = CANAIS.some((classe) => tr.querySelector("." + classe).value.trim());
+    const algumCanal = CANAIS.some((canal) => tr.querySelector("." + canal.classe).value.trim());
     return !cod && !obs && !moq && !algumCanal;
   }
 
@@ -452,19 +538,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     corpoItens.querySelectorAll("tr").forEach((tr) => {
       if (linhaVazia(tr)) return;
       const moq = lerQtd(tr.querySelector(".moq"));
-      const valores = CANAIS.map((classe) => lerQtd(tr.querySelector("." + classe)));
-      itens.push({
+      const valores = CANAIS.map((canal) => lerQtd(tr.querySelector("." + canal.classe)));
+      const item = {
         codigo: tr.querySelector(".cod").value.trim(),
         moq: moq == null ? tr.querySelector(".moq").value : moq,
-        claro: valores[0] == null ? tr.querySelector(".claro").value : valores[0],
-        vivo: valores[1] == null ? tr.querySelector(".vivo").value : valores[1],
-        comercial: valores[2] == null ? tr.querySelector(".comercial").value : valores[2],
-        online: valores[3] == null ? tr.querySelector(".online").value : valores[3],
-        quiosque: valores[4] == null ? tr.querySelector(".quiosque").value : valores[4],
-        estAdicional: valores[5] == null ? tr.querySelector(".est").value : valores[5],
         observacao: tr.querySelector(".obs").value.trim(),
+        validacao: {},
         invalido: moq == null || valores.some((n) => n == null),
+      };
+      CANAIS.forEach((canal, idx) => {
+        const input = tr.querySelector("." + canal.classe);
+        item[canal.chave] = valores[idx] == null ? input.value : valores[idx];
+        item.validacao[canal.chave] = input.closest("td").querySelector(".ok").checked;
       });
+      itens.push(item);
     });
     return {
       id: document.getElementById("racId").value,
@@ -549,9 +636,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       tr.querySelector(".cod").classList.remove("campo-erro");
       tr.querySelector(".desc").value = achado.descricao || "";
       tr.dataset.codigo = String(achado.codigo).toUpperCase();
-      ["moq", ...CANAIS].forEach((classe, idx) => {
+      ["moq", ...CANAIS.map((canal) => canal.classe)].forEach((classe, idx) => {
         const valor = colunas[idx + 1];
-        if (valor != null && valor !== "") tr.querySelector("." + classe).value = valor;
+        if (valor == null || valor === "") return;
+        const input = tr.querySelector("." + classe);
+        if (input.value.trim() === String(valor).trim()) return;
+        input.value = valor;
+        const td = input.closest("td.canal");
+        if (td) limparValidacao(td);
       });
       if (colunas[8]) tr.querySelector(".obs").value = colunas[8];
       aplicados += 1;
@@ -639,7 +731,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }));
   document.getElementById("btnDuplicar").addEventListener("click", () => comOcupacao(async () => {
     if (!ficha || !ficha.id) return;
-    if (!window.confirm("Criar um racional em aberto com os mesmos produtos e quantidades? O número do pedido não é copiado.")) return;
+    if (!window.confirm("Criar um racional em aberto com os mesmos produtos e quantidades? O pedido e as validações dos canais não são copiados.")) return;
     const data = await api("POST", "duplicar", { body: { id: ficha.id } });
     preencher(data.data);
     aviso("Cópia criada em aberto.", "ok");
