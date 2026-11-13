@@ -284,8 +284,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `<span class="${cls}">${ok}/${total}</span>`;
   }
 
-  function tituloValidacao(canal, por, em) {
-    if (por) return `Validado por ${por}${em ? " em " + em : ""}`;
+  function tituloValidacao(canal, por, em, explicacao) {
+    if (por) {
+      const base = `Validado por ${por}${em ? " em " + em : ""}`;
+      return explicacao ? `${base}. ${explicacao}` : base;
+    }
     if (!podeValidarCanal(canal)) return `Só o cargo liberado em Permissões valida ${canal.rotulo}`;
     return `Validar a quantidade de ${canal.rotulo}`;
   }
@@ -293,22 +296,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   function pintarValidacao(td) {
     const box = td.querySelector(".ok");
     const input = td.querySelector(".q");
+    const nota = td.querySelector(".nota");
     const canal = CANAIS.find((item) => input.classList.contains(item.classe)) || { rotulo: "canal" };
     td.classList.toggle("validado", box.checked);
+    const explicacao = box.checked && nota ? nota.value.trim() : "";
     const titulo = box.checked
-      ? tituloValidacao(canal, box.dataset.por || usuario(), box.dataset.em || "")
+      ? tituloValidacao(canal, box.dataset.por || usuario(), box.dataset.em || "", explicacao)
       : tituloValidacao(canal, "", "");
     box.title = titulo;
     input.title = box.checked ? titulo : "";
+    if (nota) nota.title = titulo;
   }
 
   function limparValidacao(td) {
     const box = td.querySelector(".ok");
+    const nota = td.querySelector(".nota");
     if (!box || !box.checked) return;
     box.checked = false;
     box.dataset.por = "";
     box.dataset.em = "";
     box.dataset.qtd = "";
+    if (nota) nota.value = "";
     pintarValidacao(td);
   }
 
@@ -317,12 +325,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const ok = !!(info && info.ok);
     const por = ok ? (info.por || "") : "";
     const em = ok ? fmtDataHora(info.em) : "";
+    const explicacao = ok ? (info.texto || "") : "";
     const qtd = campoQtd(item[canal.chave]);
-    const titulo = tituloValidacao(canal, por, em);
+    const titulo = tituloValidacao(canal, por, em, explicacao);
     const travado = podeValidarCanal(canal) ? "" : " disabled";
     return `<td class="canal${ok ? " validado" : ""}">
-      <input class="q ${canal.classe}" inputmode="decimal" aria-label="${escapeHtml(canal.rotulo)}" value="${escapeHtml(qtd)}" title="${escapeHtml(ok ? titulo : "")}" />
-      <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""}${travado} data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
+      <div class="linha-q">
+        <input class="q ${canal.classe}" inputmode="decimal" aria-label="${escapeHtml(canal.rotulo)}" value="${escapeHtml(qtd)}" title="${escapeHtml(ok ? titulo : "")}" />
+        <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""}${travado} data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
+      </div>
+      <input class="nota" maxlength="300" placeholder="Explicação (opcional)" aria-label="${escapeHtml("Explicação de " + canal.rotulo)}" value="${escapeHtml(explicacao)}"${travado} title="${escapeHtml(titulo)}" />
     </td>`;
   }
 
@@ -405,6 +417,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         atualizarTotais();
       });
       box.addEventListener("change", () => {
+        const nota = td.querySelector(".nota");
         if (box.checked) {
           box.dataset.por = usuario();
           box.dataset.em = agoraTela();
@@ -413,9 +426,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           box.dataset.por = "";
           box.dataset.em = "";
           box.dataset.qtd = "";
+          if (nota) nota.value = "";
         }
         pintarValidacao(td);
+        if (box.checked && nota && !nota.disabled) nota.focus();
       });
+      const nota = td.querySelector(".nota");
+      if (nota) nota.addEventListener("input", () => pintarValidacao(td));
     });
     tr.querySelector(".remover").addEventListener("click", () => {
       tr.remove();
@@ -525,7 +542,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const box = td.querySelector(".ok");
       const canal = CANAIS.find((item) => input.classList.contains(item.classe));
       if (!box || !canal) return;
+      const nota = td.querySelector(".nota");
       box.disabled = !aberto || !podeValidarCanal(canal);
+      if (nota) nota.disabled = box.disabled;
       pintarValidacao(td);
     });
   }
@@ -571,8 +590,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
       CANAIS.forEach((canal, idx) => {
         const input = tr.querySelector("." + canal.classe);
+        const td = input.closest("td");
+        const box = td.querySelector(".ok");
+        const nota = td.querySelector(".nota");
         item[canal.chave] = valores[idx] == null ? input.value : valores[idx];
-        item.validacao[canal.chave] = input.closest("td").querySelector(".ok").checked;
+        item.validacao[canal.chave] = {
+          ok: box.checked,
+          texto: box.checked && nota ? nota.value.trim() : "",
+        };
       });
       itens.push(item);
     });
