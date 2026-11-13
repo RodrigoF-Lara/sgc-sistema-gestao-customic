@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let arteImg = null;
   let arteId = null;
   let arteSeq = 0;
+  let previaId = null;
+  let comparacao = null;
+  let cmpSeq = 0;
 
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
@@ -432,6 +435,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const anexos = (ficha && ficha.anexos) || [];
     if (!anexos.length) {
       lista.innerHTML = `<p class="nota">Nenhum arquivo nesta versão.</p>`;
+      renderPrevia();
       return;
     }
     const nivel = localStorage.getItem("userLevel") || "";
@@ -448,6 +452,221 @@ document.addEventListener("DOMContentLoaded", async () => {
         </span>
       </div>`;
     }).join("");
+    renderPrevia();
+  }
+
+  function hrefAnexo(id) {
+    const nivel = localStorage.getItem("userLevel") || "";
+    return `${API}?acao=anexo&id=${encodeURIComponent(id)}&userLevel=${encodeURIComponent(nivel)}`;
+  }
+
+  function arquivosPrevia(anexos) {
+    return (anexos || []).filter((item) => item.tipo === "PDF" || item.tipo === "SVG");
+  }
+
+  function htmlPrevia(item) {
+    if (!item) return `<p class="nota">Sem PDF ou SVG.</p>`;
+    const href = escapeHtml(hrefAnexo(item.id));
+    const nome = escapeHtml(item.nome);
+    if (item.tipo === "PDF") {
+      return `<iframe class="quadro-pdf" title="Prévia de ${nome}" src="${href}"></iframe>`;
+    }
+    return `<img class="quadro-svg" alt="Prévia de ${nome}" src="${href}" />`;
+  }
+
+  function renderPrevia() {
+    const painel = document.getElementById("painelPrevia");
+    const escolha = document.getElementById("previaEscolha");
+    const quadro = document.getElementById("previaArquivo");
+    const visiveis = arquivosPrevia(ficha && ficha.anexos);
+    if (!ficha || !ficha.id) {
+      painel.hidden = true;
+      escolha.innerHTML = "";
+      quadro.innerHTML = "";
+      return;
+    }
+    painel.hidden = false;
+    if (!visiveis.length) {
+      previaId = null;
+      escolha.innerHTML = "";
+      quadro.innerHTML = `<p class="nota">Nenhum PDF ou SVG nesta versão. JPG e PNG de arte entram na prévia dobrada.</p>`;
+      return;
+    }
+    if (!visiveis.some((item) => item.id === previaId)) previaId = visiveis[visiveis.length - 1].id;
+    escolha.innerHTML = visiveis.map((item) => {
+      const ativo = item.id === previaId ? " ativo" : "";
+      return `<button type="button" class="ver${ativo}" data-previa="${item.id}">${escapeHtml(item.uso)} · ${escapeHtml(item.nome)}</button>`;
+    }).join("");
+    quadro.innerHTML = htmlPrevia(visiveis.find((item) => item.id === previaId));
+  }
+
+  function opcoesVersao(selecionado) {
+    return ((ficha && ficha.historico) || []).map((item) => {
+      const rotulo = `v${item.numero} ${item.status === "APROVADO" ? "aprovada" : "rascunho"}`;
+      const sel = Number(item.numero) === Number(selecionado) ? " selected" : "";
+      return `<option value="${item.numero}"${sel}>${rotulo}</option>`;
+    }).join("");
+  }
+
+  function prepararComparacao() {
+    cmpSeq += 1;
+    comparacao = null;
+    const painel = document.getElementById("painelComparar");
+    const resultado = document.getElementById("resultadoComparar");
+    resultado.innerHTML = "";
+    document.getElementById("btnComparar").disabled = false;
+    const historico = (ficha && ficha.historico) || [];
+    if (historico.length < 2 || !(ficha && ficha.versao)) {
+      painel.hidden = true;
+      return;
+    }
+    painel.hidden = false;
+    const atual = ficha.versao.numero;
+    const outra = [...historico].reverse().find((item) => item.numero !== atual) || historico[0];
+    document.getElementById("cmpA").innerHTML = opcoesVersao(outra.numero);
+    document.getElementById("cmpB").innerHTML = opcoesVersao(atual);
+  }
+
+  function textoVersao(versao, chave) {
+    if (chave === "status") return versao.status === "APROVADO" ? "Aprovado" : "Rascunho";
+    if (chave === "origem") return versao.origem === "ARQUIVO" ? "Faca enviada" : "Cartucho paramétrico";
+    if (chave === "espessura") return versao.espessura == null ? "—" : mm(versao.espessura);
+    if (chave === "sangria") return versao.sangria == null || Number(versao.sangria) === 0 ? "não desenha" : mm(versao.sangria);
+    if (chave === "gramatura") return versao.gramatura == null ? "—" : mm(versao.gramatura);
+    if (chave === "perda") return versao.perda == null ? "não informada" : mm(versao.perda);
+    if (chave === "laminacao" || chave === "verniz" || chave === "janela") return versao[chave] ? "Sim" : "Não";
+    if (chave === "material" || chave === "impressao" || chave === "pantone" || chave === "observacao") {
+      return versao[chave] ? String(versao[chave]) : "—";
+    }
+    return mm(versao[chave]);
+  }
+
+  function resumoArquivos(data) {
+    const itens = data.anexos || [];
+    if (!itens.length) return "Nenhum arquivo";
+    return itens.map((item) => `${item.uso} · ${item.nome} · ${item.tipo} · ${item.tamanho} bytes`).join("\n");
+  }
+
+  function resumoEstimativa(data) {
+    const est = data.estimativa;
+    if (!est) return "—";
+    return `${brl(est.total)} · unitário ${brl(est.unitario)}`;
+  }
+
+  function htmlLado(data, selecionado) {
+    const visiveis = arquivosPrevia(data.anexos);
+    const numero = data.versao ? data.versao.numero : "—";
+    if (!visiveis.length) {
+      return `<h3>v${numero}</h3><p class="nota">Sem PDF ou SVG nesta versão.</p>`;
+    }
+    const item = visiveis.find((arq) => arq.id === selecionado) || visiveis[visiveis.length - 1];
+    const escolha = visiveis.length < 2
+      ? `<p class="nota">${escapeHtml(item.uso)} · ${escapeHtml(item.nome)}</p>`
+      : `<label>Arquivo
+          <select data-cmp-arq="${data === comparacao.a ? "arqA" : "arqB"}">
+            ${visiveis.map((arq) => `<option value="${arq.id}"${arq.id === item.id ? " selected" : ""}>${escapeHtml(arq.uso)} · ${escapeHtml(arq.nome)}</option>`).join("")}
+          </select>
+        </label>`;
+    return `<h3>v${numero}</h3>${escolha}<div class="cmp-quadro">${htmlPrevia(item)}</div>`;
+  }
+
+  function pintarComparacao() {
+    const alvo = document.getElementById("resultadoComparar");
+    const a = comparacao.a;
+    const b = comparacao.b;
+    const campos = [
+      ["status", "Status"],
+      ["origem", "Origem da faca"],
+      ["comprimento", "Comprimento (mm)"],
+      ["largura", "Largura (mm)"],
+      ["altura", "Altura (mm)"],
+      ["espessura", "Espessura (mm)"],
+      ["sangria", "Sangria de estudo (mm)"],
+      ["folhaLargura", "Folha — largura (mm)"],
+      ["folhaAltura", "Folha — altura (mm)"],
+      ["material", "Material"],
+      ["gramatura", "Gramatura (g/m²)"],
+      ["impressao", "Impressão"],
+      ["pantone", "Pantone"],
+      ["laminacao", "Laminação"],
+      ["verniz", "Verniz"],
+      ["janela", "Janela de acetato"],
+      ["quantidade", "Quantidade"],
+      ["poses", "Poses"],
+      ["perda", "Perda técnica (%)"],
+      ["observacao", "Observação"],
+    ];
+    const linhas = campos.map(([chave, rotulo]) => {
+      const ea = textoVersao(a.versao, chave);
+      const eb = textoVersao(b.versao, chave);
+      return { rotulo, ea, eb, dif: ea !== eb };
+    });
+    const arquivosA = resumoArquivos(a);
+    const arquivosB = resumoArquivos(b);
+    linhas.push({ rotulo: "Arquivos", ea: arquivosA, eb: arquivosB, dif: arquivosA !== arquivosB });
+    const estA = resumoEstimativa(a);
+    const estB = resumoEstimativa(b);
+    linhas.push({ rotulo: "Pré-orçamento", ea: estA, eb: estB, dif: estA !== estB });
+    const diferentes = linhas.filter((linha) => linha.dif).length;
+    const corpo = linhas.map((linha) => `
+      <tr class="${linha.dif ? "dif" : ""}">
+        <td>${escapeHtml(linha.rotulo)}</td>
+        <td>${escapeHtml(linha.ea)}</td>
+        <td>${escapeHtml(linha.eb)}</td>
+      </tr>`).join("");
+    const resumo = diferentes
+      ? `${diferentes} ${diferentes === 1 ? "campo diferente" : "campos diferentes"} entre a v${a.versao.numero} e a v${b.versao.numero}. O que mudou fica em destaque.`
+      : `A v${a.versao.numero} e a v${b.versao.numero} estão iguais nestes campos.`;
+    alvo.innerHTML = `
+      <p class="nota">${escapeHtml(resumo)}</p>
+      <div class="wrap-table">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>Campo</th>
+              <th>v${a.versao.numero}</th>
+              <th>v${b.versao.numero}</th>
+            </tr>
+          </thead>
+          <tbody>${corpo}</tbody>
+        </table>
+      </div>
+      <div class="cmp-grade">
+        <div id="cmpLadoA">${htmlLado(a, comparacao.arqA)}</div>
+        <div id="cmpLadoB">${htmlLado(b, comparacao.arqB)}</div>
+      </div>`;
+  }
+
+  async function comparar() {
+    if (!ficha || !ficha.id) return;
+    const numeroA = Number(document.getElementById("cmpA").value);
+    const numeroB = Number(document.getElementById("cmpB").value);
+    const alvo = document.getElementById("resultadoComparar");
+    if (!numeroA || !numeroB || numeroA === numeroB) {
+      alvo.innerHTML = `<p class="nota">Escolha duas versões diferentes.</p>`;
+      return;
+    }
+    const seq = ++cmpSeq;
+    const botao = document.getElementById("btnComparar");
+    botao.disabled = true;
+    alvo.innerHTML = `<p class="nota">Comparando as versões gravadas…</p>`;
+    try {
+      const carregar = async (numero) => {
+        if (ficha.versao && Number(ficha.versao.numero) === numero) return ficha;
+        const data = await api("GET", "detalhe", { query: { id: ficha.id, versao: numero } });
+        return data.data;
+      };
+      const [ladoA, ladoB] = await Promise.all([carregar(numeroA), carregar(numeroB)]);
+      if (seq !== cmpSeq) return;
+      if (!ladoA.versao || !ladoB.versao) {
+        alvo.innerHTML = `<p class="nota">Versão não encontrada.</p>`;
+        return;
+      }
+      comparacao = { a: ladoA, b: ladoB, arqA: null, arqB: null };
+      pintarComparacao();
+    } finally {
+      if (seq === cmpSeq) botao.disabled = false;
+    }
   }
 
   function renderVersoes() {
@@ -511,6 +730,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     desenharFaca(data && data.desenho && !data.desenho.erro ? data.desenho : null);
     renderVersoes();
     renderAnexos();
+    prepararComparacao();
     renderEstimativa(data && data.estimativa);
     aplicarTravas();
     silencioso = false;
@@ -833,6 +1053,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btn = ev.target.closest("[data-versao]");
     if (!btn || !ficha) return;
     abrir(ficha.id, btn.getAttribute("data-versao")).catch((err) => aviso(err.message));
+  });
+  document.getElementById("previaEscolha").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-previa]");
+    if (!btn) return;
+    previaId = Number(btn.getAttribute("data-previa"));
+    renderPrevia();
+  });
+  document.getElementById("btnComparar").addEventListener("click", () => {
+    comparar().catch((err) => aviso(err.message));
+  });
+  document.getElementById("resultadoComparar").addEventListener("change", (ev) => {
+    const sel = ev.target.closest("[data-cmp-arq]");
+    if (!sel || !comparacao) return;
+    const lado = sel.getAttribute("data-cmp-arq");
+    comparacao[lado] = Number(sel.value);
+    const host = document.getElementById(lado === "arqA" ? "cmpLadoA" : "cmpLadoB");
+    if (host) host.innerHTML = htmlLado(lado === "arqA" ? comparacao.a : comparacao.b, comparacao[lado]);
   });
   document.getElementById("listaAnexos").addEventListener("click", async (ev) => {
     const btn = ev.target.closest("[data-anexo]");

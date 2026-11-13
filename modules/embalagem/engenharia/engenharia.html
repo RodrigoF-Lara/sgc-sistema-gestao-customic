@@ -95,15 +95,31 @@
     .motivos { margin: 8px 0 0; padding-left: 18px; color: #6d4c00; }
     .anexos { margin-top: 16px; }
     .anexo-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eceff1; }
+    .painel-previa, .painel-cmp {
+      border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin: 12px 0; background: #fafbfc;
+    }
+    .painel-previa h3, .painel-cmp h3 { margin: 0 0 8px; font-size: 1rem; }
+    .cmp-grade label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; font-size: 0.8rem; font-weight: 700; color: #546e7a; }
+    .cmp-grade select { width: 100%; padding: 8px 10px; }
+    .quadro-pdf { width: 100%; height: 480px; border: 1px solid #eceff1; border-radius: 8px; background: #fff; }
+    .quadro-svg {
+      display: block; width: 100%; height: auto; max-height: 480px; object-fit: contain;
+      background: #fff; border: 1px solid #eceff1; border-radius: 8px;
+    }
+    .cmp-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    table.cmp { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    table.cmp td { vertical-align: top; white-space: pre-line; }
+    table.cmp tr.dif td { background: #fff8e1; }
     .eng input:disabled, .eng textarea:disabled, .eng select:disabled { background: #f4f6f8; color: #607d8b; }
     @media (max-width: 980px) {
       .colunas { grid-template-columns: 1fr; }
       .grade { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 640px) {
-      .grade, .campo.largo { grid-template-columns: 1fr; }
+      .grade, .campo.largo, .cmp-grade { grid-template-columns: 1fr; }
       .campo.largo, .campo.cheio { grid-column: auto; }
       .toolbar input, .toolbar select, .toolbar input[type="search"] { width: 100%; min-width: 0; }
+      .quadro-pdf { height: 360px; }
     }
   </style>
 </head>
@@ -197,6 +213,20 @@
           </div>
           <div id="versoes" class="versoes"></div>
           <p id="avisoVersao" class="nota" hidden></p>
+          <div id="painelComparar" class="painel-cmp" hidden>
+            <h3>Comparar versões</h3>
+            <div class="toolbar">
+              <label>Versão A
+                <select id="cmpA"></select>
+              </label>
+              <label>Versão B
+                <select id="cmpB"></select>
+              </label>
+              <button type="button" class="sec" id="btnComparar">Comparar</button>
+            </div>
+            <p class="nota">A comparação usa o que está gravado. O pré-orçamento dos dois lados usa a tabela de preços de agora. Os arquivos entram pelo nome, uso e tamanho.</p>
+            <div id="resultadoComparar"></div>
+          </div>
 
           <div class="colunas">
             <div>
@@ -302,6 +332,12 @@
                 <h3>Arquivos da versão</h3>
                 <p class="nota">PDF, SVG, JPG ou PNG, até 3 MB. No máximo 8 arquivos. A versão aprovada não recebe arquivo novo.</p>
                 <div id="listaAnexos"></div>
+                <div id="painelPrevia" class="painel-previa" hidden>
+                  <h3>Prévia do arquivo</h3>
+                  <div id="previaEscolha" class="versoes"></div>
+                  <div id="previaArquivo"></div>
+                  <p class="nota">O PDF abre neste quadro. O SVG abre como imagem, para a prévia não executar o arquivo.</p>
+                </div>
                 <div id="painelAnexo" class="toolbar">
                   <label>Uso
                     <select id="usoAnexo">
