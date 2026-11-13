@@ -74,10 +74,11 @@
     .campo input[readonly] { background: #f7f9fb; color: #455a64; }
     #hintPrazo { margin: 0; }
     .busca { position: relative; }
-    .itens { width: 100%; min-width: 1120px; }
+    .itens { width: 100%; min-width: 1240px; }
     .itens select { width: 100%; min-width: 108px; padding: 8px; font: inherit; }
-    .compras { min-width: 168px; font-size: 0.78rem; line-height: 1.35; color: #455a64; white-space: nowrap; }
+    .compras { min-width: 248px; font-size: 0.78rem; line-height: 1.35; color: #455a64; white-space: nowrap; }
     .compras .mes { display: flex; justify-content: space-between; gap: 10px; }
+    .compras .qtd { font-variant-numeric: tabular-nums; color: #263238; }
     .compras .cmp { margin-top: 4px; font-weight: 700; }
     .compras .cmp.acima { color: #c62828; }
     .compras .cmp.abaixo { color: #2e7d32; }
@@ -266,7 +267,7 @@
           <p id="auditoria" class="auditoria"></p>
 
           <h3 style="margin: 18px 0 8px;">Produtos</h3>
-          <p class="anexos-hint">Últimas compras: custo da última nota de cada mês, o mesmo valor do Saving. A comparação usa o valor unitário desta cotação contra a compra mais recente.</p>
+          <p class="anexos-hint">Últimas compras: custo e quantidade da última nota de cada mês. O custo é o mesmo valor do Saving. A comparação usa o valor unitário desta cotação contra a compra mais recente.</p>
           <div class="wrap-table">
             <table class="itens">
               <thead>
@@ -275,7 +276,7 @@
                   <th>Descrição</th>
                   <th class="num">Quantidade</th>
                   <th class="num">Valor unitário</th>
-                  <th>Últimas compras</th>
+                  <th title="Mês, quantidade e custo da última nota">Últimas compras</th>
                   <th class="num">Total</th>
                   <th class="num">Prazo após aprovação</th>
                   <th>Urgência</th>

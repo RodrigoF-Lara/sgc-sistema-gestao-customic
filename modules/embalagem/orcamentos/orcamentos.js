@@ -127,6 +127,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function fmtQtdHist(n) {
+    return Number(n || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+  }
+
   function rotuloMes(ano, mes) {
     const nome = MESES[(Number(mes) || 1) - 1] || "";
     return `${nome}/${String(ano || "").slice(-2)}`;
@@ -474,7 +478,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     const linhas = lista.map((mes) => `
-      <div class="mes"><span>${escapeHtml(rotuloMes(mes.ano, mes.mes))}</span><strong>${escapeHtml(moeda4(mes.custo))}</strong></div>
+      <div class="mes">
+        <span>${escapeHtml(rotuloMes(mes.ano, mes.mes))}</span>
+        <span class="qtd" title="Quantidade dessa nota">${escapeHtml(fmtQtdHist(mes.quantidade))}</span>
+        <strong>${escapeHtml(moeda4(mes.custo))}</strong>
+      </div>
     `).join("");
     const cotado = parseNum(tr.querySelector(".vu").value);
     const cmp = textoComparacao(cotado, Number(lista[0].custo));
