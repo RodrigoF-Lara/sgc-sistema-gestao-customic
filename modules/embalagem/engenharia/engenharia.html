@@ -75,6 +75,8 @@
     .sw.corte { background: #e53935; }
     .sw.vinco { background: #1565c0; }
     .sw.cola { background: #80deea; }
+    .sw.sangria { background: transparent; border-top: 2px dashed #6a1b9a; height: 0; }
+    .sw.marca { background: #37474f; }
     #caixa3d { width: 100%; height: 260px; background: #fff; border: 1px solid #eceff1; border-radius: 8px; touch-action: none; cursor: grab; }
     .medidas-folha { margin: 8px 0 0; color: #455a64; font-size: 0.88rem; }
     .sug {
@@ -239,8 +241,12 @@
                   <label for="espessura">Espessura (mm)</label>
                   <input id="espessura" inputmode="decimal" />
                 </div>
+                <div class="campo">
+                  <label for="sangria">Sangria de estudo (mm)</label>
+                  <input id="sangria" inputmode="decimal" placeholder="Vazio não desenha" />
+                </div>
                 <div class="campo cheio">
-                  <p class="nota">A espessura fica registrada e ainda não altera a faca. A compensação de vinco não foi validada.</p>
+                  <p class="nota">A espessura fica registrada e ainda não altera a faca. A sangria, quando preenchida, desenha o limite e as marcas de registro em volta da folha de corte. Ela não entra na área do pré-orçamento.</p>
                 </div>
                 <div class="campo">
                   <label for="folhaLargura">Folha — largura (mm)</label>
@@ -322,8 +328,10 @@
                   <span><i class="sw corte"></i>Corte</span>
                   <span><i class="sw vinco"></i>Vinco</span>
                   <span><i class="sw cola"></i>Cola</span>
+                  <span><i class="sw sangria"></i>Sangria</span>
+                  <span><i class="sw marca"></i>Registro</span>
                 </div>
-                <p class="nota">Cartucho simplificado, sem compensação de espessura e sem sangria. Não é a faca de produção.</p>
+                <p class="nota">Cartucho simplificado, sem compensação de espessura. A sangria contorna o retângulo da folha e não acompanha cada recorte. Não é a faca de produção.</p>
                 <div class="acoes" style="margin-top:8px">
                   <button type="button" class="sec" id="btnBaixarSvg" hidden>Baixar SVG</button>
                 </div>

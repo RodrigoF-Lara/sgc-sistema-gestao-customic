@@ -135,6 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       largura: campo("largura"),
       altura: campo("altura"),
       espessura: campo("espessura"),
+      sangria: campo("sangria"),
       folhaLargura: campo("folhaLargura"),
       folhaAltura: campo("folhaAltura"),
       material: campo("material"),
@@ -190,19 +191,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     const corte = geo.corte.map((p) => p.join(",")).join(" ");
     const cola = geo.colaPontos.map((p) => p.join(",")).join(" ");
     const vincos = geo.vincos.map((v) => `<line x1="${v[0]}" y1="${v[1]}" x2="${v[2]}" y2="${v[3]}" />`).join("");
+    const marcas = (geo.marcas || []).map((v) => `<line x1="${v[0]}" y1="${v[1]}" x2="${v[2]}" y2="${v[3]}" />`).join("");
+    const caixa = geo.sangriaCaixa;
+    const sangriaSvg = caixa
+      ? `<rect x="${caixa.x}" y="${caixa.y}" width="${caixa.largura}" height="${caixa.altura}" fill="none" stroke="#6a1b9a" stroke-width="0.35" stroke-dasharray="2 1.2" />`
+      : "";
     const labels = geo.paineis.map((p) => {
       if (p.largura < 18) return "";
       return `<text x="${p.x + p.largura / 2}" y="${p.y + p.altura / 2}" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="#546e7a">${escapeHtml(p.nome)}</text>`;
     }).join("");
     const w = geo.folhaLargura;
     const h = geo.folhaAltura;
-    host.innerHTML = `<svg id="facaSvg" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 ${w + 12} ${h + 12}">
+    const margem = geo.sangria > 0 ? geo.sangria + 8 : 6;
+    host.innerHTML = `<svg id="facaSvg" xmlns="http://www.w3.org/2000/svg" viewBox="${-margem} ${-margem} ${w + margem * 2} ${h + margem * 2}">
+      ${sangriaSvg}
+      <g stroke="#37474f" stroke-width="0.4">${marcas}</g>
       <polygon points="${cola}" fill="#e0f7fa" stroke="#80deea" stroke-width="0.8" />
       <polygon points="${corte}" fill="none" stroke="#e53935" stroke-width="0.8" />
       <g stroke="#1565c0" stroke-width="0.45">${vincos}</g>
       ${labels}
     </svg>`;
-    medidas.textContent = `Folha de estudo ${mm(w)} × ${mm(h)} mm. Cola ${mm(geo.cola)}, tampa ${mm(geo.tuck)}, poeira ${mm(geo.poeira)}.`;
+    const textoSangria = geo.sangria > 0 ? ` Sangria de estudo ${mm(geo.sangria)} mm, fora da área do pré-orçamento.` : "";
+    medidas.textContent = `Folha de estudo ${mm(w)} × ${mm(h)} mm. Cola ${mm(geo.cola)}, tampa ${mm(geo.tuck)}, poeira ${mm(geo.poeira)}.${textoSangria}`;
     document.getElementById("folhaLargura").value = geo.folhaLargura;
     document.getElementById("folhaAltura").value = geo.folhaAltura;
     aplicarTravas();
@@ -357,7 +367,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.querySelectorAll('input[name="origem"]').forEach((el) => {
       el.checked = el.value === origem;
     });
-    const chaves = ["comprimento", "largura", "altura", "espessura", "folhaLargura", "folhaAltura", "material", "gramatura", "impressao", "pantone", "quantidade", "poses", "perda", "observacao"];
+    const chaves = ["comprimento", "largura", "altura", "espessura", "sangria", "folhaLargura", "folhaAltura", "material", "gramatura", "impressao", "pantone", "quantidade", "poses", "perda", "observacao"];
     chaves.forEach((id) => {
       const el = document.getElementById(id);
       if (!versao) {
@@ -481,7 +491,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       try {
-        const data = await api("GET", "geometria", { query: { comprimento: c, largura: l, altura: a } });
+        const data = await api("GET", "geometria", {
+          query: { comprimento: c, largura: l, altura: a, sangria: campo("sangria") },
+        });
         if (seq !== geoSeq || origem !== "PARAMETRICO") return;
         desenharFaca(data.data);
       } catch (err) {
@@ -703,7 +715,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  ["comprimento", "largura", "altura", "folhaLargura", "folhaAltura", "gramatura", "impressao", "quantidade", "poses", "perda"].forEach((id) => {
+  ["comprimento", "largura", "altura", "sangria", "folhaLargura", "folhaAltura", "gramatura", "impressao", "quantidade", "poses", "perda"].forEach((id) => {
     document.getElementById(id).addEventListener("input", () => {
       if (silencioso) return;
       agendarGeometria();
