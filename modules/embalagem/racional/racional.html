@@ -42,6 +42,18 @@
     .wrap-itens { overflow: auto; max-height: calc(100vh - 280px); }
     table.lista { min-width: 980px; width: 100%; border-collapse: collapse; }
     table.lista tbody tr { cursor: pointer; }
+    table.lista .com-dica { border-bottom: 1px dotted #90a4ae; cursor: help; }
+    .dica-total {
+      position: fixed; z-index: 40; min-width: 220px; background: #263238; color: #fff;
+      border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+      font-size: 0.82rem; pointer-events: none;
+    }
+    .dica-total .titulo {
+      display: block; margin-bottom: 6px; font-size: 0.72rem; letter-spacing: 0.04em;
+      text-transform: uppercase; color: #b0bec5;
+    }
+    .dica-total .linha { display: flex; justify-content: space-between; gap: 18px; padding: 2px 0; }
+    .dica-total .linha.soma { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.22); font-weight: 700; }
     .rac th, .rac td { border-bottom: 1px solid #eceff1; padding: 6px 8px; vertical-align: middle; }
     .rac th {
       font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em;
@@ -169,7 +181,7 @@
                   <th>Título</th>
                   <th>Mês</th>
                   <th class="num">SKUs</th>
-                  <th class="num">Total</th>
+                  <th class="num" title="Passe o mouse sobre o número para ver cada canal">Total</th>
                   <th class="num">A comprar</th>
                   <th class="num">Abaixo do MOQ</th>
                   <th class="num" title="Quantidades confirmadas pelo cargo de cada canal">Validados</th>

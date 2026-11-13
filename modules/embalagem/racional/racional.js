@@ -224,7 +224,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).join("");
   }
 
+  let dicaEl = null;
+
+  function fecharDica() {
+    if (dicaEl) {
+      dicaEl.remove();
+      dicaEl = null;
+    }
+  }
+
+  function htmlDicaTotal(row) {
+    const canais = row.canais || {};
+    const linhas = CANAIS.map((canal) => `
+      <span class="linha"><span>${escapeHtml(canal.rotulo)}</span><strong>${escapeHtml(fmtQtd(canais[canal.chave]))}</strong></span>
+    `).join("");
+    return `
+      <strong class="titulo">Total por canal</strong>
+      ${linhas}
+      <span class="linha soma"><span>Total</span><strong>${escapeHtml(fmtQtd(row.total))}</strong></span>
+    `;
+  }
+
+  function abrirDica(ancora, html) {
+    fecharDica();
+    const box = document.createElement("div");
+    box.className = "dica-total";
+    box.innerHTML = html;
+    document.body.appendChild(box);
+    const r = ancora.getBoundingClientRect();
+    const margem = 8;
+    let left = r.left + (r.width / 2) - (box.offsetWidth / 2);
+    left = Math.max(margem, Math.min(left, window.innerWidth - box.offsetWidth - margem));
+    let top = r.bottom + 6;
+    if (top + box.offsetHeight > window.innerHeight - margem) {
+      top = Math.max(margem, r.top - box.offsetHeight - 6);
+    }
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
+    dicaEl = box;
+  }
+
   function renderLista(linhas) {
+    fecharDica();
     if (!linhas.length) {
       corpoLista.innerHTML = "";
       document.getElementById("vazioLista").hidden = false;
@@ -236,7 +277,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td><strong>${escapeHtml(row.titulo || "Sem título")}</strong></td>
         <td>${escapeHtml(fmtMes(row.referencia))}</td>
         <td class="num">${escapeHtml(fmtQtd(row.qtdSku))}</td>
-        <td class="num">${escapeHtml(fmtQtd(row.total))}</td>
+        <td class="num"><span class="com-dica" tabindex="0" data-dica="total">${escapeHtml(fmtQtd(row.total))}</span></td>
         <td class="num">${escapeHtml(fmtQtd(row.aComprar))}</td>
         <td class="num">${row.qtdAbaixo ? `<span class="num-abaixo">${escapeHtml(fmtQtd(row.qtdAbaixo))}</span>` : "0"}</td>
         <td class="num">${textoValidacao(row)}</td>
@@ -244,6 +285,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${tag(row.status)}</td>
       </tr>
     `).join("");
+    corpoLista.querySelectorAll(".com-dica").forEach((el, idx) => {
+      const html = htmlDicaTotal(linhas[idx]);
+      const mostrar = () => abrirDica(el, html);
+      el.addEventListener("mouseenter", mostrar);
+      el.addEventListener("focus", mostrar);
+      el.addEventListener("mouseleave", fecharDica);
+      el.addEventListener("blur", fecharDica);
+    });
   }
 
   async function carregarLista() {
@@ -797,7 +846,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("click", (e) => {
     if (sugEl && !sugEl.contains(e.target)) fecharSug();
   });
-  document.querySelector(".main-content").addEventListener("scroll", fecharSug, { passive: true });
+  document.querySelector(".main-content").addEventListener("scroll", () => {
+    fecharSug();
+    fecharDica();
+  }, { passive: true });
+  document.querySelector(".card-lista .wrap-table").addEventListener("scroll", fecharDica, { passive: true });
 
   const idUrl = new URLSearchParams(window.location.search).get("id");
   try {
