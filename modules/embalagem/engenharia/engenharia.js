@@ -164,6 +164,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("vistaFaca").hidden = !parametrico;
     document.getElementById("avisoArquivo").hidden = parametrico;
     document.getElementById("btnBaixarSvg").hidden = !parametrico || !desenho;
+    document.getElementById("btnBaixarDxf").hidden = !parametrico || !desenho;
     document.getElementById("painelAnexo").hidden = off || !(ficha && ficha.id);
     document.getElementById("btnSalvar").hidden = off;
     document.getElementById("btnAprovar").hidden = off || !(ficha && ficha.id);
@@ -672,6 +673,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     a.download = "cartucho-estudo.svg";
     a.click();
     URL.revokeObjectURL(a.href);
+  });
+  document.getElementById("btnBaixarDxf").addEventListener("click", async () => {
+    if (!desenho) return;
+    const q = new URLSearchParams({
+      acao: "dxf",
+      comprimento: campo("comprimento"),
+      largura: campo("largura"),
+      altura: campo("altura"),
+      sangria: campo("sangria"),
+    });
+    const nivel = localStorage.getItem("userLevel");
+    if (nivel) q.set("userLevel", nivel);
+    try {
+      const res = await fetch(`${API}?${q}`, { headers: authHeaders() });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Não foi possível gerar o DXF.");
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "cartucho-estudo.dxf";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      aviso(err.message);
+    }
   });
 
   corpoLista.addEventListener("click", (ev) => {
