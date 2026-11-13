@@ -45,7 +45,7 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
     .wrap-table { overflow: auto; }
-    table.lista { min-width: 860px; }
+    table.lista { min-width: 980px; }
     table.lista tbody tr { cursor: pointer; }
     .tag {
       display: inline-block; padding: 3px 10px; border-radius: 999px;
@@ -54,6 +54,10 @@
     .tag.aberto { background: #fff3cd; color: #856404; }
     .tag.aprovado { background: #d4edda; color: #155724; }
     .tag.reprovado { background: #f8d7da; color: #721c24; }
+    .tag.urg-baixa { background: #eceff1; color: #455a64; }
+    .tag.urg-normal { background: #e3f2fd; color: #0d47a1; }
+    .tag.urg-alta { background: #fff3e0; color: #e65100; }
+    .tag.urg-urgente { background: #ffebee; color: #b71c1c; }
     .produtos { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .vazio { text-align: center; color: #78909c; padding: 28px; }
     .topo-ficha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -68,7 +72,8 @@
     .campo textarea { min-height: 72px; resize: vertical; border: 1px solid #dee2e6; border-radius: 5px; }
     .campo input[readonly] { background: #f7f9fb; color: #455a64; }
     .busca { position: relative; }
-    .itens { width: 100%; min-width: 980px; }
+    .itens { width: 100%; min-width: 1120px; }
+    .itens select { width: 100%; min-width: 108px; padding: 8px; font: inherit; }
     .compras { min-width: 168px; font-size: 0.78rem; line-height: 1.35; color: #455a64; white-space: nowrap; }
     .compras .mes { display: flex; justify-content: space-between; gap: 10px; }
     .compras .cmp { margin-top: 4px; font-weight: 700; }
@@ -120,7 +125,7 @@
     }
     button.sug-item:hover { background: #e3f2fd; color: #263238; }
     .orc input.campo-erro { border-color: #c62828; }
-    .orc input:disabled, .orc textarea:disabled { background: #f4f6f8; color: #607d8b; }
+    .orc input:disabled, .orc textarea:disabled, .orc select:disabled { background: #f4f6f8; color: #607d8b; }
     .sug small { display: block; color: #607d8b; font-weight: 500; }
     .truncado { color: #ef6c00; font-size: 0.85rem; margin-top: 8px; }
     @media (max-width: 900px) {
@@ -139,7 +144,7 @@
   <div class="main-content">
     <div class="container orc">
       <h1><i class="fa-solid fa-file-signature"></i> Orçamentos</h1>
-      <p class="hint">Registre a cotação de compras: fornecedor, produtos, valores e prazo de entrega. Depois marque se o orçamento foi aprovado. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
+      <p class="hint">Registre a cotação de compras: fornecedor, produtos, quantidade, urgência, valores e prazo de entrega. Depois marque se o orçamento foi aprovado. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
       <div id="aviso" class="aviso" hidden></div>
 
       <section id="painelLista">
@@ -168,6 +173,7 @@
                   <th>Produtos</th>
                   <th>Valor</th>
                   <th>Prazo</th>
+                  <th>Urgência</th>
                   <th>Status</th>
                   <th>Nota</th>
                 </tr>
@@ -247,6 +253,7 @@
                   <th>Últimas compras</th>
                   <th class="num">Total</th>
                   <th class="num">Prazo (dias)</th>
+                  <th>Urgência</th>
                   <th></th>
                 </tr>
               </thead>

@@ -15,6 +15,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     APROVADO: "Aprovado",
     REPROVADO: "Reprovado",
   };
+  const URGENCIAS = [
+    ["BAIXA", "Baixa"],
+    ["NORMAL", "Normal"],
+    ["ALTA", "Alta"],
+    ["URGENTE", "Urgente"],
+  ];
 
   const avisoEl = document.getElementById("aviso");
   const painelLista = document.getElementById("painelLista");
@@ -94,7 +100,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (typeof v === "number") return v;
     let s = String(v ?? "").trim().replace(/\s/g, "");
     if (!s) return NaN;
-    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+    // 14.500 é quatorze mil e quinhentos. A vírgula é a casa decimal: 14,5.
+    if (s.includes(",")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else if (s.includes(".")) {
+      const partes = s.split(".");
+      const milhar = partes.length > 1
+        && partes.slice(1).every((p) => /^\d{3}$/.test(p))
+        && !/^0+$/.test(partes[0] || "0");
+      if (milhar) s = partes.join("");
+    }
     const n = Number(s);
     return Number.isFinite(n) ? n : NaN;
   }
@@ -129,7 +144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function fmtNum(n, casas) {
     const x = Number(n);
     if (!Number.isFinite(x)) return "";
-    return x.toLocaleString("pt-BR", { maximumFractionDigits: casas });
+    return x.toLocaleString("pt-BR", { useGrouping: false, maximumFractionDigits: casas });
   }
 
   function fmtData(iso) {
@@ -153,6 +168,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   function tag(status) {
     const chave = String(status || "").toLowerCase();
     return `<span class="tag ${escapeHtml(chave)}">${escapeHtml(STATUS[status] || status || "")}</span>`;
+  }
+
+  function urgenciaAtual(valor) {
+    const id = String(valor || "NORMAL").trim().toUpperCase();
+    return URGENCIAS.some(([chave]) => chave === id) ? id : "NORMAL";
+  }
+
+  function opcoesUrgencia(valor) {
+    const atual = urgenciaAtual(valor);
+    return URGENCIAS.map(([id, label]) =>
+      `<option value="${id}"${id === atual ? " selected" : ""}>${label}</option>`
+    ).join("");
+  }
+
+  function tagUrgencia(valor) {
+    const id = String(valor || "").trim().toUpperCase();
+    const achado = URGENCIAS.find(([chave]) => chave === id);
+    if (!achado) return "—";
+    return `<span class="tag urg-${id.toLowerCase()}">${escapeHtml(achado[1])}</span>`;
   }
 
   function textoPrazo(row) {
@@ -250,6 +284,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="produtos" title="${escapeHtml(textoProdutos(row))}">${escapeHtml(textoProdutos(row))}</td>
         <td>${escapeHtml(moeda(row.valorTotal))}</td>
         <td>${escapeHtml(textoPrazo(row))}</td>
+        <td>${tagUrgencia(row.urgencia)}</td>
         <td>${tag(row.status)}</td>
         <td>${escapeHtml(textoNf(row))}</td>
       </tr>
@@ -301,6 +336,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <td class="compras"></td>
       <td class="total"></td>
       <td><input class="pz" inputmode="numeric" aria-label="Prazo do item em dias" placeholder="igual" value="${escapeHtml(item.prazoDias != null && item.prazoDias !== "" ? item.prazoDias : "")}" /></td>
+      <td><select class="urg" aria-label="Urgência do item">${opcoesUrgencia(item.urgencia)}</select></td>
       <td><button type="button" class="icone remover" aria-label="Remover produto"><i class="fa-solid fa-trash"></i></button></td>
     `;
     const cod = tr.querySelector(".cod");
@@ -357,8 +393,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         pedirComprasDaTela();
       }
     });
-    tr.querySelector(".qtd").addEventListener("input", atualizarTotais);
-    tr.querySelector(".vu").addEventListener("input", atualizarTotais);
+    const qtd = tr.querySelector(".qtd");
+    const vu = tr.querySelector(".vu");
+    qtd.addEventListener("input", atualizarTotais);
+    vu.addEventListener("input", atualizarTotais);
+    qtd.addEventListener("blur", () => formatarNumero(qtd, 4));
+    vu.addEventListener("blur", () => formatarNumero(vu, 6));
     tr.querySelector(".remover").addEventListener("click", () => {
       tr.remove();
       if (!corpoItens.children.length) adicionarItem({});
@@ -440,6 +480,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     corpoItens.querySelectorAll("tr").forEach(pintarCompras);
   }
 
+  function formatarNumero(input, casas) {
+    const n = parseNum(input.value);
+    if (!Number.isFinite(n)) return;
+    input.value = fmtNum(n, casas);
+    atualizarTotais();
+  }
+
   function atualizarTotais() {
     let soma = 0;
     corpoItens.querySelectorAll("tr").forEach((tr) => {
@@ -461,7 +508,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function aplicarTrava(data) {
     const aberto = !data || data.status === "ABERTO";
     const ligado = !!(data && data.idNf);
-    document.querySelectorAll("#blocoDados input, #blocoDados textarea, #corpoItens input, #corpoItens button").forEach((el) => {
+    document.querySelectorAll("#blocoDados input, #blocoDados textarea, #corpoItens input, #corpoItens select, #corpoItens button").forEach((el) => {
       if (el.id === "razaoForn") {
         el.readOnly = true;
         return;
@@ -747,7 +794,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       quantidade: tr.querySelector(".qtd").value.trim(),
       valorUnitario: tr.querySelector(".vu").value.trim(),
       prazoDias: tr.querySelector(".pz").value.trim(),
-    })).filter((item) => item.codigo || item.quantidade || item.valorUnitario || item.prazoDias);
+      urgencia: tr.querySelector(".urg").value,
+    })).filter((item) => item.codigo || item.quantidade || item.valorUnitario || item.prazoDias || item.urgencia !== "NORMAL");
     return {
       id: document.getElementById("orcId").value || null,
       numero: document.getElementById("numero").value.trim(),
@@ -776,6 +824,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const valor = parseNum(item.valorUnitario);
       if (!Number.isFinite(valor) || valor < 0) return `Valor unitário inválido na linha ${linha}.`;
       if (item.prazoDias !== "" && !/^\d+$/.test(item.prazoDias)) return `Prazo inválido na linha ${linha}. Use dias inteiros.`;
+      if (!URGENCIAS.some(([id]) => id === item.urgencia)) return `Urgência inválida na linha ${linha}.`;
     }
     const temPrazoCab = dados.prazoDias !== "" || dados.dataEntrega;
     const temPrazoItem = dados.itens.every((item) => item.prazoDias !== "");
