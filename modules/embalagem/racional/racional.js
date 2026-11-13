@@ -26,6 +26,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const corpoItens = document.getElementById("corpoItens");
   let sugEl = null;
   let ocupado = false;
+  let hidratando = false;
+  let baseEstado = "";
+  let assinaturaAtual = "";
+  let timerVisto = null;
+  let vistoPendente = false;
+  let puxando = false;
   let filtroStatus = "";
   let ficha = null;
 
@@ -312,6 +318,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function mostrarLista() {
+    clearTimeout(timerVisto);
+    timerVisto = null;
     painelFicha.hidden = true;
     painelLista.hidden = false;
     ficha = null;
@@ -367,6 +375,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     box.dataset.qtd = "";
     if (nota) nota.value = "";
     pintarValidacao(td);
+    agendarGravarVisto();
   }
 
   function htmlCanal(canal, item) {
@@ -381,9 +390,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `<td class="canal${ok ? " validado" : ""}">
       <div class="linha-q">
         <input class="q ${canal.classe}" inputmode="decimal" aria-label="${escapeHtml(canal.rotulo)}" value="${escapeHtml(qtd)}" title="${escapeHtml(ok ? titulo : "")}" />
-        <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""}${travado} data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
+        <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""}${travado} data-conhecido="${ok ? "1" : "0"}" data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
       </div>
-      <input class="nota" maxlength="300" placeholder="Explicação (opcional)" aria-label="${escapeHtml("Explicação de " + canal.rotulo)}" value="${escapeHtml(explicacao)}"${travado} title="${escapeHtml(titulo)}" />
+      <input class="nota" maxlength="300" placeholder="Explicação (opcional)" aria-label="${escapeHtml("Explicação de " + canal.rotulo)}" value="${escapeHtml(explicacao)}" data-base="${escapeHtml(explicacao)}"${travado} title="${escapeHtml(titulo)}" />
     </td>`;
   }
 
@@ -463,6 +472,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const box = td.querySelector(".ok");
       input.addEventListener("input", () => {
         if (box.checked && lerQtd(input) !== qtdInformada(box.dataset.qtd || "")) limparValidacao(td);
+        else if (box.dataset.conhecido === "1" && !box.checked) agendarGravarVisto();
         atualizarTotais();
       });
       box.addEventListener("change", () => {
@@ -478,10 +488,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (nota) nota.value = "";
         }
         pintarValidacao(td);
+        agendarGravarVisto();
         if (box.checked && nota && !nota.disabled) nota.focus();
       });
       const nota = td.querySelector(".nota");
-      if (nota) nota.addEventListener("input", () => pintarValidacao(td));
+      if (nota) nota.addEventListener("input", () => {
+        pintarValidacao(td);
+        agendarGravarVisto();
+      });
     });
     tr.querySelector(".remover").addEventListener("click", () => {
       tr.remove();
@@ -499,10 +513,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderItens(itens) {
+    hidratando = true;
     corpoItens.innerHTML = "";
     (itens.length ? itens : [{}]).forEach((item) => corpoItens.appendChild(linhaItem(item)));
     atualizarTotais();
     filtrarLinhas();
+    hidratando = false;
   }
 
   function atualizarTotais() {
@@ -609,6 +625,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderItens((data && data.itens) || []);
     aplicarTrava(data);
     mostrarFicha();
+    assinaturaAtual = assinaturaFicha(data);
+    baseEstado = estadoLocal();
     if (data && data.id) {
       const url = new URL(window.location.href);
       url.searchParams.set("id", data.id);
@@ -643,9 +661,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const box = td.querySelector(".ok");
         const nota = td.querySelector(".nota");
         item[canal.chave] = valores[idx] == null ? input.value : valores[idx];
+        const textoNota = box.checked && nota ? nota.value.trim() : "";
         item.validacao[canal.chave] = {
           ok: box.checked,
-          texto: box.checked && nota ? nota.value.trim() : "",
+          texto: textoNota,
+          conhecido: box.dataset.conhecido === "1",
+          textoAlterado: textoNota !== (nota ? nota.dataset.base || "" : ""),
         };
       });
       itens.push(item);
@@ -683,7 +704,113 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).length;
   }
 
+  function estadoLocal() {
+    return JSON.stringify(coletar());
+  }
+
+  function assinaturaFicha(data) {
+    if (!data) return "";
+    return JSON.stringify({
+      titulo: data.titulo || "",
+      referencia: String(data.referencia || "").slice(0, 7),
+      pedido: data.pedido || "",
+      observacao: data.observacao || "",
+      status: data.status || "ABERTO",
+      itens: (data.itens || []).map((item) => ({
+        codigo: item.codigo || "",
+        moq: item.moq || 0,
+        claro: item.claro || 0,
+        vivo: item.vivo || 0,
+        comercial: item.comercial || 0,
+        online: item.online || 0,
+        quiosque: item.quiosque || 0,
+        estAdicional: item.estAdicional || 0,
+        observacao: item.observacao || "",
+        validacao: CANAIS.map((canal) => {
+          const info = item.validacao && item.validacao[canal.chave];
+          return {
+            ok: !!(info && info.ok),
+            texto: (info && info.texto) || "",
+            por: (info && info.por) || "",
+          };
+        }),
+      })),
+    });
+  }
+
+  function marcarConhecidos() {
+    corpoItens.querySelectorAll("td.canal").forEach((td) => {
+      const box = td.querySelector(".ok");
+      const nota = td.querySelector(".nota");
+      if (box) box.dataset.conhecido = box.checked ? "1" : "0";
+      if (nota) nota.dataset.base = nota.value.trim();
+    });
+  }
+
+  function agendarGravarVisto() {
+    if (hidratando) return;
+    if (!ficha || ficha.status === "FECHADO") return;
+    clearTimeout(timerVisto);
+    timerVisto = setTimeout(() => {
+      timerVisto = null;
+      gravarVisto();
+    }, 700);
+  }
+
+  async function gravarVisto() {
+    if (hidratando || painelFicha.hidden) return;
+    if (!ficha || ficha.status === "FECHADO") return;
+    if (ocupado) {
+      vistoPendente = true;
+      return;
+    }
+    ocupado = true;
+    aviso("");
+    try {
+      do {
+        vistoPendente = false;
+        const data = await salvarAtual();
+        ficha = data;
+        document.getElementById("racId").value = data && data.id ? data.id : "";
+        if (data && data.id) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("id", data.id);
+          history.replaceState(null, "", url.pathname + url.search);
+        }
+        marcarConhecidos();
+        assinaturaAtual = assinaturaFicha(data);
+        baseEstado = estadoLocal();
+      } while (vistoPendente);
+      aviso("Validação gravada. Os outros passam a ver este visto.", "ok");
+    } catch (err) {
+      aviso(err.message);
+    } finally {
+      ocupado = false;
+      if (vistoPendente) agendarGravarVisto();
+    }
+  }
+
+  async function puxarVistos() {
+    if (puxando || document.hidden || ocupado || hidratando || timerVisto) return;
+    if (!ficha || !ficha.id || painelFicha.hidden) return;
+    if (estadoLocal() !== baseEstado) return;
+    puxando = true;
+    try {
+      const data = await api("GET", "detalhe", { query: { id: ficha.id } });
+      if (estadoLocal() !== baseEstado || ocupado || painelFicha.hidden) return;
+      if (assinaturaFicha(data.data) === assinaturaAtual) return;
+      preencher(data.data);
+      aviso("A validação deste racional foi atualizada.", "ok");
+    } catch (_) {
+      /* a próxima leitura tenta de novo */
+    } finally {
+      puxando = false;
+    }
+  }
+
   async function salvarAtual() {
+    clearTimeout(timerVisto);
+    timerVisto = null;
     const dados = coletar();
     const erro = validar(dados);
     if (erro) throw new Error(erro);
@@ -851,6 +978,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     fecharDica();
   }, { passive: true });
   document.querySelector(".card-lista .wrap-table").addEventListener("scroll", fecharDica, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) puxarVistos();
+  });
+  setInterval(puxarVistos, 8000);
 
   const idUrl = new URLSearchParams(window.location.search).get("id");
   try {
