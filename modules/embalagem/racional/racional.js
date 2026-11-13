@@ -11,12 +11,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const API = "/api/embalagem/racional";
   const STATUS = { ABERTO: "Aberto", FECHADO: "Fechado" };
   const CANAIS = [
-    { classe: "claro", chave: "claro", rotulo: "Claro" },
-    { classe: "vivo", chave: "vivo", rotulo: "Vivo" },
-    { classe: "comercial", chave: "comercial", rotulo: "Comercial" },
-    { classe: "online", chave: "online", rotulo: "On line" },
-    { classe: "quiosque", chave: "quiosque", rotulo: "Quiosque" },
-    { classe: "est", chave: "estAdicional", rotulo: "Est. adicional" },
+    { classe: "claro", chave: "claro", rotulo: "Claro", permissao: "racional-valida-claro" },
+    { classe: "vivo", chave: "vivo", rotulo: "Vivo", permissao: "racional-valida-vivo" },
+    { classe: "comercial", chave: "comercial", rotulo: "Comercial", permissao: "racional-valida-comercial" },
+    { classe: "online", chave: "online", rotulo: "On line", permissao: "racional-valida-online" },
+    { classe: "quiosque", chave: "quiosque", rotulo: "Quiosque", permissao: "racional-valida-quiosque" },
+    { classe: "est", chave: "estAdicional", rotulo: "Est. adicional", permissao: "racional-valida-est" },
   ];
 
   const avisoEl = document.getElementById("aviso");
@@ -120,11 +120,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function lerQtd(input) {
-    const bruto = input.value.trim();
+    return qtdInformada(input.value);
+  }
+
+  function qtdInformada(texto) {
+    const bruto = String(texto ?? "").trim();
     if (!bruto) return 0;
     const n = parseNum(bruto);
     if (!Number.isFinite(n) || n < 0) return null;
     return Number(n.toFixed(4));
+  }
+
+  function podeValidarCanal(canal) {
+    return !!(window.SGCPermissoes && window.SGCPermissoes.podeAcessar(canal.permissao));
   }
 
   function calcular(moq, valores) {
@@ -277,8 +285,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function tituloValidacao(canal, por, em) {
-    if (!por) return `Validar a quantidade de ${canal.rotulo}`;
-    return `Validado por ${por}${em ? " em " + em : ""}`;
+    if (por) return `Validado por ${por}${em ? " em " + em : ""}`;
+    if (!podeValidarCanal(canal)) return `Só o cargo liberado em Permissões valida ${canal.rotulo}`;
+    return `Validar a quantidade de ${canal.rotulo}`;
   }
 
   function pintarValidacao(td) {
@@ -310,9 +319,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const em = ok ? fmtDataHora(info.em) : "";
     const qtd = campoQtd(item[canal.chave]);
     const titulo = tituloValidacao(canal, por, em);
+    const travado = podeValidarCanal(canal) ? "" : " disabled";
     return `<td class="canal${ok ? " validado" : ""}">
       <input class="q ${canal.classe}" inputmode="decimal" aria-label="${escapeHtml(canal.rotulo)}" value="${escapeHtml(qtd)}" title="${escapeHtml(ok ? titulo : "")}" />
-      <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""} data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
+      <input type="checkbox" class="ok" aria-label="${escapeHtml(titulo)}"${ok ? " checked" : ""}${travado} data-por="${escapeHtml(por)}" data-em="${escapeHtml(em)}" data-qtd="${escapeHtml(qtd)}" title="${escapeHtml(titulo)}" />
     </td>`;
   }
 
@@ -338,6 +348,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       clearTimeout(timer);
       const q = cod.value.trim();
       if (tr.dataset.codigo !== q.toUpperCase()) {
+        if (tr.dataset.codigo) tr.querySelectorAll("td.canal").forEach(limparValidacao);
         tr.dataset.codigo = "";
         desc.value = "";
       }
@@ -390,7 +401,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const input = td.querySelector(".q");
       const box = td.querySelector(".ok");
       input.addEventListener("input", () => {
-        if (box.checked && input.value.trim() !== (box.dataset.qtd || "")) limparValidacao(td);
+        if (box.checked && lerQtd(input) !== qtdInformada(box.dataset.qtd || "")) limparValidacao(td);
         atualizarTotais();
       });
       box.addEventListener("change", () => {
@@ -505,6 +516,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       notas.push(`Fechado por ${data.fechadoPor}${data.fechadoEm ? " em " + fmtDataHora(data.fechadoEm) : ""}`);
     }
     document.getElementById("auditoria").textContent = notas.join(" · ");
+    travarVistos(aberto);
+  }
+
+  function travarVistos(aberto) {
+    corpoItens.querySelectorAll("td.canal").forEach((td) => {
+      const input = td.querySelector(".q");
+      const box = td.querySelector(".ok");
+      const canal = CANAIS.find((item) => input.classList.contains(item.classe));
+      if (!box || !canal) return;
+      box.disabled = !aberto || !podeValidarCanal(canal);
+      pintarValidacao(td);
+    });
   }
 
   function preencher(data) {
@@ -640,10 +663,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const valor = colunas[idx + 1];
         if (valor == null || valor === "") return;
         const input = tr.querySelector("." + classe);
+        const antes = lerQtd(input);
         if (input.value.trim() === String(valor).trim()) return;
         input.value = valor;
         const td = input.closest("td.canal");
-        if (td) limparValidacao(td);
+        if (td && lerQtd(input) !== antes) limparValidacao(td);
       });
       if (colunas[8]) tr.querySelector(".obs").value = colunas[8];
       aplicados += 1;

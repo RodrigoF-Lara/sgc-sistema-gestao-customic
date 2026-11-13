@@ -78,6 +78,8 @@
       width: 18px; height: 18px; margin: 0 0 0 6px; padding: 0;
       vertical-align: middle; accent-color: #2e7d32; cursor: pointer;
     }
+    .itens input.ok:disabled { cursor: not-allowed; opacity: 0.45; }
+    .itens td.canal.validado input.ok:disabled { opacity: 1; }
     .itens td.canal.validado .q,
     .itens td.canal.validado .q:disabled {
       background: #e8f5e9; border-color: #2e7d32; color: #1b5e20; font-weight: 700;
@@ -135,7 +137,7 @@
   <div class="main-content">
     <div class="container rac">
       <h1><i class="fa-solid fa-calculator"></i> Racional de compras</h1>
-      <p class="hint">O comercial informa quanto cada canal pretende vender. O responsável de cada canal confirma a quantidade no visto ao lado do número: o campo fica verde. Compras usa esse plano, compara com o MOQ e fecha a quantidade da compra ou da importação.</p>
+      <p class="hint">O comercial informa quanto cada canal pretende vender. O visto ao lado do número só marca o cargo liberado em Permissões para aquele canal: o campo fica verde. Compras usa esse plano, compara com o MOQ e fecha a quantidade da compra ou da importação.</p>
       <div id="aviso" class="aviso" hidden></div>
 
       <section id="painelLista">
@@ -161,7 +163,7 @@
                   <th class="num">Total</th>
                   <th class="num">A comprar</th>
                   <th class="num">Abaixo do MOQ</th>
-                  <th class="num" title="Quantidades confirmadas pelo responsável do canal">Validados</th>
+                  <th class="num" title="Quantidades confirmadas pelo cargo de cada canal">Validados</th>
                   <th>Pedido</th>
                   <th>Status</th>
                 </tr>
@@ -216,7 +218,7 @@
             <h3>Produtos</h3>
             <input type="search" id="buscaItem" class="busca-item" placeholder="Buscar SKU nesta lista" />
           </div>
-          <p class="legenda">Total soma Claro, Vivo, Comercial, On line, Quiosque e Est. adicional. MOQ fica de fora. Se o total for maior que zero e menor que o MOQ, A comprar sobe até o mínimo. O visto ao lado de cada canal confirma a quantidade: o campo fica verde e guarda quem validou. Se o número mudar, a confirmação sai.</p>
+          <p class="legenda">Total soma Claro, Vivo, Comercial, On line, Quiosque e Est. adicional. MOQ fica de fora. Se o total for maior que zero e menor que o MOQ, A comprar sobe até o mínimo. O visto de cada canal só marca o cargo liberado em Permissões. O campo fica verde e guarda quem validou. Se o número mudar, a confirmação sai.</p>
           <div class="wrap-table wrap-itens">
             <table class="itens">
               <thead>
@@ -224,12 +226,12 @@
                   <th>SKU</th>
                   <th>Descrição</th>
                   <th class="num" title="Quantidade mínima de compra. Não entra no total.">MOQ</th>
-                  <th class="num" title="O responsável do Claro confirma a quantidade.">Claro</th>
-                  <th class="num" title="O responsável do Vivo confirma a quantidade.">Vivo</th>
-                  <th class="num" title="O responsável do Comercial confirma a quantidade.">Comercial</th>
-                  <th class="num" title="O responsável do On line confirma a quantidade.">On line</th>
-                  <th class="num" title="O responsável do Quiosque confirma a quantidade.">Quiosque</th>
-                  <th class="num" title="Estoque adicional pedido por compras, além dos canais. O responsável confirma a quantidade.">Est. adicional</th>
+                  <th class="num" title="Só o cargo com a ação Validar Claro em Permissões confirma a quantidade.">Claro</th>
+                  <th class="num" title="Só o cargo com a ação Validar Vivo em Permissões confirma a quantidade.">Vivo</th>
+                  <th class="num" title="Só o cargo com a ação Validar Comercial em Permissões confirma a quantidade.">Comercial</th>
+                  <th class="num" title="Só o cargo com a ação Validar On line em Permissões confirma a quantidade.">On line</th>
+                  <th class="num" title="Só o cargo com a ação Validar Quiosque em Permissões confirma a quantidade.">Quiosque</th>
+                  <th class="num" title="Estoque adicional pedido por compras, além dos canais. Só o cargo com a ação Validar Est. adicional confirma a quantidade.">Est. adicional</th>
                   <th class="num">Total</th>
                   <th class="num" title="Total, ou o MOQ quando o plano fica abaixo do mínimo.">A comprar</th>
                   <th>Obs.</th>
