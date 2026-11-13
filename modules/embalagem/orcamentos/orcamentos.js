@@ -191,9 +191,38 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function textoPrazo(row) {
     const partes = [];
-    if (row.prazoDias != null && row.prazoDias !== "") partes.push(`${row.prazoDias} dias`);
-    if (row.dataEntrega) partes.push(fmtData(row.dataEntrega));
+    if (row.prazoDias != null && row.prazoDias !== "") {
+      const n = Number(row.prazoDias);
+      partes.push(`${row.prazoDias} ${n === 1 ? "dia" : "dias"} após a aprovação`);
+    }
+    if (row.dataEntrega && row.dataAprovacao) partes.push(fmtData(row.dataEntrega));
     return partes.join(" · ") || "—";
+  }
+
+  function somarDias(iso, dias) {
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m || !Number.isInteger(dias)) return "";
+    const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    dt.setUTCDate(dt.getUTCDate() + dias);
+    const z = (n) => String(n).padStart(2, "0");
+    return `${dt.getUTCFullYear()}-${z(dt.getUTCMonth() + 1)}-${z(dt.getUTCDate())}`;
+  }
+
+  function atualizarPrevisao() {
+    const prazoBruto = document.getElementById("prazoDias").value.trim();
+    const aprov = document.getElementById("dataAprov").value;
+    const hint = document.getElementById("hintPrazo");
+    const prazoOk = /^\d+$/.test(prazoBruto);
+    if (prazoOk) {
+      const n = Number(prazoBruto);
+      hint.textContent = `${prazoBruto} ${n === 1 ? "dia" : "dias"} após a aprovação do orçamento. A previsão não usa a data do orçamento.`;
+    } else {
+      hint.textContent = "O prazo conta a partir da data de aprovação. Sem essa data, a previsão fica em branco.";
+    }
+    const aberto = !ficha || !ficha.status || ficha.status === "ABERTO";
+    if (!aberto) return;
+    const entrega = prazoOk && aprov ? somarDias(aprov, Number(prazoBruto)) : "";
+    document.getElementById("dataEntrega").value = entrega ? fmtData(entrega) : "Aguardando a aprovação";
   }
 
   function textoProdutos(row) {
@@ -336,7 +365,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <td><input class="vu" inputmode="decimal" aria-label="Valor unitário" value="${escapeHtml(item.valorUnitario != null && item.valorUnitario !== "" ? fmtNum(item.valorUnitario, 6) : "")}" /></td>
       <td class="compras"></td>
       <td class="total"></td>
-      <td><input class="pz" inputmode="numeric" aria-label="Prazo do item em dias" placeholder="igual" value="${escapeHtml(item.prazoDias != null && item.prazoDias !== "" ? item.prazoDias : "")}" /></td>
+      <td><input class="pz" inputmode="numeric" aria-label="Prazo do item em dias após a aprovação" placeholder="igual" value="${escapeHtml(item.prazoDias != null && item.prazoDias !== "" ? item.prazoDias : "")}" /></td>
       <td><select class="urg" aria-label="Urgência do item">${opcoesUrgencia(item.urgencia)}</select></td>
       <td><button type="button" class="icone remover" aria-label="Remover produto"><i class="fa-solid fa-trash"></i></button></td>
     `;
@@ -510,8 +539,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const aberto = !data || data.status === "ABERTO";
     const ligado = !!(data && data.idNf);
     document.querySelectorAll("#blocoDados input, #blocoDados textarea, #corpoItens input, #corpoItens select, #corpoItens button").forEach((el) => {
-      if (el.id === "razaoForn") {
+      if (el.id === "razaoForn" || el.id === "dataEntrega") {
         el.readOnly = true;
+        el.disabled = !aberto && el.id === "dataEntrega";
         return;
       }
       el.disabled = !aberto;
@@ -774,13 +804,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("razaoForn").value = data && data.razaoSocial ? data.razaoSocial : "";
     document.getElementById("numero").value = data && data.numero ? data.numero : "";
     document.getElementById("dataOrc").value = data && data.dataOrcamento ? data.dataOrcamento : hoje();
+    document.getElementById("dataAprov").value = data && data.dataAprovacao ? data.dataAprovacao : "";
     document.getElementById("prazoDias").value = data && data.prazoDias != null ? data.prazoDias : "";
-    document.getElementById("dataEntrega").value = data && data.dataEntrega ? data.dataEntrega : "";
+    document.getElementById("dataEntrega").value = data && data.dataEntrega ? fmtData(data.dataEntrega) : "Aguardando a aprovação";
     document.getElementById("condPag").value = data && data.condicaoPagamento ? data.condicaoPagamento : "";
     document.getElementById("obs").value = data && data.observacao ? data.observacao : "";
     document.getElementById("motivo").value = data && data.motivo ? data.motivo : "";
     renderItens(data && data.itens && data.itens.length ? data.itens : [{}]);
     renderAnexos();
+    atualizarPrevisao();
     aplicarTrava(data || { status: "ABERTO" });
     mostrarFicha();
     if (data && data.id) {
@@ -804,7 +836,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       codFornecedor: document.getElementById("codForn").value.trim(),
       dataOrcamento: document.getElementById("dataOrc").value,
       prazoDias: document.getElementById("prazoDias").value.trim(),
-      dataEntrega: document.getElementById("dataEntrega").value,
+      dataAprovacao: document.getElementById("dataAprov").value,
       condicaoPagamento: document.getElementById("condPag").value.trim(),
       observacao: document.getElementById("obs").value.trim(),
       motivo: document.getElementById("motivo").value.trim(),
@@ -817,6 +849,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!/^\d+$/.test(dados.codFornecedor)) return "O código do fornecedor deve ser numérico.";
     if (!dados.dataOrcamento) return "Informe a data do orçamento.";
     if (dados.prazoDias !== "" && !/^\d+$/.test(dados.prazoDias)) return "Prazo de entrega inválido. Use dias inteiros.";
+    if (dados.dataAprovacao && !/^\d{4}-\d{2}-\d{2}$/.test(dados.dataAprovacao)) return "Data de aprovação inválida.";
     if (dados.condicaoPagamento.length > 80) return "Condição de pagamento longa demais. Use até 80 caracteres.";
     if (!dados.itens.length) return "Inclua ao menos um produto.";
     for (let i = 0; i < dados.itens.length; i++) {
@@ -830,9 +863,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item.prazoDias !== "" && !/^\d+$/.test(item.prazoDias)) return `Prazo inválido na linha ${linha}. Use dias inteiros.`;
       if (!URGENCIAS.some(([id]) => id === item.urgencia)) return `Urgência inválida na linha ${linha}.`;
     }
-    const temPrazoCab = dados.prazoDias !== "" || dados.dataEntrega;
+    const temPrazoCab = dados.prazoDias !== "";
     const temPrazoItem = dados.itens.every((item) => item.prazoDias !== "");
-    if (!temPrazoCab && !temPrazoItem) return "Informe o prazo em dias ou a data de entrega.";
+    if (!temPrazoCab && !temPrazoItem) return "Informe o prazo em dias após a aprovação.";
     if (exigirMotivo && !dados.motivo) return "Informe o motivo da reprovação.";
     return "";
   }
@@ -954,15 +987,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     preencher(data);
     aviso("Orçamento salvo.", "ok");
   }));
+  document.getElementById("prazoDias").addEventListener("input", atualizarPrevisao);
+  document.getElementById("dataAprov").addEventListener("input", atualizarPrevisao);
+  document.getElementById("dataAprov").addEventListener("change", atualizarPrevisao);
   document.getElementById("btnAprovar").addEventListener("click", () => comOcupacao(async () => {
+    const campoAprov = document.getElementById("dataAprov");
+    const dataAprovacao = campoAprov.value || hoje();
     const dados = coletar();
+    dados.dataAprovacao = dataAprovacao;
     const erro = validar(dados, false);
     if (erro) throw new Error(erro);
-    if (!window.confirm("Aprovar este orçamento?")) return;
-    const salvo = await api("POST", "salvar", { body: dados });
+    const dias = dados.prazoDias || String(Math.max(...dados.itens.map((item) => Number(item.prazoDias))));
+    if (!window.confirm("Aprovar este orçamento? A previsão de entrega conta " + dias + " dias a partir de " + fmtData(dataAprovacao) + ".")) return;
+    campoAprov.value = dataAprovacao;
+    atualizarPrevisao();
+    const gravar = coletar();
+    const salvo = await api("POST", "salvar", { body: gravar });
     preencher(salvo.data);
     const decidido = await api("POST", "decidir", {
-      body: { id: salvo.data.id, status: "APROVADO", motivo: dados.motivo },
+      body: { id: salvo.data.id, status: "APROVADO", motivo: gravar.motivo, dataAprovacao: gravar.dataAprovacao },
     });
     preencher(decidido.data);
     aviso("Orçamento aprovado.", "ok");

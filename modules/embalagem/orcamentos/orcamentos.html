@@ -72,6 +72,7 @@
     .campo input, .campo textarea, .campo select { width: 100%; padding: 8px 10px; font: inherit; }
     .campo textarea { min-height: 72px; resize: vertical; border: 1px solid #dee2e6; border-radius: 5px; }
     .campo input[readonly] { background: #f7f9fb; color: #455a64; }
+    #hintPrazo { margin: 0; }
     .busca { position: relative; }
     .itens { width: 100%; min-width: 1120px; }
     .itens select { width: 100%; min-width: 108px; padding: 8px; font: inherit; }
@@ -224,12 +225,19 @@
               <input id="dataOrc" type="date" />
             </div>
             <div class="campo">
-              <label for="prazoDias">Prazo de entrega (dias)</label>
-              <input id="prazoDias" inputmode="numeric" placeholder="Ex.: 15" />
+              <label for="dataAprov">Data da aprovação</label>
+              <input id="dataAprov" type="date" />
+            </div>
+            <div class="campo">
+              <label for="prazoDias">Prazo após a aprovação</label>
+              <input id="prazoDias" inputmode="numeric" placeholder="Ex.: 20" />
             </div>
             <div class="campo">
               <label for="dataEntrega">Previsão de entrega</label>
-              <input id="dataEntrega" type="date" />
+              <input id="dataEntrega" readonly tabindex="-1" />
+            </div>
+            <div class="campo cheio">
+              <p id="hintPrazo" class="anexos-hint">O prazo conta a partir da data de aprovação. Sem essa data, a previsão fica em branco.</p>
             </div>
             <div class="campo largo">
               <label for="condPag">Condição de pagamento</label>
@@ -269,7 +277,7 @@
                   <th class="num">Valor unitário</th>
                   <th>Últimas compras</th>
                   <th class="num">Total</th>
-                  <th class="num">Prazo (dias)</th>
+                  <th class="num">Prazo após aprovação</th>
                   <th>Urgência</th>
                   <th></th>
                 </tr>
