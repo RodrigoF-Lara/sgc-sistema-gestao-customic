@@ -284,6 +284,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td class="produtos" title="${escapeHtml(textoProdutos(row))}">${escapeHtml(textoProdutos(row))}</td>
         <td>${escapeHtml(moeda(row.valorTotal))}</td>
         <td>${escapeHtml(textoPrazo(row))}</td>
+        <td class="pagamento" title="${escapeHtml(row.condicaoPagamento || "")}">${escapeHtml(row.condicaoPagamento || "—")}</td>
         <td>${tagUrgencia(row.urgencia)}</td>
         <td>${tag(row.status)}</td>
         <td>${escapeHtml(textoNf(row))}</td>
@@ -775,6 +776,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("dataOrc").value = data && data.dataOrcamento ? data.dataOrcamento : hoje();
     document.getElementById("prazoDias").value = data && data.prazoDias != null ? data.prazoDias : "";
     document.getElementById("dataEntrega").value = data && data.dataEntrega ? data.dataEntrega : "";
+    document.getElementById("condPag").value = data && data.condicaoPagamento ? data.condicaoPagamento : "";
     document.getElementById("obs").value = data && data.observacao ? data.observacao : "";
     document.getElementById("motivo").value = data && data.motivo ? data.motivo : "";
     renderItens(data && data.itens && data.itens.length ? data.itens : [{}]);
@@ -803,6 +805,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       dataOrcamento: document.getElementById("dataOrc").value,
       prazoDias: document.getElementById("prazoDias").value.trim(),
       dataEntrega: document.getElementById("dataEntrega").value,
+      condicaoPagamento: document.getElementById("condPag").value.trim(),
       observacao: document.getElementById("obs").value.trim(),
       motivo: document.getElementById("motivo").value.trim(),
       itens,
@@ -814,6 +817,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!/^\d+$/.test(dados.codFornecedor)) return "O código do fornecedor deve ser numérico.";
     if (!dados.dataOrcamento) return "Informe a data do orçamento.";
     if (dados.prazoDias !== "" && !/^\d+$/.test(dados.prazoDias)) return "Prazo de entrega inválido. Use dias inteiros.";
+    if (dados.condicaoPagamento.length > 80) return "Condição de pagamento longa demais. Use até 80 caracteres.";
     if (!dados.itens.length) return "Inclua ao menos um produto.";
     for (let i = 0; i < dados.itens.length; i++) {
       const item = dados.itens[i];

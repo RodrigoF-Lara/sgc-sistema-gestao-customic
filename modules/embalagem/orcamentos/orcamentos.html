@@ -45,7 +45,7 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
     .wrap-table { overflow: auto; }
-    table.lista { min-width: 980px; }
+    table.lista { min-width: 1080px; }
     table.lista tbody tr { cursor: pointer; }
     .tag {
       display: inline-block; padding: 3px 10px; border-radius: 999px;
@@ -59,6 +59,7 @@
     .tag.urg-alta { background: #fff3e0; color: #e65100; }
     .tag.urg-urgente { background: #ffebee; color: #b71c1c; }
     .produtos { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pagamento { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .vazio { text-align: center; color: #78909c; padding: 28px; }
     .topo-ficha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
     .topo-ficha h2 { margin: 0; font-size: 1.25rem; }
@@ -144,7 +145,7 @@
   <div class="main-content">
     <div class="container orc">
       <h1><i class="fa-solid fa-file-signature"></i> Orçamentos</h1>
-      <p class="hint">Registre a cotação de compras: fornecedor, produtos, quantidade, urgência, valores e prazo de entrega. Depois marque se o orçamento foi aprovado. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
+      <p class="hint">Registre a cotação de compras: fornecedor, produtos, quantidade, urgência, valores, prazo de entrega e condição de pagamento. Depois marque se o orçamento foi aprovado. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
       <div id="aviso" class="aviso" hidden></div>
 
       <section id="painelLista">
@@ -173,6 +174,7 @@
                   <th>Produtos</th>
                   <th>Valor</th>
                   <th>Prazo</th>
+                  <th>Pagamento</th>
                   <th>Urgência</th>
                   <th>Status</th>
                   <th>Nota</th>
@@ -228,6 +230,21 @@
             <div class="campo">
               <label for="dataEntrega">Previsão de entrega</label>
               <input id="dataEntrega" type="date" />
+            </div>
+            <div class="campo largo">
+              <label for="condPag">Condição de pagamento</label>
+              <input id="condPag" list="condicoesPagamento" maxlength="80" placeholder="Ex.: 30/60/90" />
+              <datalist id="condicoesPagamento">
+                <option value="À vista"></option>
+                <option value="7"></option>
+                <option value="14"></option>
+                <option value="21"></option>
+                <option value="28"></option>
+                <option value="30"></option>
+                <option value="30/60"></option>
+                <option value="30/60/90"></option>
+                <option value="30/60/90/120"></option>
+              </datalist>
             </div>
             <div class="campo cheio">
               <label for="obs">Observação</label>
