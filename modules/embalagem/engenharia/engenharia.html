@@ -102,6 +102,7 @@
     .cmp-grade label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; font-size: 0.8rem; font-weight: 700; color: #546e7a; }
     .cmp-grade select { width: 100%; padding: 8px 10px; }
     .quadro-pdf { width: 100%; height: 480px; border: 1px solid #eceff1; border-radius: 8px; background: #fff; }
+    svg.imposicao { display: block; width: 100%; max-height: 180px; margin-top: 8px; background: #fff; border: 1px solid #eceff1; border-radius: 8px; }
     .quadro-svg {
       display: block; width: 100%; height: auto; max-height: 480px; object-fit: contain;
       background: #fff; border: 1px solid #eceff1; border-radius: 8px;
@@ -173,7 +174,7 @@
           <div class="topo-ficha">
             <div>
               <h2>Preços médios</h2>
-              <p class="nota">Um preço médio por item. A estimativa continua marcada como incompleta enquanto faltarem imposição, máquina e fibra.</p>
+              <p class="nota">Um preço médio por item. A estimativa continua incompleta quando faltam formato de máquina, fibra ou preço. Ela não é um custo fechado.</p>
             </div>
             <div class="acoes">
               <button type="button" class="sec" id="btnVoltarPrecos"><i class="fa-solid fa-arrow-left"></i> Lista</button>
@@ -308,6 +309,25 @@
                     <label><input type="checkbox" id="verniz" /> Verniz</label>
                     <label><input type="checkbox" id="janela" /> Janela de acetato</label>
                   </div>
+                </div>
+                <div class="campo">
+                  <label for="maquinaLargura">Folha de máquina — largura (mm)</label>
+                  <input id="maquinaLargura" inputmode="decimal" placeholder="Formato útil" />
+                </div>
+                <div class="campo">
+                  <label for="maquinaAltura">Folha de máquina — altura (mm)</label>
+                  <input id="maquinaAltura" inputmode="decimal" placeholder="Formato útil" />
+                </div>
+                <div class="campo largo">
+                  <label for="fibra">Sentido da fibra</label>
+                  <select id="fibra">
+                    <option value="">Não informado</option>
+                    <option value="LARGURA">Largura da faca na largura da máquina</option>
+                    <option value="ALTURA">Altura da faca na largura da máquina</option>
+                  </select>
+                </div>
+                <div class="campo cheio">
+                  <p class="nota">A pose conta quantos retângulos da faca cabem nesse formato. Não há pinça, entre-corte nem sangria. Sem a fibra, vale a rotação que cabe mais. A área do pré-orçamento continua a da faca. Não é a imposição de produção.</p>
                 </div>
                 <div class="campo">
                   <label for="quantidade">Quantidade</label>

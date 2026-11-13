@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let previaId = null;
   let comparacao = null;
   let cmpSeq = 0;
+  let posesTravadas = false;
 
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
@@ -155,6 +156,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       quantidade: campo("quantidade"),
       poses: campo("poses"),
       perda: campo("perda"),
+      maquinaLargura: campo("maquinaLargura"),
+      maquinaAltura: campo("maquinaAltura"),
+      fibra: document.getElementById("fibra").value,
     };
   }
 
@@ -167,6 +171,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const parametrico = origem === "PARAMETRICO";
     document.getElementById("folhaLargura").disabled = off || parametrico;
     document.getElementById("folhaAltura").disabled = off || parametrico;
+    document.getElementById("poses").disabled = off || posesTravadas;
     document.getElementById("vistaFaca").hidden = !parametrico;
     document.getElementById("avisoArquivo").hidden = parametrico;
     document.getElementById("btnBaixarSvg").hidden = !parametrico || !desenho;
@@ -404,13 +409,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function fraseImposicao(imp) {
+    if (!imp || !imp.poses) return "";
+    const giro = imp.giro ? "girada 90°" : "sem girar";
+    return ` Imposição de estudo: ${imp.poses} poses (${imp.colunas} × ${imp.linhas}), ${giro}.`;
+  }
+
+  function svgImposicao(imp) {
+    if (!imp || !imp.poses || imp.poses > 40 || !(imp.pecaLargura > 0)) return "";
+    const ml = imp.maquinaLargura;
+    const ma = imp.maquinaAltura;
+    const pl = imp.pecaLargura;
+    const pa = imp.pecaAltura;
+    const traço = Math.max(ml, ma) / 180;
+    const rects = [];
+    for (let linha = 0; linha < imp.linhas; linha += 1) {
+      for (let coluna = 0; coluna < imp.colunas; coluna += 1) {
+        rects.push(`<rect x="${coluna * pl}" y="${linha * pa}" width="${pl}" height="${pa}" fill="#e3f2fd" stroke="#1565c0" stroke-width="${traço}" />`);
+      }
+    }
+    return `<svg class="imposicao" viewBox="0 0 ${ml} ${ma}" role="img" aria-label="Imposição de estudo"><rect x="0" y="0" width="${ml}" height="${ma}" fill="#fff" stroke="#90a4ae" stroke-width="${traço}" />${rects.join("")}</svg>`;
+  }
+
   function renderEstimativa(est) {
     const alvo = document.getElementById("blocoEstimativa");
     if (!est) {
+      posesTravadas = false;
       alvo.className = "nota";
       alvo.innerHTML = "Informe as medidas para calcular a estimativa.";
+      aplicarTravas();
       return;
     }
+    posesTravadas = !!(est.imposicao && est.imposicao.poses);
+    if (posesTravadas) document.getElementById("poses").value = est.imposicao.poses;
+    aplicarTravas();
     const linhas = (est.linhas || []).map((linha) => `
       <tr>
         <td>${escapeHtml(linha.item)}</td>
@@ -421,7 +453,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     alvo.className = "";
     alvo.innerHTML = `
       <div class="aviso estudo">Estimativa. Não é um custo fechado.</div>
-      <p class="nota">${est.folhas} folha(s). Área da folha ${Number(est.areaUnidadeM2 || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} m². Perda ${est.perda == null ? "não informada" : mm(est.perda) + "%"}.</p>
+      <p class="nota">${est.folhas} folha(s) de faca. Área da faca ${Number(est.areaUnidadeM2 || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} m². Perda ${est.perda == null ? "não informada" : mm(est.perda) + "%"}.${escapeHtml(fraseImposicao(est.imposicao))}</p>
+      ${svgImposicao(est.imposicao)}
       <table class="memoria">
         <thead><tr><th>Item</th><th>Memória</th><th class="num">Valor</th></tr></thead>
         <tbody>${linhas || `<tr><td colspan="3">Sem linhas de custo ainda.</td></tr>`}</tbody>
@@ -532,6 +565,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (chave === "origem") return versao.origem === "ARQUIVO" ? "Faca enviada" : "Cartucho paramétrico";
     if (chave === "espessura") return versao.espessura == null ? "—" : mm(versao.espessura);
     if (chave === "sangria") return versao.sangria == null || Number(versao.sangria) === 0 ? "não desenha" : mm(versao.sangria);
+    if (chave === "maquinaLargura" || chave === "maquinaAltura") return versao[chave] == null ? "—" : mm(versao[chave]);
+    if (chave === "fibra") {
+      if (versao.fibra === "LARGURA") return "Largura da faca na largura da máquina";
+      if (versao.fibra === "ALTURA") return "Altura da faca na largura da máquina";
+      return "não informada";
+    }
     if (chave === "gramatura") return versao.gramatura == null ? "—" : mm(versao.gramatura);
     if (chave === "perda") return versao.perda == null ? "não informada" : mm(versao.perda);
     if (chave === "laminacao" || chave === "verniz" || chave === "janela") return versao[chave] ? "Sim" : "Não";
@@ -582,6 +621,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["altura", "Altura (mm)"],
       ["espessura", "Espessura (mm)"],
       ["sangria", "Sangria de estudo (mm)"],
+      ["maquinaLargura", "Folha de máquina — largura (mm)"],
+      ["maquinaAltura", "Folha de máquina — altura (mm)"],
+      ["fibra", "Sentido da fibra"],
       ["folhaLargura", "Folha — largura (mm)"],
       ["folhaAltura", "Folha — altura (mm)"],
       ["material", "Material"],
@@ -707,7 +749,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.querySelectorAll('input[name="origem"]').forEach((el) => {
       el.checked = el.value === origem;
     });
-    const chaves = ["comprimento", "largura", "altura", "espessura", "sangria", "folhaLargura", "folhaAltura", "material", "gramatura", "impressao", "pantone", "quantidade", "poses", "perda", "observacao"];
+    const chaves = ["comprimento", "largura", "altura", "espessura", "sangria", "folhaLargura", "folhaAltura", "maquinaLargura", "maquinaAltura", "material", "gramatura", "impressao", "pantone", "quantidade", "poses", "perda", "observacao"];
     chaves.forEach((id) => {
       const el = document.getElementById(id);
       if (!versao) {
@@ -719,6 +761,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const valor = versao[id];
       el.value = valor == null ? "" : valor;
     });
+    document.getElementById("fibra").value = versao && versao.fibra ? versao.fibra : "";
     document.getElementById("laminacao").checked = !!(versao && versao.laminacao);
     document.getElementById("verniz").checked = !!(versao && versao.verniz);
     document.getElementById("janela").checked = !!(versao && versao.janela);
@@ -806,6 +849,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await api("POST", "estimar", { body: corpo });
       renderEstimativa(data.data);
     } catch (err) {
+      posesTravadas = false;
+      aplicarTravas();
       document.getElementById("blocoEstimativa").className = "nota";
       document.getElementById("blocoEstimativa").textContent = err.message;
     }
@@ -1108,7 +1153,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       agendarGeometria();
     });
   });
-  ["laminacao", "verniz", "janela"].forEach((id) => {
+  ["maquinaLargura", "maquinaAltura"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", () => {
+      if (silencioso) return;
+      clearTimeout(estTimer);
+      estTimer = setTimeout(estimar, 400);
+    });
+  });
+  ["laminacao", "verniz", "janela", "fibra"].forEach((id) => {
     document.getElementById(id).addEventListener("change", () => {
       if (silencioso) return;
       clearTimeout(estTimer);
