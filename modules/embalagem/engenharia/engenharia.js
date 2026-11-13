@@ -32,6 +32,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   let comparacao = null;
   let cmpSeq = 0;
   let posesTravadas = false;
+  let podeEditar = false;
+  let podeAprovar = false;
+
+  const ROTULO_FAMILIA = {
+    CARTUCHO: "Cartucho",
+    BANDEJA: "Bandeja",
+    MICROONDULADO: "Microondulado",
+    ENVELOPE: "Envelope",
+  };
+
+  function aplicarPermissoes(permissoes) {
+    if (!permissoes) return;
+    podeEditar = !!permissoes.editar;
+    podeAprovar = !!permissoes.aprovar;
+    document.getElementById("btnNovo").hidden = !podeEditar;
+  }
 
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
@@ -132,11 +148,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function payload() {
-    return {
+    const corpo = {
       id: ficha && ficha.id ? ficha.id : undefined,
       titulo: campo("titulo"),
       sku: campo("sku"),
       cliente: campo("cliente"),
+      familia: document.getElementById("familia").value,
       origem,
       comprimento: campo("comprimento"),
       largura: campo("largura"),
@@ -152,6 +169,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       laminacao: document.getElementById("laminacao").checked,
       verniz: document.getElementById("verniz").checked,
       janela: document.getElementById("janela").checked,
+      microondulado: document.getElementById("microondulado").checked,
+      hotstamp: document.getElementById("hotstamp").checked,
+      relevo: document.getElementById("relevo").checked,
+      frete: document.getElementById("frete").checked,
+      facaMatriz: document.getElementById("facaMatriz").checked,
       observacao: campo("observacao"),
       quantidade: campo("quantidade"),
       poses: campo("poses"),
@@ -160,12 +182,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       maquinaAltura: campo("maquinaAltura"),
       fibra: document.getElementById("fibra").value,
     };
+    if (!editavel && ficha && ficha.versao) {
+      corpo.compensacao = ficha.versao.compensacao == null ? 0 : ficha.versao.compensacao;
+    }
+    return corpo;
   }
 
   function aplicarTravas() {
-    const off = !editavel;
+    const off = !editavel || !podeEditar;
     document.querySelectorAll("#blocoDados input, #blocoDados textarea, #blocoDados select").forEach((el) => {
-      if (el.id === "familia") return;
       el.disabled = off;
     });
     const parametrico = origem === "PARAMETRICO";
@@ -178,13 +203,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("btnBaixarDxf").hidden = !parametrico || !desenho;
     document.getElementById("painelAnexo").hidden = off || !(ficha && ficha.id);
     document.getElementById("btnSalvar").hidden = off;
-    document.getElementById("btnAprovar").hidden = off || !(ficha && ficha.id);
     const versao = ficha && ficha.versao;
     const ultima = versao && ficha.historico && ficha.historico.length
       ? ficha.historico[ficha.historico.length - 1].numero === versao.numero
       : true;
-    document.getElementById("btnNova").hidden = !(versao && versao.status === "APROVADO" && ultima);
+    const aprovadaAtual = !!(versao && versao.status === "APROVADO" && ultima);
+    const rascunhoAtual = !!(versao && versao.status === "RASCUNHO" && ultima && ficha && ficha.id);
+    document.getElementById("btnAprovar").hidden = !(rascunhoAtual && podeAprovar);
+    document.getElementById("blocoComentario").hidden = !(rascunhoAtual && podeAprovar);
+    document.getElementById("btnNova").hidden = !(aprovadaAtual && podeEditar);
+    document.getElementById("btnDuplicar").hidden = !(ficha && ficha.id && podeEditar);
     document.getElementById("btnExcluir").hidden = off || !(ficha && ficha.id);
+    const painelOrc = document.getElementById("painelOrcamento");
+    painelOrc.hidden = !aprovadaAtual;
+    document.getElementById("btnEnviar").hidden = !(aprovadaAtual && podeEditar && !(ficha && ficha.orcamentoId));
+    document.getElementById("codFornecedor").disabled = !(aprovadaAtual && podeEditar && !(ficha && ficha.orcamentoId));
+    document.getElementById("prazoDias").disabled = !(aprovadaAtual && podeEditar && !(ficha && ficha.orcamentoId));
     if (versao) {
       document.getElementById("btnExcluir").textContent = versao.numero === 1 ? "Excluir projeto" : "Excluir rascunho";
     }
@@ -202,14 +236,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     const corte = geo.corte.map((p) => p.join(",")).join(" ");
-    const cola = geo.colaPontos.map((p) => p.join(",")).join(" ");
-    const vincos = geo.vincos.map((v) => `<line x1="${v[0]}" y1="${v[1]}" x2="${v[2]}" y2="${v[3]}" />`).join("");
+    const cola = (geo.colaPontos || []).map((p) => p.join(",")).join(" ");
+    const vincos = (geo.vincos || []).map((v) => `<line x1="${v[0]}" y1="${v[1]}" x2="${v[2]}" y2="${v[3]}" />`).join("");
     const marcas = (geo.marcas || []).map((v) => `<line x1="${v[0]}" y1="${v[1]}" x2="${v[2]}" y2="${v[3]}" />`).join("");
     const caixa = geo.sangriaCaixa;
     const sangriaSvg = caixa
       ? `<rect x="${caixa.x}" y="${caixa.y}" width="${caixa.largura}" height="${caixa.altura}" fill="none" stroke="#6a1b9a" stroke-width="0.35" stroke-dasharray="2 1.2" />`
       : "";
-    const labels = geo.paineis.map((p) => {
+    const labels = (geo.paineis || []).map((p) => {
       if (p.largura < 18) return "";
       return `<text x="${p.x + p.largura / 2}" y="${p.y + p.altura / 2}" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="#546e7a">${escapeHtml(p.nome)}</text>`;
     }).join("");
@@ -219,13 +253,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     host.innerHTML = `<svg id="facaSvg" xmlns="http://www.w3.org/2000/svg" viewBox="${-margem} ${-margem} ${w + margem * 2} ${h + margem * 2}">
       ${sangriaSvg}
       <g stroke="#37474f" stroke-width="0.4">${marcas}</g>
-      <polygon points="${cola}" fill="#e0f7fa" stroke="#80deea" stroke-width="0.8" />
+      ${cola ? `<polygon points="${cola}" fill="#e0f7fa" stroke="#80deea" stroke-width="0.8" />` : ""}
       <polygon points="${corte}" fill="none" stroke="#e53935" stroke-width="0.8" />
       <g stroke="#1565c0" stroke-width="0.45">${vincos}</g>
       ${labels}
     </svg>`;
     const textoSangria = geo.sangria > 0 ? ` Sangria de estudo ${mm(geo.sangria)} mm, fora da área do pré-orçamento.` : "";
-    medidas.textContent = `Folha de estudo ${mm(w)} × ${mm(h)} mm. Cola ${mm(geo.cola)}, tampa ${mm(geo.tuck)}, poeira ${mm(geo.poeira)}.${textoSangria}`;
+    const textoMm = geo.compensacao > 0 ? ` Compensação de estudo ${mm(geo.compensacao)} mm por vinco.` : "";
+    let textoBase = `Folha de estudo ${mm(w)} × ${mm(h)} mm.`;
+    if (geo.familia === "BANDEJA") textoBase += " Bandeja de estudo, sem aba de cola.";
+    else if (geo.familia === "ENVELOPE") textoBase += ` Aba ${mm(geo.cola)}, lapela ${mm(geo.tuck)}.`;
+    else textoBase += ` Cola ${mm(geo.cola)}, tampa ${mm(geo.tuck)}, poeira ${mm(geo.poeira)}.`;
+    medidas.textContent = `${textoBase}${textoMm}${textoSangria}`;
     document.getElementById("folhaLargura").value = geo.folhaLargura;
     document.getElementById("folhaAltura").value = geo.folhaAltura;
     aplicarTravas();
@@ -270,6 +309,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     if (!(desenho && desenho.faces3d)) {
+      const fam = document.getElementById("familia").value;
+      if (fam === "BANDEJA" || fam === "ENVELOPE") {
+        texto3d("Arraste para girar. Esta família ainda não dobra a faca de estudo. A caixa usa as medidas internas.");
+        return;
+      }
       texto3d("Arraste para girar. As abas dobram em 90° a partir da faca de estudo. A espessura não entra na dobra.");
       return;
     }
@@ -562,7 +606,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function textoVersao(versao, chave) {
     if (chave === "status") return versao.status === "APROVADO" ? "Aprovado" : "Rascunho";
-    if (chave === "origem") return versao.origem === "ARQUIVO" ? "Faca enviada" : "Cartucho paramétrico";
+    if (chave === "origem") return versao.origem === "ARQUIVO" ? "Faca enviada" : "Faca de estudo";
+    if (chave === "familia") return ROTULO_FAMILIA[versao.familia] || versao.familia || "Cartucho";
+    if (chave === "compensacao") return versao.compensacao == null || Number(versao.compensacao) === 0 ? "não informada" : mm(versao.compensacao);
+    if (chave === "aprovacaoObs") return versao.aprovacaoObs ? String(versao.aprovacaoObs) : "—";
     if (chave === "espessura") return versao.espessura == null ? "—" : mm(versao.espessura);
     if (chave === "sangria") return versao.sangria == null || Number(versao.sangria) === 0 ? "não desenha" : mm(versao.sangria);
     if (chave === "maquinaLargura" || chave === "maquinaAltura") return versao[chave] == null ? "—" : mm(versao[chave]);
@@ -573,7 +620,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (chave === "gramatura") return versao.gramatura == null ? "—" : mm(versao.gramatura);
     if (chave === "perda") return versao.perda == null ? "não informada" : mm(versao.perda);
-    if (chave === "laminacao" || chave === "verniz" || chave === "janela") return versao[chave] ? "Sim" : "Não";
+    if (chave === "laminacao" || chave === "verniz" || chave === "janela" || chave === "microondulado" || chave === "hotstamp" || chave === "relevo" || chave === "frete" || chave === "facaMatriz") {
+      return versao[chave] ? "Sim" : "Não";
+    }
     if (chave === "material" || chave === "impressao" || chave === "pantone" || chave === "observacao") {
       return versao[chave] ? String(versao[chave]) : "—";
     }
@@ -616,11 +665,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const campos = [
       ["status", "Status"],
       ["origem", "Origem da faca"],
+      ["familia", "Família"],
       ["comprimento", "Comprimento (mm)"],
       ["largura", "Largura (mm)"],
       ["altura", "Altura (mm)"],
       ["espessura", "Espessura (mm)"],
       ["sangria", "Sangria de estudo (mm)"],
+      ["compensacao", "mm por vinco"],
       ["maquinaLargura", "Folha de máquina — largura (mm)"],
       ["maquinaAltura", "Folha de máquina — altura (mm)"],
       ["fibra", "Sentido da fibra"],
@@ -633,6 +684,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["laminacao", "Laminação"],
       ["verniz", "Verniz"],
       ["janela", "Janela de acetato"],
+      ["microondulado", "Microondulado"],
+      ["hotstamp", "Hot stamp"],
+      ["relevo", "Relevo"],
+      ["frete", "Frete"],
+      ["facaMatriz", "Faca / matriz"],
+      ["aprovacaoObs", "Comentário da aprovação"],
       ["quantidade", "Quantidade"],
       ["poses", "Poses"],
       ["perda", "Perda técnica (%)"],
@@ -730,8 +787,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function textoSaldo(saldo) {
+    if (!saldo || saldo.erro || saldo.saldo == null) return "Saldo em estoque indisponível.";
+    const qtd = Number(saldo.saldo);
+    const texto = Number.isInteger(qtd) ? String(qtd) : String(Math.round(qtd * 1000) / 1000);
+    return `Saldo em estoque: ${texto}.`;
+  }
+
   function preencher(data) {
     silencioso = true;
+    if (data && data.permissoes) aplicarPermissoes(data.permissoes);
     ficha = data;
     const versao = data && data.versao;
     const ultima = versao && data.historico && data.historico.length
@@ -746,6 +811,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("sku").value = data ? data.sku || "" : "";
     document.getElementById("titulo").value = data ? data.titulo || "" : "";
     document.getElementById("cliente").value = data ? data.cliente || "" : "";
+    const familia = (versao && versao.familia) || (data && data.familia) || "CARTUCHO";
+    document.getElementById("familia").value = ROTULO_FAMILIA[familia] ? familia : "CARTUCHO";
     document.querySelectorAll('input[name="origem"]').forEach((el) => {
       el.checked = el.value === origem;
     });
@@ -765,11 +832,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("laminacao").checked = !!(versao && versao.laminacao);
     document.getElementById("verniz").checked = !!(versao && versao.verniz);
     document.getElementById("janela").checked = !!(versao && versao.janela);
+    document.getElementById("microondulado").checked = !!(versao && versao.microondulado) || familia === "MICROONDULADO";
+    document.getElementById("hotstamp").checked = !!(versao && versao.hotstamp);
+    document.getElementById("relevo").checked = !!(versao && versao.relevo);
+    document.getElementById("frete").checked = !!(versao && versao.frete);
+    document.getElementById("facaMatriz").checked = !!(versao && versao.facaMatriz);
+    document.getElementById("comentarioAprovacao").value = versao && versao.aprovacaoObs ? versao.aprovacaoObs : "";
     const pedacos = [];
     if (data && data.criadoEm) pedacos.push(`Projeto criado em ${quando(data.criadoEm)} por ${data.criadoPor || "—"}`);
     if (versao && versao.criadoEm) pedacos.push(`Versão em ${quando(versao.criadoEm)} por ${versao.criadoPor || "—"}`);
     if (versao && versao.aprovadoEm) pedacos.push(`Aprovada em ${quando(versao.aprovadoEm)} por ${versao.aprovadoPor || "—"}`);
+    if (versao && versao.aprovacaoObs) pedacos.push(`Comentário: ${versao.aprovacaoObs}`);
     document.getElementById("auditoria").textContent = pedacos.join(" · ");
+    const necessidade = document.getElementById("painelNecessidade");
+    if (data && (data.necessidade || data.saldo)) {
+      const partes = [];
+      if (data.necessidade) {
+        partes.push(`Necessidade de compra ${data.necessidade.status === "ABERTA" ? "aberta" : data.necessidade.status}: ${data.necessidade.quantidade} un.`);
+      }
+      partes.push(textoSaldo(data.saldo));
+      necessidade.hidden = false;
+      necessidade.textContent = partes.join(" ");
+    } else if (data && data.sku) {
+      necessidade.hidden = false;
+      necessidade.textContent = textoSaldo(data.saldo);
+    } else {
+      necessidade.hidden = true;
+      necessidade.textContent = "";
+    }
+    const notaOrc = document.getElementById("notaOrcamento");
+    if (data && data.orcamentoId) {
+      notaOrc.textContent = data.orcamentoNumero
+        ? `Já enviado. Orçamento ${data.orcamentoNumero}.`
+        : "Já enviado ao orçamento.";
+    } else {
+      notaOrc.textContent = "A versão aprovada abre um orçamento de compras com o SKU e esta estimativa. Não é um custo fechado.";
+    }
+    const vigente = data && data.compensacaoVigente;
+    document.getElementById("notaCompensacao").textContent = vigente
+      ? `A espessura fica registrada. A tabela de preços está com ${mm(vigente)} mm por vinco. Isso só entra na faca de estudo e não é regra de produção. A sangria não entra na área do pré-orçamento.`
+      : "A espessura fica registrada. A faca de estudo só abre o vinco quando a engenharia informa os milímetros por vinco, na tabela de preços. Vazio deixa o desenho como está. A sangria não entra na área do pré-orçamento.";
     desenharFaca(data && data.desenho && !data.desenho.erro ? data.desenho : null);
     renderVersoes();
     renderAnexos();
@@ -778,6 +880,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     aplicarTravas();
     silencioso = false;
     carregarArte();
+    if (editavel && podeEditar && origem === "PARAMETRICO") agendarGeometria();
   }
 
   function novo() {
@@ -808,6 +911,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await api("GET", "listar", {
       query: { q: document.getElementById("busca").value.trim(), status: document.getElementById("filtroStatus").value },
     });
+    aplicarPermissoes(data.permissoes);
     const linhas = data.data || [];
     document.getElementById("vazioLista").hidden = linhas.length > 0;
     corpoLista.innerHTML = linhas.map((item) => `
@@ -877,9 +981,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       try {
-        const data = await api("GET", "geometria", {
-          query: { comprimento: c, largura: l, altura: a, sangria: campo("sangria") },
-        });
+        const query = {
+          comprimento: c,
+          largura: l,
+          altura: a,
+          sangria: campo("sangria"),
+          familia: document.getElementById("familia").value,
+        };
+        if (!editavel && ficha && ficha.versao) {
+          query.compensacao = ficha.versao.compensacao == null ? "0" : String(ficha.versao.compensacao);
+        }
+        const data = await api("GET", "geometria", { query });
         if (seq !== geoSeq || origem !== "PARAMETRICO") return;
         desenharFaca(data.data);
         const imagemArte = [...((ficha && ficha.anexos) || [])].reverse().find((item) => item.uso === "ARTE" && item.tipo === "IMAGEM");
@@ -892,16 +1004,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 200);
   }
 
-  async function carregarPrecos() {
-    mostrar("precos");
-    const data = await api("GET", "precos");
-    document.getElementById("corpoPrecos").innerHTML = (data.data || []).map((item) => `
-      <tr>
+  function linhaPreco(item) {
+    const qtd = item.qtdMin == null ? "" : item.qtdMin;
+    const travaQtd = item.id ? " disabled" : "";
+    return `
+      <tr data-id="${item.id || ""}" data-nova="${item.id ? "0" : "1"}" data-grupo="${escapeHtml(item.grupo)}" data-item="${escapeHtml(item.item)}" data-unidade="${escapeHtml(item.unidade)}">
         <td>${escapeHtml(item.grupo)}</td>
         <td>${escapeHtml(item.item)}</td>
         <td>${escapeHtml(item.unidade)}</td>
-        <td><input data-preco="${item.id}" inputmode="decimal" value="${item.preco == null ? "" : item.preco}" placeholder="vazio" /></td>
-      </tr>`).join("");
+        <td><input data-qtd inputmode="numeric" value="${qtd}" placeholder="base"${travaQtd} /></td>
+        <td><input data-preco inputmode="decimal" value="${item.preco == null ? "" : item.preco}" placeholder="vazio" /></td>
+        <td><input data-validade type="date" value="${item.validade || ""}" /></td>
+        <td><input data-fornecedor maxlength="120" value="${escapeHtml(item.fornecedor || "")}" /></td>
+        <td><input data-imposto inputmode="decimal" value="${item.imposto == null ? "" : item.imposto}" placeholder="0" /></td>
+      </tr>`;
+  }
+
+  async function carregarPrecos() {
+    mostrar("precos");
+    const data = await api("GET", "precos");
+    aplicarPermissoes(data.permissoes);
+    const itens = data.data || [];
+    document.getElementById("mmPorVinco").value = data.mmPorVinco == null ? "" : data.mmPorVinco;
+    document.getElementById("corpoPrecos").innerHTML = itens.map(linhaPreco).join("");
+    const vistos = new Set();
+    const opcoes = [];
+    itens.forEach((item) => {
+      const chave = `${item.grupo}|${item.item}|${item.unidade}`;
+      if (vistos.has(chave)) return;
+      vistos.add(chave);
+      opcoes.push(`<option value="${escapeHtml(chave)}">${escapeHtml(item.grupo)} · ${escapeHtml(item.item)} · ${escapeHtml(item.unidade)}</option>`);
+    });
+    document.getElementById("faixaItem").innerHTML = opcoes.join("");
+    const trava = !podeEditar;
+    document.getElementById("mmPorVinco").disabled = trava;
+    document.getElementById("faixaQtd").disabled = trava;
+    document.getElementById("faixaItem").disabled = trava;
+    document.getElementById("btnFaixa").hidden = trava;
+    document.getElementById("btnSalvarPrecos").hidden = trava;
+    document.querySelectorAll("#corpoPrecos input").forEach((el) => {
+      if (el.hasAttribute("data-qtd") && el.disabled) return;
+      el.disabled = trava;
+    });
   }
 
   canvas.addEventListener("pointerdown", (ev) => {
@@ -945,11 +1089,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (ocupado) return;
     ocupado = true;
     try {
-      const itens = [...document.querySelectorAll("[data-preco]")].map((el) => ({
-        id: Number(el.getAttribute("data-preco")),
-        preco: el.value,
+      const itens = [...document.querySelectorAll("#corpoPrecos tr")].map((tr) => ({
+        id: tr.getAttribute("data-nova") === "1" ? null : Number(tr.getAttribute("data-id")),
+        grupo: tr.getAttribute("data-grupo"),
+        item: tr.getAttribute("data-item"),
+        unidade: tr.getAttribute("data-unidade"),
+        qtdMin: tr.querySelector("[data-qtd]").value,
+        preco: tr.querySelector("[data-preco]").value,
+        validade: tr.querySelector("[data-validade]").value,
+        fornecedor: tr.querySelector("[data-fornecedor]").value,
+        imposto: tr.querySelector("[data-imposto]").value,
       }));
-      await api("POST", "precos", { body: { itens } });
+      await api("POST", "precos", {
+        body: { itens, mmPorVinco: document.getElementById("mmPorVinco").value },
+      });
       aviso("Preços salvos.", "ok");
       await carregarPrecos();
     } catch (err) {
@@ -959,11 +1112,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
   document.getElementById("btnAprovar").addEventListener("click", async () => {
-    if (!ficha || !editavel || ocupado) return;
-    if (!window.confirm("Aprovar esta versão? Ela deixa de ser editada.")) return;
+    if (!ficha || !editavel || !podeAprovar || ocupado) return;
+    if (!window.confirm("Aprovar esta versão? Ela deixa de ser editada e abre a necessidade de compra.")) return;
     ocupado = true;
     try {
-      const data = await api("POST", "aprovar", { body: { id: ficha.id } });
+      const data = await api("POST", "aprovar", {
+        body: { id: ficha.id, comentario: document.getElementById("comentarioAprovacao").value },
+      });
       preencher(data.data);
       aviso("Versão aprovada.", "ok");
     } catch (err) {
@@ -1057,7 +1212,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "cartucho-estudo.svg";
+    const familiaArquivo = (document.getElementById("familia").value || "cartucho").toLowerCase();
+    a.download = `${familiaArquivo}-estudo.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
   });
@@ -1069,7 +1225,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       largura: campo("largura"),
       altura: campo("altura"),
       sangria: campo("sangria"),
+      familia: document.getElementById("familia").value,
     });
+    if (!editavel && ficha && ficha.versao) {
+      q.set("compensacao", ficha.versao.compensacao == null ? "0" : String(ficha.versao.compensacao));
+    }
     const nivel = localStorage.getItem("userLevel");
     if (nivel) q.set("userLevel", nivel);
     try {
@@ -1081,7 +1241,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "cartucho-estudo.dxf";
+      a.download = `${(document.getElementById("familia").value || "cartucho").toLowerCase()}-estudo.dxf`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (err) {
@@ -1160,12 +1320,69 @@ document.addEventListener("DOMContentLoaded", async () => {
       estTimer = setTimeout(estimar, 400);
     });
   });
-  ["laminacao", "verniz", "janela", "fibra"].forEach((id) => {
+  ["laminacao", "verniz", "janela", "microondulado", "hotstamp", "relevo", "frete", "facaMatriz", "fibra"].forEach((id) => {
     document.getElementById(id).addEventListener("change", () => {
       if (silencioso) return;
       clearTimeout(estTimer);
       estTimer = setTimeout(estimar, 300);
     });
+  });
+  document.getElementById("familia").addEventListener("change", () => {
+    if (silencioso) return;
+    if (document.getElementById("familia").value === "MICROONDULADO") {
+      document.getElementById("microondulado").checked = true;
+    }
+    agendarGeometria();
+  });
+  document.getElementById("btnFaixa").addEventListener("click", () => {
+    const bruto = document.getElementById("faixaItem").value;
+    const qtd = document.getElementById("faixaQtd").value.trim();
+    if (!bruto || !/^\d+$/.test(qtd) || Number(qtd) < 1) {
+      aviso("Informe a quantidade mínima da faixa.");
+      return;
+    }
+    const [grupo, item, unidade] = bruto.split("|");
+    document.getElementById("corpoPrecos").insertAdjacentHTML("beforeend", linhaPreco({
+      grupo, item, unidade, qtdMin: Number(qtd), preco: null, validade: "", fornecedor: "", imposto: null,
+    }));
+    document.getElementById("faixaQtd").value = "";
+    aviso("");
+  });
+  document.getElementById("btnDuplicar").addEventListener("click", async () => {
+    if (!ficha || !podeEditar || ocupado) return;
+    if (!window.confirm("Duplicar este projeto em um rascunho novo? O original permanece.")) return;
+    ocupado = true;
+    try {
+      const data = await api("POST", "duplicar", { body: { id: ficha.id } });
+      preencher(data.data);
+      history.replaceState(null, "", `${window.location.pathname}?id=${data.data.id}`);
+      aviso("Cópia aberta em rascunho.", "ok");
+    } catch (err) {
+      aviso(err.message);
+    } finally {
+      ocupado = false;
+    }
+  });
+  document.getElementById("btnEnviar").addEventListener("click", async () => {
+    if (!ficha || !podeEditar || ocupado) return;
+    if (!window.confirm("Enviar esta versão aprovada para o orçamento de compras?")) return;
+    ocupado = true;
+    try {
+      const data = await api("POST", "enviarOrcamento", {
+        body: {
+          id: ficha.id,
+          codFornecedor: document.getElementById("codFornecedor").value,
+          prazoDias: document.getElementById("prazoDias").value,
+        },
+      });
+      preencher(data.data);
+      const numero = data.orcamento && data.orcamento.numero ? data.orcamento.numero : "";
+      aviso(data.orcamento && data.orcamento.jaEnviado ? `Já estava no orçamento ${numero}.` : `Enviado. Orçamento ${numero}.`, "ok");
+    } catch (err) {
+      aviso(err.message);
+    } finally {
+      ocupado = false;
+    }
   });
 
   const skuInput = document.getElementById("sku");

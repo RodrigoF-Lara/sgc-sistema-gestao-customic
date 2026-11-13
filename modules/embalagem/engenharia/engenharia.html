@@ -145,8 +145,8 @@
             </select>
           </label>
           <button type="button" class="sec" id="btnFiltrar">Filtrar</button>
-          <button type="button" class="sec" id="btnPrecos"><i class="fa-solid fa-table"></i> Preços médios</button>
-          <button type="button" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo projeto</button>
+          <button type="button" class="sec" id="btnPrecos"><i class="fa-solid fa-table"></i> Preços</button>
+          <button type="button" id="btnNovo" hidden><i class="fa-solid fa-plus"></i> Novo projeto</button>
         </div>
         <div class="card-lista">
           <div class="wrap-table">
@@ -173,13 +173,31 @@
         <div class="card-ficha">
           <div class="topo-ficha">
             <div>
-              <h2>Preços médios</h2>
-              <p class="nota">Um preço médio por item. A estimativa continua incompleta quando faltam formato de máquina, fibra ou preço. Ela não é um custo fechado.</p>
+              <h2>Preços da estimativa</h2>
+              <p class="nota">A faixa usa a maior quantidade mínima que ainda cabe no pedido, se a validade não passou. O imposto entra na linha. A estimativa continua incompleta quando faltam formato de máquina, fibra ou preço. Ela não é um custo fechado.</p>
             </div>
             <div class="acoes">
               <button type="button" class="sec" id="btnVoltarPrecos"><i class="fa-solid fa-arrow-left"></i> Lista</button>
               <button type="button" id="btnSalvarPrecos">Salvar preços</button>
             </div>
+          </div>
+          <div class="grade" id="blocoMm">
+            <div class="campo">
+              <label for="mmPorVinco">mm por vinco</label>
+              <input id="mmPorVinco" inputmode="decimal" placeholder="Vazio não altera a faca" />
+            </div>
+            <div class="campo cheio">
+              <p class="nota">Número informado pela engenharia, de 0 a 5. Entra só no cartucho e no microondulado: quatro vincos na largura e dois na altura. A bandeja cresce nos dois lados. O envelope soma o milímetro na aba e na lapela. A prévia 3D continua nas medidas internas. Não é compensação validada de produção.</p>
+            </div>
+          </div>
+          <div class="toolbar" id="blocoFaixa">
+            <label>Item da faixa
+              <select id="faixaItem"></select>
+            </label>
+            <label>Quantidade mínima
+              <input id="faixaQtd" inputmode="numeric" />
+            </label>
+            <button type="button" class="sec" id="btnFaixa">Adicionar faixa</button>
           </div>
           <div class="wrap-table">
             <table class="lista">
@@ -188,7 +206,11 @@
                   <th>Grupo</th>
                   <th>Item</th>
                   <th>Unidade</th>
+                  <th>Qtd. mínima</th>
                   <th>Preço</th>
+                  <th>Validade</th>
+                  <th>Fornecedor</th>
+                  <th>Imposto %</th>
                 </tr>
               </thead>
               <tbody id="corpoPrecos"></tbody>
@@ -207,9 +229,10 @@
             <div class="acoes">
               <button type="button" class="sec" id="btnVoltar"><i class="fa-solid fa-arrow-left"></i> Lista</button>
               <button type="button" class="ghost" id="btnExcluir" hidden>Excluir rascunho</button>
+              <button type="button" class="sec" id="btnDuplicar" hidden>Duplicar</button>
               <button type="button" class="sec" id="btnNova" hidden>Nova versão</button>
               <button type="button" class="ok" id="btnAprovar" hidden>Aprovar</button>
-              <button type="button" id="btnSalvar">Salvar</button>
+              <button type="button" id="btnSalvar" hidden>Salvar</button>
             </div>
           </div>
           <div id="versoes" class="versoes"></div>
@@ -246,13 +269,18 @@
                   <input id="cliente" maxlength="120" />
                 </div>
                 <div class="campo">
-                  <label>Família</label>
-                  <input id="familia" value="CARTUCHO" disabled />
+                  <label for="familia">Família</label>
+                  <select id="familia">
+                    <option value="CARTUCHO">Cartucho</option>
+                    <option value="BANDEJA">Bandeja</option>
+                    <option value="MICROONDULADO">Microondulado</option>
+                    <option value="ENVELOPE">Envelope</option>
+                  </select>
                 </div>
                 <div class="campo cheio">
                   <span class="nota">Origem da faca</span>
                   <div class="origem">
-                    <label><input type="radio" name="origem" value="PARAMETRICO" checked /> Cartucho paramétrico</label>
+                    <label><input type="radio" name="origem" value="PARAMETRICO" checked /> Faca de estudo</label>
                     <label><input type="radio" name="origem" value="ARQUIVO" /> Faca enviada</label>
                   </div>
                 </div>
@@ -277,7 +305,7 @@
                   <input id="sangria" inputmode="decimal" placeholder="Vazio não desenha" />
                 </div>
                 <div class="campo cheio">
-                  <p class="nota">A espessura fica registrada e ainda não altera a faca. A sangria, quando preenchida, desenha o limite e as marcas de registro em volta da folha de corte. Ela não entra na área do pré-orçamento.</p>
+                  <p class="nota" id="notaCompensacao">A espessura fica registrada. A faca de estudo só abre o vinco quando a engenharia informa os milímetros por vinco, na tabela de preços. Vazio deixa o desenho como está. A sangria, quando preenchida, desenha o limite e as marcas de registro em volta da folha de corte. Ela não entra na área do pré-orçamento.</p>
                 </div>
                 <div class="campo">
                   <label for="folhaLargura">Folha — largura (mm)</label>
@@ -308,6 +336,11 @@
                     <label><input type="checkbox" id="laminacao" /> Laminação</label>
                     <label><input type="checkbox" id="verniz" /> Verniz</label>
                     <label><input type="checkbox" id="janela" /> Janela de acetato</label>
+                    <label><input type="checkbox" id="microondulado" /> Microondulado</label>
+                    <label><input type="checkbox" id="hotstamp" /> Hot stamp</label>
+                    <label><input type="checkbox" id="relevo" /> Relevo</label>
+                    <label><input type="checkbox" id="frete" /> Frete</label>
+                    <label><input type="checkbox" id="facaMatriz" /> Faca / matriz</label>
                   </div>
                 </div>
                 <div class="campo">
@@ -347,6 +380,24 @@
                 </div>
               </div>
               <p id="auditoria" class="auditoria"></p>
+              <div id="blocoComentario" hidden>
+                <label for="comentarioAprovacao">Comentário da aprovação</label>
+                <textarea id="comentarioAprovacao" maxlength="500" placeholder="Opcional. Fica gravado na versão."></textarea>
+              </div>
+              <p id="painelNecessidade" class="nota" hidden></p>
+              <div id="painelOrcamento" class="anexos" hidden>
+                <h3>Enviar ao orçamento</h3>
+                <p class="nota" id="notaOrcamento">A versão aprovada abre um orçamento de compras com o SKU e esta estimativa. Não é um custo fechado.</p>
+                <div class="toolbar">
+                  <label>Código do fornecedor
+                    <input id="codFornecedor" inputmode="numeric" />
+                  </label>
+                  <label>Prazo (dias)
+                    <input id="prazoDias" inputmode="numeric" />
+                  </label>
+                  <button type="button" class="sec" id="btnEnviar" hidden>Enviar</button>
+                </div>
+              </div>
 
               <div class="anexos">
                 <h3>Arquivos da versão</h3>
@@ -387,7 +438,7 @@
                   <span><i class="sw sangria"></i>Sangria</span>
                   <span><i class="sw marca"></i>Registro</span>
                 </div>
-                <p class="nota">Cartucho simplificado, sem compensação de espessura. A sangria contorna o retângulo da folha e não acompanha cada recorte. Não é a faca de produção.</p>
+                <p class="nota">Desenho de estudo. A sangria contorna o retângulo da folha e não acompanha cada recorte. A faca enviada do Impactor continua um arquivo. Não é a faca de produção.</p>
                 <div class="acoes" style="margin-top:8px">
                   <button type="button" class="sec" id="btnBaixarSvg" hidden>Baixar SVG</button>
                   <button type="button" class="sec" id="btnBaixarDxf" hidden>Baixar DXF</button>
