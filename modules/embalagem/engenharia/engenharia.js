@@ -25,6 +25,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let estTimer = 0;
   let skuTimer = 0;
   const rot = { yaw: -0.7, pitch: 0.35, arrastando: false, x: 0, y: 0 };
+  let arteImg = null;
+  let arteId = null;
+  let arteSeq = 0;
 
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
@@ -187,6 +190,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       host.innerHTML = "";
       medidas.textContent = "";
       aplicarTravas();
+      desenharCaixa();
       return;
     }
     const corte = geo.corte.map((p) => p.join(",")).join(" ");
@@ -217,9 +221,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("folhaLargura").value = geo.folhaLargura;
     document.getElementById("folhaAltura").value = geo.folhaAltura;
     aplicarTravas();
+    desenharCaixa();
+  }
+
+  function caixaSimples(L, W, H) {
+    const hx = L / 2;
+    const hy = H / 2;
+    const hz = W / 2;
+    const c = (x, y, z) => [x, y, z];
+    return [
+      { nome: "Verso", cor: "#eceff1", arte: false, pontos: [c(hx, -hy, -hz), c(-hx, -hy, -hz), c(-hx, hy, -hz), c(hx, hy, -hz)] },
+      { nome: "Lateral", cor: "#90caf9", arte: false, pontos: [c(-hx, -hy, -hz), c(-hx, -hy, hz), c(-hx, hy, hz), c(-hx, hy, -hz)] },
+      { nome: "Lateral", cor: "#64b5f6", arte: false, pontos: [c(hx, -hy, hz), c(hx, -hy, -hz), c(hx, hy, -hz), c(hx, hy, hz)] },
+      { nome: "Frente", cor: "#bbdefb", arte: false, pontos: [c(-hx, -hy, hz), c(hx, -hy, hz), c(hx, hy, hz), c(-hx, hy, hz)] },
+      { nome: "Tampa", cor: "#e3f2fd", arte: false, pontos: [c(-hx, hy, hz), c(hx, hy, hz), c(hx, hy, -hz), c(-hx, hy, -hz)] },
+      { nome: "Tampa", cor: "#cfd8dc", arte: false, pontos: [c(-hx, -hy, -hz), c(hx, -hy, -hz), c(hx, -hy, hz), c(-hx, -hy, hz)] },
+    ];
+  }
+
+  function desenharArte(ctx, img, pts) {
+    const origem = pts[3];
+    const ux = pts[2].x - origem.x;
+    const uy = pts[2].y - origem.y;
+    const vx = pts[0].x - origem.x;
+    const vy = pts[0].y - origem.y;
+    if (Math.hypot(ux, uy) < 2 || Math.hypot(vx, vy) < 2) return;
+    ctx.save();
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.clip();
+    ctx.transform(ux, uy, vx, vy, origem.x, origem.y);
+    ctx.drawImage(img, 0, 0, 1, 1);
+    ctx.restore();
+  }
+
+  function atualizarNota3d() {
+    if (origem !== "PARAMETRICO") {
+      texto3d("Arraste para girar. Esta prévia usa as medidas internas. A faca enviada não é dobrada aqui.");
+      return;
+    }
+    if (!(desenho && desenho.faces3d)) {
+      texto3d("Arraste para girar. As abas dobram em 90° a partir da faca de estudo. A espessura não entra na dobra.");
+      return;
+    }
+    const anexos = (ficha && ficha.anexos) || [];
+    const temImagem = anexos.some((item) => item.uso === "ARTE" && item.tipo === "IMAGEM");
+    const outra = anexos.some((item) => item.uso === "ARTE" && item.tipo !== "IMAGEM");
+    if (arteImg) {
+      texto3d("A arte JPG ou PNG está na frente. Arraste para girar. A dobra é de estudo, em 90°.");
+    } else if (!temImagem && outra) {
+      texto3d("A arte em PDF ou SVG fica no arquivo. No 3D entra só JPG ou PNG, na face da frente.");
+    } else {
+      texto3d("Arraste para girar. As abas dobram em 90° a partir da faca de estudo. A espessura não entra na dobra.");
+    }
   }
 
   function desenharCaixa() {
+    atualizarNota3d();
     const L = numero(campo("comprimento"));
     const W = numero(campo("largura"));
     const H = numero(campo("altura"));
@@ -231,13 +290,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     canvas.height = Math.round(altura * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, largura, altura);
-    if (![L, W, H].every((n) => n && n >= 10 && n <= 2000)) {
+    const modelo = desenho && desenho.faces3d;
+    if (!modelo && ![L, W, H].every((n) => n && n >= 10 && n <= 2000)) {
       ctx.fillStyle = "#90a4ae";
       ctx.font = "14px sans-serif";
       ctx.fillText("Informe as medidas internas para ver a caixa.", 16, 32);
       return;
     }
-    const escala = Math.min(largura, altura) * 0.32 / Math.max(L, W, H);
+    const faces = (modelo || caixaSimples(L, W, H)).map((face) => ({
+      nome: face.nome,
+      cor: face.cor,
+      arte: face.arte,
+      pontos: face.pontos,
+    }));
+    let alcance = 1;
+    faces.forEach((face) => {
+      face.pontos.forEach((p) => {
+        alcance = Math.max(alcance, Math.abs(p[0]), Math.abs(p[1]), Math.abs(p[2]));
+      });
+    });
+    const escala = Math.min(largura, altura) * 0.38 / alcance;
     function projetar(x, y, z) {
       const cy = Math.cos(rot.yaw);
       const sy = Math.sin(rot.yaw);
@@ -249,23 +321,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const z2 = y * sp + z1 * cp;
       return { x: largura / 2 + x1 * escala, y: altura / 2 - y1 * escala, z: z2 };
     }
-    const hx = L / 2;
-    const hy = H / 2;
-    const hz = W / 2;
-    const cantos = [
-      [-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz],
-      [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz],
-    ].map((p) => projetar(p[0], p[1], p[2]));
-    const faces = [
-      { idx: [4, 5, 6, 7], cor: "#bbdefb" },
-      { idx: [0, 1, 2, 3], cor: "#eceff1" },
-      { idx: [0, 4, 7, 3], cor: "#90caf9" },
-      { idx: [1, 5, 6, 2], cor: "#64b5f6" },
-      { idx: [3, 2, 6, 7], cor: "#e3f2fd" },
-      { idx: [0, 1, 5, 4], cor: "#cfd8dc" },
-    ];
     faces.forEach((face) => {
-      face.pts = face.idx.map((i) => cantos[i]);
+      face.pts = face.pontos.map((p) => projetar(p[0], p[1], p[2]));
       face.z = face.pts.reduce((s, p) => s + p.z, 0) / face.pts.length;
     });
     faces.sort((a, b) => a.z - b.z);
@@ -275,10 +332,73 @@ document.addEventListener("DOMContentLoaded", async () => {
       ctx.closePath();
       ctx.fillStyle = face.cor;
       ctx.fill();
+      if (face.arte && arteImg) desenharArte(ctx, arteImg, face.pts);
+      ctx.beginPath();
+      face.pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.closePath();
       ctx.strokeStyle = "#455a64";
       ctx.lineWidth = 1;
       ctx.stroke();
     });
+  }
+
+  function texto3d(mensagem) {
+    const nota = document.getElementById("nota3d");
+    if (nota) nota.textContent = mensagem;
+  }
+
+  async function carregarArte() {
+    const seq = ++arteSeq;
+    if (origem !== "PARAMETRICO" || !(desenho && desenho.faces3d)) {
+      arteImg = null;
+      arteId = null;
+      desenharCaixa();
+      return;
+    }
+    const anexos = (ficha && ficha.anexos) || [];
+    const imagem = [...anexos].reverse().find((item) => item.uso === "ARTE" && item.tipo === "IMAGEM");
+    if (!imagem) {
+      arteImg = null;
+      arteId = null;
+      desenharCaixa();
+      return;
+    }
+    if (arteId === imagem.id && arteImg) {
+      desenharCaixa();
+      return;
+    }
+    arteImg = null;
+    arteId = null;
+    desenharCaixa();
+    try {
+      const q = new URLSearchParams({ acao: "anexo", id: String(imagem.id) });
+      const nivel = localStorage.getItem("userLevel");
+      if (nivel) q.set("userLevel", nivel);
+      const res = await fetch(`${API}?${q}`, { headers: authHeaders() });
+      if (!res.ok || seq !== arteSeq) throw new Error("arte");
+      const url = URL.createObjectURL(await res.blob());
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        if (seq !== arteSeq) return;
+        arteImg = img;
+        arteId = imagem.id;
+        desenharCaixa();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (seq !== arteSeq) return;
+        arteImg = null;
+        arteId = null;
+        desenharCaixa();
+      };
+      img.src = url;
+    } catch (_) {
+      if (seq !== arteSeq) return;
+      arteImg = null;
+      arteId = null;
+      desenharCaixa();
+    }
   }
 
   function renderEstimativa(est) {
@@ -394,7 +514,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderEstimativa(data && data.estimativa);
     aplicarTravas();
     silencioso = false;
-    desenharCaixa();
+    carregarArte();
   }
 
   function novo() {
@@ -497,6 +617,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         if (seq !== geoSeq || origem !== "PARAMETRICO") return;
         desenharFaca(data.data);
+        const imagemArte = [...((ficha && ficha.anexos) || [])].reverse().find((item) => item.uso === "ARTE" && item.tipo === "IMAGEM");
+        if (imagemArte && arteId !== imagemArte.id) carregarArte();
       } catch (err) {
         if (seq !== geoSeq) return;
         desenharFaca(null);
@@ -736,7 +858,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       else {
         desenho = null;
         document.getElementById("facaHost").innerHTML = "";
-        desenharCaixa();
+        carregarArte();
         clearTimeout(estTimer);
         estTimer = setTimeout(estimar, 400);
       }
