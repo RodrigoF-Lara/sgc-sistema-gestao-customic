@@ -560,12 +560,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       el.disabled = !aberto;
     });
-    ["btnVoltar", "btnExcluir", "btnReabrir", "btnReprovar", "btnAprovar", "btnSalvar", "btnAdd", "btnAnexarPdf", "btnAnexarFoto"].forEach((id) => {
+    ["btnVoltar", "btnExcluir", "btnReabrir", "btnReprovar", "btnAprovar", "btnSalvar", "btnEnviarAviso", "btnAdd", "btnAnexarPdf", "btnAnexarFoto"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.disabled = false;
     });
     document.getElementById("btnAdd").hidden = !aberto;
     document.getElementById("btnSalvar").hidden = !aberto;
+    document.getElementById("btnEnviarAviso").hidden = !(aberto && data && data.id);
     document.getElementById("btnAprovar").hidden = !aberto;
     document.getElementById("btnReprovar").hidden = !aberto;
     document.getElementById("btnReabrir").hidden = aberto || ligado || !(data && data.id);
@@ -998,6 +999,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     abrir(tr.getAttribute("data-id"));
   });
   document.getElementById("btnAdd").addEventListener("click", () => adicionarItem({}));
+  document.getElementById("btnEnviarAviso").addEventListener("click", () => comOcupacao(async () => {
+    if (!ficha || !ficha.id || ficha.status !== "ABERTO") return;
+    if (!window.confirm("Enviar o aviso deste orçamento para os e-mails cadastrados?")) return;
+    const resp = await api("POST", "enviarAviso", { body: { id: ficha.id } });
+    if (resp.email && resp.email.enviado) aviso("Aviso enviado.", "ok");
+    else aviso((resp.email && resp.email.motivo) || "O aviso não saiu.", "atencao");
+  }));
   document.getElementById("btnSalvar").addEventListener("click", () => comOcupacao(async () => {
     const resp = await salvarAtual();
     preencher(resp.data);
