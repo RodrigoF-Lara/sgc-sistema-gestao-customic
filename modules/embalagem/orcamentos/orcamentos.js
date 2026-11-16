@@ -369,11 +369,100 @@ document.addEventListener("DOMContentLoaded", async () => {
     painelFicha.hidden = false;
   }
 
+  function htmlEstoque(item) {
+    const gravado = item && item.codigo && item.estoque != null && item.estoque !== "" && Number.isFinite(Number(item.estoque));
+    if (!gravado) {
+      return `<td class="estoque num preview" data-gravado="" data-codigo="" data-origem-codigo="" data-origem-texto="" title="Estoque agora. Fica gravado ao salvar.">—</td>`;
+    }
+    const texto = fmtNum(item.estoque, 4);
+    return `<td class="estoque num gravado" data-gravado="1" data-codigo="${escapeHtml(item.codigo)}" data-origem-codigo="${escapeHtml(item.codigo)}" data-origem-texto="${escapeHtml(texto)}" title="Estoque gravado quando o produto entrou neste orçamento.">${escapeHtml(texto)}</td>`;
+  }
+
+  function codigoCongelado(tr, codigo) {
+    const celula = tr.querySelector(".estoque");
+    if (!celula || celula.dataset.gravado !== "1") return false;
+    return String(celula.dataset.codigo || "").toUpperCase() === String(codigo || "").trim().toUpperCase();
+  }
+
+  function restaurarEstoque(tr) {
+    const celula = tr.querySelector(".estoque");
+    if (!celula) return false;
+    const q = tr.querySelector(".cod").value.trim();
+    const origem = celula.dataset.origemCodigo || "";
+    if (!origem || q.toUpperCase() !== origem.toUpperCase()) return false;
+    celula.dataset.gravado = "1";
+    celula.dataset.codigo = origem;
+    celula.classList.add("gravado");
+    celula.classList.remove("preview");
+    celula.textContent = celula.dataset.origemTexto || "0";
+    celula.title = "Estoque gravado quando o produto entrou neste orçamento.";
+    return true;
+  }
+
+  function limparEstoque(tr) {
+    const celula = tr.querySelector(".estoque");
+    if (!celula) return;
+    celula.dataset.gravado = "";
+    celula.dataset.codigo = "";
+    celula.classList.remove("gravado");
+    celula.classList.add("preview");
+    celula.textContent = "—";
+    celula.title = "Estoque agora. Fica gravado ao salvar.";
+  }
+
+  function mostrarPreview(tr, codigo, saldo) {
+    if (restaurarEstoque(tr)) return;
+    const celula = tr.querySelector(".estoque");
+    if (!celula) return;
+    const n = Number(saldo);
+    celula.dataset.gravado = "";
+    celula.dataset.codigo = codigo || "";
+    celula.classList.remove("gravado");
+    celula.classList.add("preview");
+    celula.textContent = Number.isFinite(n) ? fmtNum(n, 4) : "—";
+    celula.title = "Estoque agora. Fica gravado ao salvar.";
+  }
+
+  async function confirmarCodigo(tr) {
+    const cod = tr.querySelector(".cod");
+    const desc = tr.querySelector(".desc");
+    const q = cod.value.trim();
+    if (!q) {
+      desc.value = "";
+      limparEstoque(tr);
+      return;
+    }
+    try {
+      const data = await api("GET", "produto", { query: { codigo: q } });
+      if (cod.value.trim().toUpperCase() !== q.toUpperCase()) return;
+      cod.value = data.data.codigo;
+      desc.value = data.data.descricao || "";
+      cod.classList.remove("campo-erro");
+      mostrarPreview(tr, data.data.codigo, data.data.saldo);
+      pedirComprasDaTela();
+    } catch (_) {
+      if (cod.value.trim().toUpperCase() !== q.toUpperCase()) return;
+      desc.value = "";
+      cod.classList.add("campo-erro");
+      if (!restaurarEstoque(tr)) limparEstoque(tr);
+      pedirComprasDaTela();
+    }
+  }
+
+  function pedirEstoqueDaTela() {
+    corpoItens.querySelectorAll("tr").forEach((tr) => {
+      const codigo = tr.querySelector(".cod").value.trim();
+      if (!codigo || codigoCongelado(tr, codigo)) return;
+      confirmarCodigo(tr);
+    });
+  }
+
   function linhaItem(item) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><input class="cod" autocomplete="off" aria-label="Código do produto" value="${escapeHtml(item.codigo || "")}" /></td>
       <td><input class="desc" readonly tabindex="-1" aria-label="Descrição" value="${escapeHtml(item.descricao || "")}" /></td>
+      ${htmlEstoque(item)}
       <td><input class="qtd" inputmode="decimal" aria-label="Quantidade" value="${escapeHtml(item.quantidade != null && item.quantidade !== "" ? fmtNum(item.quantidade, 4) : "")}" /></td>
       <td><input class="vu" inputmode="decimal" aria-label="Valor unitário" value="${escapeHtml(item.valorUnitario != null && item.valorUnitario !== "" ? fmtNum(item.valorUnitario, 6) : "")}" /></td>
       <td class="compras"></td>
@@ -394,6 +483,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         celula.dataset.estado = "";
         celula.innerHTML = `<span class="vazio">—</span>`;
       }
+      if (!restaurarEstoque(tr)) limparEstoque(tr);
       if (q.length < 2) {
         fecharSug();
         return;
@@ -411,30 +501,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             cod.value = p.codigo;
             desc.value = p.descricao || "";
             atualizarTotais();
-            pedirComprasDaTela();
+            confirmarCodigo(tr);
           });
         } catch (err) {
           aviso(err.message);
         }
       }, 250);
     });
-    cod.addEventListener("blur", async () => {
-      const q = cod.value.trim();
-      if (!q) {
-        desc.value = "";
-        return;
-      }
-      try {
-        const data = await api("GET", "produto", { query: { codigo: q } });
-        cod.value = data.data.codigo;
-        desc.value = data.data.descricao || "";
-        cod.classList.remove("campo-erro");
-        pedirComprasDaTela();
-      } catch (_) {
-        desc.value = "";
-        cod.classList.add("campo-erro");
-        pedirComprasDaTela();
-      }
+    cod.addEventListener("blur", () => {
+      confirmarCodigo(tr);
     });
     const qtd = tr.querySelector(".qtd");
     const vu = tr.querySelector(".vu");
@@ -460,6 +535,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     (itens.length ? itens : [{}]).forEach((item) => corpoItens.appendChild(linhaItem(item)));
     atualizarTotais();
     pedirComprasDaTela();
+    pedirEstoqueDaTela();
   }
 
   function pintarCompras(tr) {

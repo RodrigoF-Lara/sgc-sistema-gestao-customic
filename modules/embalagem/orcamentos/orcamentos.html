@@ -76,7 +76,10 @@
     .campo input[readonly] { background: #f7f9fb; color: #455a64; }
     #hintPrazo { margin: 0; }
     .busca { position: relative; }
-    .itens { width: 100%; min-width: 1240px; }
+    .itens { width: 100%; min-width: 1360px; }
+    .itens td.estoque { font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 92px; }
+    .itens td.estoque.gravado { color: #263238; font-weight: 700; }
+    .itens td.estoque.preview { color: #607d8b; }
     .itens select { width: 100%; min-width: 108px; padding: 8px; font: inherit; }
     .compras { min-width: 248px; font-size: 0.78rem; line-height: 1.35; color: #455a64; white-space: nowrap; }
     .compras .mes { display: flex; justify-content: space-between; gap: 10px; }
@@ -270,13 +273,14 @@
           <p id="auditoria" class="auditoria"></p>
 
           <h3 style="margin: 18px 0 8px;">Produtos</h3>
-          <p class="anexos-hint">Últimas compras: custo e quantidade da última nota de cada mês. O custo é o mesmo valor do Saving. A comparação usa o valor unitário desta cotação contra a compra mais recente.</p>
+          <p class="anexos-hint">Últimas compras: custo e quantidade da última nota de cada mês. O custo é o mesmo valor do Saving. A comparação usa o valor unitário desta cotação contra a compra mais recente. Estoque: saldo do depósito no momento em que a linha é salva. Esse número fica gravado e não acompanha o depósito depois.</p>
           <div class="wrap-table">
             <table class="itens">
               <thead>
                 <tr>
                   <th>Código</th>
                   <th>Descrição</th>
+                  <th class="num" title="Saldo do depósito no momento em que a linha entra no orçamento">Estoque</th>
                   <th class="num">Quantidade</th>
                   <th class="num">Valor unitário</th>
                   <th title="Mês, quantidade e custo da última nota">Últimas compras</th>
