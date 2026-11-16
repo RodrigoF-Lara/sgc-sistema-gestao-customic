@@ -75,8 +75,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function mensagemEmail(base, email) {
     if (!email) return base;
-    if (email.enviado) return base + " Aviso enviado ao diretor.";
-    return base + " " + (email.motivo || "O aviso ao diretor não saiu.");
+    if (email.enviado) return base + " Aviso enviado.";
+    if (email.silencioso) return base;
+    return base + " " + (email.motivo || "O aviso não saiu.");
   }
 
   function aviso(msg, tipo) {

@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const LIMITE_ANEXO = 3 * 1024 * 1024;
   const STATUS = {
     ABERTO: "Aberto",
+    AGUARDANDO: "Aguardando aprovação",
     APROVADO: "Aprovado",
     REPROVADO: "Reprovado",
   };
@@ -63,8 +64,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function mensagemEmail(base, email) {
     if (!email) return base;
-    if (email.enviado) return base + " Aviso enviado ao diretor.";
-    return base + " " + (email.motivo || "O aviso ao diretor não saiu.");
+    if (email.enviado) return base + " Aviso enviado.";
+    if (email.silencioso) return base;
+    return base + " " + (email.motivo || "O aviso não saiu.");
   }
 
   function aviso(msg, tipo) {
@@ -295,14 +297,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const blocos = [
       ["", "No filtro", resumo.total],
       ["ABERTO", "Abertos", resumo.abertos],
+      ["AGUARDANDO", "Aguardando", resumo.aguardando],
       ["APROVADO", "Aprovados", resumo.aprovados],
       ["REPROVADO", "Reprovados", resumo.reprovados],
       ["APROVADO", "Valor aprovado", moeda(resumo.valorAprovado), true],
     ];
     document.getElementById("resumo").innerHTML = blocos.map((b, i) => {
-      const valor = i === 4 ? b[2] : String(b[2] ?? 0);
+      const valor = i === 5 ? b[2] : String(b[2] ?? 0);
       const miolo = `<span class="rotulo">${escapeHtml(b[1])}</span><span class="valor">${escapeHtml(valor)}</span>`;
-      if (i === 4) return `<div class="resumo">${miolo}</div>`;
+      if (i === 5) return `<div class="resumo">${miolo}</div>`;
       const ativo = filtroStatus === b[0] ? " ativo" : "";
       return `<button type="button" class="resumo${ativo}" data-status="${b[0]}">${miolo}</button>`;
     }).join("");
@@ -550,7 +553,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function aplicarTrava(data) {
-    const aberto = !data || data.status === "ABERTO";
+    const status = (data && data.status) || "ABERTO";
+    const aberto = status === "ABERTO";
+    const aguardando = status === "AGUARDANDO";
     const ligado = !!(data && data.idNf);
     document.querySelectorAll("#blocoDados input, #blocoDados textarea, #corpoItens input, #corpoItens select, #corpoItens button").forEach((el) => {
       if (el.id === "razaoForn" || el.id === "dataEntrega") {
@@ -558,24 +563,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         el.disabled = !aberto && el.id === "dataEntrega";
         return;
       }
+      if ((el.id === "dataAprov" || el.id === "motivo") && (aberto || aguardando)) {
+        el.disabled = false;
+        return;
+      }
       el.disabled = !aberto;
     });
-    ["btnVoltar", "btnExcluir", "btnReabrir", "btnReprovar", "btnAprovar", "btnSalvar", "btnEnviarAviso", "btnAdd", "btnAnexarPdf", "btnAnexarFoto"].forEach((id) => {
+    ["btnVoltar", "btnExcluir", "btnReabrir", "btnReprovar", "btnAprovar", "btnSalvar", "btnEnviarAprovacao", "btnAdd", "btnAnexarPdf", "btnAnexarFoto"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.disabled = false;
     });
     document.getElementById("btnAdd").hidden = !aberto;
     document.getElementById("btnSalvar").hidden = !aberto;
-    document.getElementById("btnEnviarAviso").hidden = !(aberto && data && data.id);
-    document.getElementById("btnAprovar").hidden = !aberto;
-    document.getElementById("btnReprovar").hidden = !aberto;
+    document.getElementById("btnEnviarAprovacao").hidden = !(aberto && data && data.id);
+    document.getElementById("btnAprovar").hidden = !aguardando;
+    document.getElementById("btnReprovar").hidden = !aguardando;
     document.getElementById("btnReabrir").hidden = aberto || ligado || !(data && data.id);
     document.getElementById("btnExcluir").hidden = !data || !data.id || data.status === "APROVADO" || ligado;
     document.getElementById("badgeStatus").innerHTML = data && data.status ? tag(data.status) : tag("ABERTO");
 
     const notas = [];
     if (data && data.criadoPor) notas.push(`Registrado por ${data.criadoPor}${data.criadoEm ? " em " + fmtDataHora(data.criadoEm) : ""}`);
-    if (data && data.aprovadoPor && data.status !== "ABERTO") {
+    if (data && data.aprovadoPor && (data.status === "APROVADO" || data.status === "REPROVADO")) {
       const verbo = data.status === "APROVADO" ? "Aprovado" : "Reprovado";
       notas.push(`${verbo} por ${data.aprovadoPor}${data.aprovadoEm ? " em " + fmtDataHora(data.aprovadoEm) : ""}`);
     }
@@ -999,12 +1008,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     abrir(tr.getAttribute("data-id"));
   });
   document.getElementById("btnAdd").addEventListener("click", () => adicionarItem({}));
-  document.getElementById("btnEnviarAviso").addEventListener("click", () => comOcupacao(async () => {
+  document.getElementById("btnEnviarAprovacao").addEventListener("click", () => comOcupacao(async () => {
     if (!ficha || !ficha.id || ficha.status !== "ABERTO") return;
-    if (!window.confirm("Enviar o aviso deste orçamento para os e-mails cadastrados?")) return;
-    const resp = await api("POST", "enviarAviso", { body: { id: ficha.id } });
-    if (resp.email && resp.email.enviado) aviso("Aviso enviado.", "ok");
-    else aviso((resp.email && resp.email.motivo) || "O aviso não saiu.", "atencao");
+    if (!window.confirm("Colocar este orçamento em aguardando aprovação? Os e-mails cadastrados nesse processo recebem o aviso.")) return;
+    const salvo = await salvarAtual();
+    preencher(salvo.data);
+    const resp = await api("POST", "enviarAprovacao", { body: { id: salvo.data.id } });
+    preencher(resp.data);
+    const email = resp.email;
+    if (email && email.enviado) aviso("Orçamento enviado para aprovação. Aviso enviado.", "ok");
+    else aviso("Orçamento enviado para aprovação. " + ((email && email.motivo) || "O aviso não saiu."), "atencao");
   }));
   document.getElementById("btnSalvar").addEventListener("click", () => comOcupacao(async () => {
     const resp = await salvarAtual();
@@ -1015,6 +1028,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("dataAprov").addEventListener("input", atualizarPrevisao);
   document.getElementById("dataAprov").addEventListener("change", atualizarPrevisao);
   document.getElementById("btnAprovar").addEventListener("click", () => comOcupacao(async () => {
+    if (!ficha || ficha.status !== "AGUARDANDO") return;
     const campoAprov = document.getElementById("dataAprov");
     const dataAprovacao = campoAprov.value || hoje();
     const dados = coletar();
@@ -1023,28 +1037,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (erro) throw new Error(erro);
     const dias = dados.prazoDias || String(Math.max(...dados.itens.map((item) => Number(item.prazoDias))));
     if (!window.confirm("Aprovar este orçamento? A previsão de entrega conta " + dias + " dias a partir de " + fmtData(dataAprovacao) + ".")) return;
-    campoAprov.value = dataAprovacao;
-    atualizarPrevisao();
-    const gravar = coletar();
-    gravar.avisarDiretor = false;
-    const salvo = await api("POST", "salvar", { body: gravar });
-    preencher(salvo.data);
     const decidido = await api("POST", "decidir", {
-      body: { id: salvo.data.id, status: "APROVADO", motivo: gravar.motivo, dataAprovacao: gravar.dataAprovacao },
+      body: { id: ficha.id, status: "APROVADO", motivo: dados.motivo, dataAprovacao },
     });
     preencher(decidido.data);
     aviso("Orçamento aprovado.", "ok");
   }));
   document.getElementById("btnReprovar").addEventListener("click", () => comOcupacao(async () => {
+    if (!ficha || ficha.status !== "AGUARDANDO") return;
     const dados = coletar();
     const erro = validar(dados, true);
     if (erro) throw new Error(erro);
     if (!window.confirm("Reprovar este orçamento?")) return;
-    dados.avisarDiretor = false;
-    const salvo = await api("POST", "salvar", { body: dados });
-    preencher(salvo.data);
     const decidido = await api("POST", "decidir", {
-      body: { id: salvo.data.id, status: "REPROVADO", motivo: dados.motivo },
+      body: { id: ficha.id, status: "REPROVADO", motivo: dados.motivo },
     });
     preencher(decidido.data);
     aviso("Orçamento reprovado.", "ok");

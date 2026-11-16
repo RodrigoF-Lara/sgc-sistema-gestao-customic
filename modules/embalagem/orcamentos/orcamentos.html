@@ -53,6 +53,7 @@
       font-size: 12px; font-weight: 700; white-space: nowrap;
     }
     .tag.aberto { background: #fff3cd; color: #856404; }
+    .tag.aguardando { background: #e3f2fd; color: #0d47a1; }
     .tag.aprovado { background: #d4edda; color: #155724; }
     .tag.reprovado { background: #f8d7da; color: #721c24; }
     .tag.urg-baixa { background: #eceff1; color: #455a64; }
@@ -148,7 +149,7 @@
   <div class="main-content">
     <div class="container orc">
       <h1><i class="fa-solid fa-file-signature"></i> Orçamentos</h1>
-      <p class="hint">Registre a cotação de compras: fornecedor, produtos, quantidade, urgência, valores, prazo de entrega e condição de pagamento. Depois marque se o orçamento foi aprovado. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
+      <p class="hint">Registre a cotação de compras: fornecedor, produtos, quantidade, urgência, valores, prazo de entrega e condição de pagamento. Salvar deixa o orçamento em aberto. Enviar para aprovação trava a ficha e dispara o aviso. Aprovar e reprovar só aparecem nessa etapa. O vínculo com a nota fiscal fica reservado para a próxima etapa.</p>
       <div id="aviso" class="aviso" hidden></div>
 
       <section id="painelLista">
@@ -203,7 +204,7 @@
               <button type="button" class="ghost" id="btnExcluir" hidden>Excluir</button>
               <button type="button" class="sec" id="btnReabrir" hidden>Reabrir</button>
               <button type="button" class="no" id="btnReprovar">Reprovar</button>
-              <button type="button" class="sec" id="btnEnviarAviso" hidden>Enviar aviso</button>
+              <button type="button" class="sec" id="btnEnviarAprovacao" hidden>Enviar para aprovação</button>
               <button type="button" class="ok" id="btnAprovar">Aprovar</button>
               <button type="button" id="btnSalvar">Salvar</button>
             </div>
