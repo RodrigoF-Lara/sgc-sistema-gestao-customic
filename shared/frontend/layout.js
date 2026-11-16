@@ -133,6 +133,7 @@ function inicializarSidebar() {
     'configuracoes': 'nav-configuracoes',
     'configinventario': 'nav-configuracoes',
     'confignotificacoes': 'nav-config-notificacoes',
+    'avisosemail': 'nav-avisos-email',
     'calendarioprodutivo': 'nav-configuracoes',
     'niveis': 'nav-niveis',
     'permissoes': 'nav-permissoes',

@@ -8,6 +8,7 @@ import { handleProjetos } from "../../lib/projetosApi.js";
 import { handleOrcamento } from "../../lib/orcamentoApi.js";
 import { handleRacional } from "../../lib/racionalApi.js";
 import { handleEngenharia } from "../../lib/engenhariaApi.js";
+import { handleAvisos } from "../../lib/avisosEmailApi.js";
 
 /**
  * API unificada de Configurações (+ cargos/permissões)
@@ -21,6 +22,7 @@ import { handleEngenharia } from "../../lib/engenhariaApi.js";
  * - /api/embalagem/orcamento reescreve para tipo=orcamento (não é função extra)
  * - /api/embalagem/racional reescreve para tipo=racional (não é função extra)
  * - /api/embalagem/engenharia reescreve para tipo=engenharia (não é função extra)
+ * - /api/shared/config?tipo=avisos
  *
  * Cargos e permissões vivem aqui (não em api/shared/niveis|permissoes.js)
  * para respeitar o limite de 12 Serverless Functions do Vercel Hobby.
@@ -62,9 +64,11 @@ export default async function handler(req, res) {
       return await handleRacional(req, res);
     } else if (tipo === "engenharia") {
       return await handleEngenharia(req, res);
+    } else if (tipo === "avisos") {
+      return await handleAvisos(req, res, pool);
     } else {
       return res.status(400).json({
-        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis, permissoes, pedidoCapa, capaDePara, mockups, projetos, orcamento, racional ou engenharia)"
+        error: "Parâmetro 'tipo' é obrigatório (inventario, notificacoes, calendarioProdutivo, niveis, permissoes, avisos, pedidoCapa, capaDePara, mockups, projetos, orcamento, racional ou engenharia)"
       });
     }
   } catch (error) {
