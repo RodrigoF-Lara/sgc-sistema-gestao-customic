@@ -292,7 +292,9 @@ document.addEventListener("DOMContentLoaded", async function () {
             usuario: localStorage.getItem("userName") || "WEB",
             dataHora: new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
             tipoMovimento: "ENTRADA",
-            ano: balanco ? balanco.ANO : ""
+            ano: balanco ? balanco.ANO : "",
+            layout: "inventario",
+            titulo: "INVENTÁRIO 26/27"
         };
     }
 

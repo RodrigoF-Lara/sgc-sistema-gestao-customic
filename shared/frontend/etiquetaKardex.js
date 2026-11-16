@@ -36,8 +36,19 @@
     garantirModal();
     let _pendingLabelData = null;
 
+    function ehInventario(dadosOuArray) {
+      const lista = Array.isArray(dadosOuArray) ? dadosOuArray : [dadosOuArray];
+      return lista.some((dados) => dados && dados.layout === 'inventario');
+    }
+
     function selecionarEImprimirEtiqueta(dadosOuArray) {
       _pendingLabelData = dadosOuArray;
+      const dica = document.querySelector('#btnEtiqueta100x150 small');
+      if (dica) {
+        dica.textContent = ehInventario(dadosOuArray)
+          ? 'Etiqueta 100×150 com o título INVENTÁRIO 26/27'
+          : 'Etiqueta completa com QR Code e código de barras';
+      }
       document.getElementById('modalEtiqueta').style.display = 'flex';
     }
 
@@ -48,7 +59,10 @@
 
     document.getElementById('btnEtiqueta100x150').addEventListener('click', () => {
       document.getElementById('modalEtiqueta').style.display = 'none';
-      if (_pendingLabelData) gerarEtiqueta100x150(_pendingLabelData);
+      if (_pendingLabelData) {
+        if (ehInventario(_pendingLabelData)) gerarEtiquetaInventario(_pendingLabelData);
+        else gerarEtiqueta100x150(_pendingLabelData);
+      }
       _pendingLabelData = null;
     });
 
@@ -607,9 +621,262 @@
       janelaEtiqueta.document.close();
       setTimeout(() => { janelaEtiqueta.print(); }, 500);
     }
+
+    function escEtq(valor) {
+      return String(valor ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function tamanhoCodigo(codigo) {
+      const n = String(codigo || "").length;
+      if (n <= 6) return "48pt";
+      if (n <= 8) return "36pt";
+      return "26pt";
+    }
+
+    function gerarEtiquetaInventario(dadosOuArray) {
+      const etiquetas = Array.isArray(dadosOuArray) ? dadosOuArray : [dadosOuArray];
+      if (etiquetas.length === 0) return;
+
+      const janelaEtiqueta = window.open("", "_blank", "width=800,height=600");
+      if (!janelaEtiqueta || typeof janelaEtiqueta.closed == "undefined" || janelaEtiqueta.closed) {
+        alert("A janela de impressão foi bloqueada pelo navegador. Por favor, habilite os pop-ups para este site e tente reimprimir a etiqueta a partir do histórico.");
+        return;
+      }
+
+      const etiquetasHtml = etiquetas.map((dados, indice) => {
+        const titulo = escEtq(dados.titulo || "INVENTÁRIO 26/27");
+        const idTxt = dados.idMovimento ? escEtq(dados.idMovimento) : "—";
+        const qr = dados.idMovimento
+          ? `<div id="qr-inv-${indice}" class="qr-area"></div>`
+          : "";
+        const armazem = dados.armazem ? String(dados.armazem).padStart(2, "0") : "-";
+        return `
+        <div class="etiqueta">
+          <div class="header">
+            <span class="id-badge">ID: ${idTxt}</span>
+            <h1>${titulo}</h1>
+          </div>
+          <div class="descricao-bloco">
+            <div class="descricao-label">DESCRIÇÃO DO PRODUTO:</div>
+            <div class="descricao-text">${escEtq(dados.descricao || "N/A")}</div>
+          </div>
+          <div class="miolo">
+            ${qr}
+            <div class="codigo-texto" style="font-size:${tamanhoCodigo(dados.codigo)}">${escEtq(dados.codigo)}</div>
+          </div>
+          <div class="info">
+            <div class="info-row">
+              <span>QUANTIDADE:</span>
+              <strong>${escEtq(dados.quantidade)}</strong>
+            </div>
+            <div class="info-row">
+              <span>ENDEREÇO:</span>
+              <strong>${escEtq(dados.endereco || "-")}</strong>
+            </div>
+            <div class="info-row">
+              <span>ARMAZÉM:</span>
+              <strong>${escEtq(armazem)}</strong>
+            </div>
+          </div>
+          <div class="footer">
+            <span>${escEtq(dados.dataHora || "")}</span>
+            <strong>${escEtq(dados.usuario || "")} | KARDEX ${escEtq(dados.ano || "")}</strong>
+          </div>
+        </div>`;
+      }).join("");
+
+      const htmlEtiqueta = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Etiqueta - ${escEtq(etiquetas[0].codigo)}</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
+  <style>
+    @media print {
+      @page { size: 100mm 150mm; margin: 0; }
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 0 !important;
+        background: white !important;
+        display: block !important;
+      }
+      .no-print { display: none !important; }
+      .etiqueta {
+        page-break-after: always;
+        margin: 0 !important;
+        border: none !important;
+      }
+      .etiqueta:last-child { page-break-after: auto; }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #ccc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5mm;
+      gap: 5mm;
+    }
+    .etiqueta {
+      width: 100mm;
+      height: 150mm;
+      background: white;
+      border: 1px dashed #999;
+      padding: 4mm 4.5mm 3.5mm;
+      display: flex;
+      flex-direction: column;
+      color: #111;
+    }
+    .header {
+      min-height: 9mm;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      column-gap: 2mm;
+      border-bottom: 2px solid #111;
+      padding-bottom: 1.5mm;
+    }
+    .id-badge {
+      background: #111;
+      color: #fff;
+      border-radius: 8px;
+      padding: 1.1mm 2.4mm;
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .header h1 {
+      text-align: center;
+      font-size: 12.5pt;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      color: #111;
+      line-height: 1.05;
+    }
+    .descricao-bloco {
+      text-align: center;
+      padding: 2.5mm 1mm 1mm;
+    }
+    .descricao-label {
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #222;
+      margin-bottom: 1mm;
+    }
+    .descricao-text {
+      font-size: 12pt;
+      font-weight: 800;
+      line-height: 1.15;
+      max-height: 2.5em;
+      overflow: hidden;
+    }
+    .miolo {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: 1mm 0 2mm;
+    }
+    .qr-area {
+      width: 34mm;
+      height: 34mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5mm;
+    }
+    .qr-area img, .qr-area canvas {
+      width: 34mm !important;
+      height: 34mm !important;
+    }
+    .codigo-texto {
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 0.9;
+      text-align: center;
+      max-width: 100%;
+      word-break: break-all;
+    }
+    .info { margin-top: auto; }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 3mm;
+      font-size: 10.5pt;
+      padding: 1.1mm 0;
+      border-bottom: 0.6pt solid #d0d0d0;
+    }
+    .info-row span { font-weight: 800; }
+    .info-row strong { font-weight: 700; text-align: right; }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2mm;
+      border-top: 2px solid #111;
+      margin-top: 1.5mm;
+      padding-top: 1.6mm;
+      font-size: 7.5pt;
+      color: #333;
+    }
+    .footer span { font-style: italic; }
+    .footer strong { text-align: right; }
+    .btn-imprimir {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 10px 20px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir Etiqueta</button>
+  ${etiquetasHtml}
+  <script>
+    const etiquetasData = ${JSON.stringify(etiquetas).replace(/</g, "\\u003c")};
+    window.onload = function() {
+      etiquetasData.forEach(function(dados, indice) {
+        const alvo = document.getElementById('qr-inv-' + indice);
+        if (dados.idMovimento && alvo) {
+          new QRCode(alvo, {
+            text: 'ID: ' + dados.idMovimento + ' | COD: ' + dados.codigo,
+            width: 220,
+            height: 220,
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
+      });
+      window.focus();
+    };
+  <\/script>
+</body>
+</html>`;
+
+      janelaEtiqueta.document.write(htmlEtiqueta);
+      janelaEtiqueta.document.close();
+      setTimeout(() => { janelaEtiqueta.print(); }, 500);
+    }
+
     window.selecionarEImprimirEtiqueta = selecionarEImprimirEtiqueta;
     window.gerarEtiqueta100x150 = gerarEtiqueta100x150;
     window.gerarEtiqueta40x30 = gerarEtiqueta40x30;
+    window.gerarEtiquetaInventario = gerarEtiquetaInventario;
     window.__sgcEtiquetaPronta = true;
   }
 
