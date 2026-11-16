@@ -263,12 +263,50 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <td><input data-campo="quantidade" value="${esc(item.quantidade === "" ? "" : fmt(item.quantidade))}" style="width: 110px;" /></td>
                 <td>${item.saldoRef === null ? "—" : fmt(item.saldoRef)}</td>
                 <td>${dif}</td>
-                <td><button type="button" data-acao="excluir" class="btn-secundario">Excluir</button></td>
+                <td style="white-space: nowrap;">
+                    <button type="button" data-acao="etiqueta" class="btn-reimprimir" title="Imprimir etiqueta">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                    <button type="button" data-acao="excluir" class="btn-secundario">Excluir</button>
+                </td>
             </tr>`;
         }).join("");
         gradeBody.innerHTML = html || `<tr><td colspan="9">Nenhuma linha na contagem.</td></tr>`;
         observarFotos();
         atualizarResumo();
+    }
+
+    function montarEtiqueta(item) {
+        if (!item) return null;
+        const qtd = numero(item.quantidade);
+        if (!item.codigo || qtd === null || qtd <= 0) return null;
+        const quantidade = Number.isInteger(qtd)
+            ? String(qtd)
+            : qtd.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+        return {
+            codigo: item.codigo,
+            descricao: item.descricao || "",
+            quantidade,
+            endereco: item.endereco || "",
+            armazem: item.armazem || "",
+            usuario: localStorage.getItem("userName") || "WEB",
+            dataHora: new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+            tipoMovimento: "ENTRADA",
+            ano: balanco ? balanco.ANO : ""
+        };
+    }
+
+    function imprimirEtiquetas(lista) {
+        const dados = (lista || []).map(montarEtiqueta).filter(Boolean);
+        if (!dados.length) {
+            mostrar("Informe o código e uma quantidade maior que zero para imprimir a etiqueta.", "error");
+            return;
+        }
+        if (typeof window.selecionarEImprimirEtiqueta !== "function") {
+            mostrar("A impressão de etiqueta não carregou. Atualize a página.", "error");
+            return;
+        }
+        window.selecionarEImprimirEtiqueta(dados.length === 1 ? dados[0] : dados);
     }
 
     function atualizarResumo() {
@@ -658,6 +696,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
     document.getElementById("modeloBtn").addEventListener("click", modelo);
     document.getElementById("exportarBtn").addEventListener("click", exportar);
+    document.getElementById("etiquetasBtn").addEventListener("click", () => {
+        lerGrade();
+        const termo = filtro.value.trim().toUpperCase();
+        const lista = itens.filter((item) => {
+            if (!termo) return true;
+            const texto = [item.codigo, item.descricao, item.endereco, item.armazem].join(" ").toUpperCase();
+            return texto.includes(termo);
+        });
+        imprimirEtiquetas(lista);
+    });
     document.getElementById("escolherPlanilhaBtn").addEventListener("click", () => arquivo.click());
     arquivo.addEventListener("change", () => {
         const file = arquivo.files && arquivo.files[0];
@@ -678,6 +726,13 @@ document.addEventListener("DOMContentLoaded", async function () {
             const idx = Number(fotoBtn.closest("tr").dataset.idx);
             const descricao = itens[idx] ? itens[idx].descricao : "";
             carregarThumb(fotoBtn).then(() => abrirZoom(codigo, descricao));
+            return;
+        }
+        const etiquetaBtn = e.target.closest("[data-acao='etiqueta']");
+        if (etiquetaBtn) {
+            lerGrade();
+            const idxEtq = Number(etiquetaBtn.closest("tr").dataset.idx);
+            imprimirEtiquetas([itens[idxEtq]]);
             return;
         }
         const btn = e.target.closest("[data-acao='excluir']");
