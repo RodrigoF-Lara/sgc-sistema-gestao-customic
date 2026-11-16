@@ -206,16 +206,29 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function linhaVazia() {
-        return { codigo: "", descricao: "", armazem: "", endereco: "", quantidade: "", saldoRef: null, idLote: null };
+        return { codigo: "", descricao: "", armazem: "", endereco: "", quantidade: "", saldoRef: null, idLote: null, marcar: false };
+    }
+
+    function chaveLinha(item) {
+        return [item.codigo, item.armazem, item.endereco]
+            .map((parte) => String(parte || "").trim().toUpperCase())
+            .join("\u0001");
     }
 
     function aplicarBalanco(novo) {
+        const mesmo = balanco && novo && Number(balanco.ID) === Number(novo.ID);
+        const marcas = new Map();
+        if (mesmo) {
+            itens.forEach((item) => {
+                if (item.marcar) marcas.set(chaveLinha(item), true);
+            });
+        }
         balanco = novo;
         itens = (novo.itens || []).map((item) => {
             const codigo = String(item.CODIGO || "").trim().toUpperCase();
             const temFoto = Number(item.TEM_FOTO) === 1;
             if (codigo) fotosConhecidas.set(codigo, temFoto);
-            return {
+            const linha = {
                 codigo,
                 descricao: item.DESCRICAO || "",
                 armazem: item.ARMAZEM || "",
@@ -223,8 +236,11 @@ document.addEventListener("DOMContentLoaded", async function () {
                 quantidade: item.QUANTIDADE === null || item.QUANTIDADE === undefined ? "" : fmt(item.QUANTIDADE),
                 saldoRef: item.SALDO_REF === null || item.SALDO_REF === undefined ? null : Number(item.SALDO_REF),
                 idLote: item.ID_LOTE ? Number(item.ID_LOTE) : null,
-                temFoto
+                temFoto,
+                marcar: false
             };
+            linha.marcar = marcas.get(chaveLinha(linha)) === true;
+            return linha;
         });
         sujo = false;
         painelContagem.style.display = "block";
@@ -238,24 +254,55 @@ document.addEventListener("DOMContentLoaded", async function () {
         gradeBody.querySelectorAll("tr").forEach((tr) => {
             const idx = Number(tr.dataset.idx);
             if (!itens[idx]) return;
-            const campo = (nome) => tr.querySelector(`[data-campo="${nome}"]`).value;
-            const antes = JSON.stringify(itens[idx]);
-            itens[idx].codigo = campo("codigo").trim().toUpperCase();
-            itens[idx].armazem = campo("armazem").trim();
-            itens[idx].endereco = campo("endereco").trim();
-            itens[idx].quantidade = campo("quantidade").trim();
-            if (JSON.stringify(itens[idx]) !== antes) sujo = true;
+            const campo = (nome) => tr.querySelector(`[data-campo="${nome}"]`);
+            if (!campo("codigo")) return;
+            const antes = [itens[idx].codigo, itens[idx].armazem, itens[idx].endereco, itens[idx].quantidade].join("\u0001");
+            itens[idx].codigo = campo("codigo").value.trim().toUpperCase();
+            itens[idx].armazem = campo("armazem").value.trim();
+            itens[idx].endereco = campo("endereco").value.trim();
+            itens[idx].quantidade = campo("quantidade").value.trim();
+            const marca = campo("marcar");
+            itens[idx].marcar = !!(marca && marca.checked && numero(itens[idx].quantidade) > 0);
+            const depois = [itens[idx].codigo, itens[idx].armazem, itens[idx].endereco, itens[idx].quantidade].join("\u0001");
+            if (antes !== depois) sujo = true;
         });
     }
 
-    function render() {
+    function linhasVisiveis() {
         const termo = filtro.value.trim().toUpperCase();
-        const html = itens.map((item, idx) => {
+        const lista = [];
+        itens.forEach((item, idx) => {
             const texto = [item.codigo, item.descricao, item.endereco, item.armazem].join(" ").toUpperCase();
-            if (termo && !texto.includes(termo)) return "";
+            if (termo && !texto.includes(termo)) return;
+            lista.push({ item, idx });
+        });
+        return lista;
+    }
+
+    function atualizarBotaoEtiquetas() {
+        const botao = document.getElementById("etiquetasBtn");
+        if (!botao) return;
+        const n = itens.filter((item) => item.marcar && numero(item.quantidade) > 0).length;
+        botao.innerHTML = `<i class="fa-solid fa-print"></i> Etiquetas${n ? " (" + n.toLocaleString("pt-BR") + ")" : ""}`;
+    }
+
+    function sincronizarMarcarTodas() {
+        const caixa = document.getElementById("marcarTodas");
+        if (!caixa) return;
+        const marcaveis = linhasVisiveis().filter(({ item }) => numero(item.quantidade) > 0);
+        const marcadas = marcaveis.filter(({ item }) => item.marcar).length;
+        caixa.checked = marcaveis.length > 0 && marcadas === marcaveis.length;
+        caixa.indeterminate = marcadas > 0 && marcadas < marcaveis.length;
+        caixa.disabled = marcaveis.length === 0;
+    }
+
+    function render() {
+        const html = linhasVisiveis().map(({ item, idx }) => {
             const qtd = numero(item.quantidade);
+            const podeMarcar = qtd !== null && qtd > 0;
             const dif = item.saldoRef === null || qtd === null ? "" : fmt(qtd - item.saldoRef);
             return `<tr data-idx="${idx}">
+                <td class="marcar"><input type="checkbox" data-campo="marcar" ${item.marcar && podeMarcar ? "checked" : ""} ${podeMarcar ? "" : "disabled"} aria-label="Marcar etiqueta desta linha" /></td>
                 ${htmlFoto(item.codigo)}
                 <td><input data-campo="codigo" value="${esc(item.codigo)}" style="width: 110px;" /></td>
                 <td>${esc(item.descricao)}</td>
@@ -265,7 +312,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <td>${item.saldoRef === null ? "—" : fmt(item.saldoRef)}</td>
                 <td>${dif}</td>
                 <td style="white-space: nowrap;">
-                    <button type="button" data-acao="etiqueta" class="btn-reimprimir" title="${item.idLote ? "Imprimir etiqueta " + item.idLote : "Salve a contagem para gerar o ID"}">
+                    <button type="button" data-acao="etiqueta" class="btn-reimprimir" title="${item.idLote ? "Imprimir só esta etiqueta " + item.idLote : "Salve a contagem para gerar o ID"}">
                         <i class="fa-solid fa-print"></i>
                     </button>
                     ${item.idLote ? `<span title="ID do lote">#${esc(item.idLote)}</span>` : ""}
@@ -273,7 +320,9 @@ document.addEventListener("DOMContentLoaded", async function () {
                 </td>
             </tr>`;
         }).join("");
-        gradeBody.innerHTML = html || `<tr><td colspan="9">Nenhuma linha na contagem.</td></tr>`;
+        gradeBody.innerHTML = html || `<tr><td colspan="10">Nenhuma linha na contagem.</td></tr>`;
+        sincronizarMarcarTodas();
+        atualizarBotaoEtiquetas();
         observarFotos();
         atualizarResumo();
     }
@@ -302,11 +351,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function imprimirEtiquetas(lista) {
+        const origem = lista || [];
+        if (!origem.length) {
+            mostrar("Marque as linhas da tabela. O quadro do cabeçalho marca as linhas que estão aparecendo.", "error");
+            return;
+        }
         if (sujo) {
             mostrar("Salve a contagem antes de imprimir. O ID da etiqueta nasce ao salvar.", "error");
             return;
         }
-        const pedidas = (lista || []).filter((item) => item && item.codigo && numero(item.quantidade) > 0);
+        const pedidas = origem.filter((item) => item && item.codigo && numero(item.quantidade) > 0);
         const semId = pedidas.filter((item) => !item.idLote);
         const dados = pedidas.filter((item) => item.idLote).map(montarEtiqueta).filter(Boolean);
         if (!dados.length) {
@@ -642,9 +696,11 @@ document.addEventListener("DOMContentLoaded", async function () {
                     ? porNome.QUANTIDADE
                     : (porNome.QNT !== undefined ? porNome.QNT : ""),
                 saldoRef: null,
-                idLote: null
+                idLote: null,
+                marcar: false
             };
         }).filter((item) => item.codigo);
+        novo.forEach((item) => { item.marcar = numero(item.quantidade) > 0; });
         if (!novo.length) {
             mostrar("Não achei a coluna CODIGO.", "error");
             return;
@@ -656,7 +712,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         consultarFotos(novo.map((item) => item.codigo))
             .then(() => render())
             .catch((err) => mostrar(err.message, "error"));
-        mostrar(novo.length.toLocaleString("pt-BR") + " linhas importadas. Salve para gravar a contagem.", "info");
+        const marcadas = novo.filter((item) => item.marcar).length;
+        mostrar(novo.length.toLocaleString("pt-BR") + " linhas importadas. " + marcadas.toLocaleString("pt-BR") + " estão marcadas para etiqueta. Salve a contagem e use Etiquetas para imprimir o lote.", "info");
     }
 
     function exportar() {
@@ -726,13 +783,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.getElementById("exportarBtn").addEventListener("click", exportar);
     document.getElementById("etiquetasBtn").addEventListener("click", () => {
         lerGrade();
-        const termo = filtro.value.trim().toUpperCase();
-        const lista = itens.filter((item) => {
-            if (!termo) return true;
-            const texto = [item.codigo, item.descricao, item.endereco, item.armazem].join(" ").toUpperCase();
-            return texto.includes(termo);
+        imprimirEtiquetas(itens.filter((item) => item.marcar));
+    });
+    document.getElementById("marcarTodas").addEventListener("change", () => {
+        const marcar = document.getElementById("marcarTodas").checked;
+        lerGrade();
+        linhasVisiveis().forEach(({ item }) => {
+            if (numero(item.quantidade) > 0) item.marcar = marcar;
         });
-        imprimirEtiquetas(lista);
+        render();
     });
     document.getElementById("escolherPlanilhaBtn").addEventListener("click", () => arquivo.click());
     arquivo.addEventListener("change", () => {
@@ -773,6 +832,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
     gradeBody.addEventListener("change", (e) => {
         lerGrade();
+        if (e.target && e.target.matches('[data-campo="quantidade"]')) {
+            const tr = e.target.closest("tr");
+            const caixa = tr && tr.querySelector('[data-campo="marcar"]');
+            const idx = tr ? Number(tr.dataset.idx) : -1;
+            const pode = idx >= 0 && numero(itens[idx] && itens[idx].quantidade) > 0;
+            if (caixa) {
+                caixa.disabled = !pode;
+                if (!pode) caixa.checked = false;
+            }
+        }
+        if (e.target && (e.target.matches('[data-campo="marcar"]') || e.target.matches('[data-campo="quantidade"]'))) {
+            sincronizarMarcarTodas();
+            atualizarBotaoEtiquetas();
+        }
         atualizarResumo();
         const tr = e.target.closest("tr");
         if (tr && e.target.matches('[data-campo="codigo"]')) {
