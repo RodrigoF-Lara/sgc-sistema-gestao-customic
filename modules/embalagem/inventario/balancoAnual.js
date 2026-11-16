@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function linhaVazia() {
-        return { codigo: "", descricao: "", armazem: "", endereco: "", quantidade: "", saldoRef: null };
+        return { codigo: "", descricao: "", armazem: "", endereco: "", quantidade: "", saldoRef: null, idLote: null };
     }
 
     function aplicarBalanco(novo) {
@@ -222,6 +222,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 endereco: item.ENDERECO || "",
                 quantidade: item.QUANTIDADE === null || item.QUANTIDADE === undefined ? "" : fmt(item.QUANTIDADE),
                 saldoRef: item.SALDO_REF === null || item.SALDO_REF === undefined ? null : Number(item.SALDO_REF),
+                idLote: item.ID_LOTE ? Number(item.ID_LOTE) : null,
                 temFoto
             };
         });
@@ -264,9 +265,10 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <td>${item.saldoRef === null ? "—" : fmt(item.saldoRef)}</td>
                 <td>${dif}</td>
                 <td style="white-space: nowrap;">
-                    <button type="button" data-acao="etiqueta" class="btn-reimprimir" title="Imprimir etiqueta">
+                    <button type="button" data-acao="etiqueta" class="btn-reimprimir" title="${item.idLote ? "Imprimir etiqueta " + item.idLote : "Salve a contagem para gerar o ID"}">
                         <i class="fa-solid fa-print"></i>
                     </button>
+                    ${item.idLote ? `<span title="ID do lote">#${esc(item.idLote)}</span>` : ""}
                     <button type="button" data-acao="excluir" class="btn-secundario">Excluir</button>
                 </td>
             </tr>`;
@@ -291,6 +293,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             armazem: item.armazem || "",
             usuario: localStorage.getItem("userName") || "WEB",
             dataHora: new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+            idMovimento: item.idLote,
             tipoMovimento: "ENTRADA",
             ano: balanco ? balanco.ANO : "",
             layout: "inventario",
@@ -299,10 +302,21 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function imprimirEtiquetas(lista) {
-        const dados = (lista || []).map(montarEtiqueta).filter(Boolean);
-        if (!dados.length) {
-            mostrar("Informe o código e uma quantidade maior que zero para imprimir a etiqueta.", "error");
+        if (sujo) {
+            mostrar("Salve a contagem antes de imprimir. O ID da etiqueta nasce ao salvar.", "error");
             return;
+        }
+        const pedidas = (lista || []).filter((item) => item && item.codigo && numero(item.quantidade) > 0);
+        const semId = pedidas.filter((item) => !item.idLote);
+        const dados = pedidas.filter((item) => item.idLote).map(montarEtiqueta).filter(Boolean);
+        if (!dados.length) {
+            mostrar(semId.length
+                ? "Salve a contagem para gerar o ID. Código fora do cadastro ou quantidade zero não gera etiqueta."
+                : "Informe o código e uma quantidade maior que zero para imprimir a etiqueta.", "error");
+            return;
+        }
+        if (semId.length) {
+            mostrar(semId.length.toLocaleString("pt-BR") + " linhas ficaram sem ID e não entram na impressão.", "info");
         }
         if (typeof window.selecionarEImprimirEtiqueta !== "function") {
             mostrar("A impressão de etiqueta não carregou. Atualize a página.", "error");
@@ -316,7 +330,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         const total = positivas.reduce((s, item) => s + numero(item.quantidade), 0);
         resumo.innerHTML = `<p>Ano do saldo novo: <strong>${esc(balanco ? balanco.ANO : "")}</strong></p>
             <p>${itens.length.toLocaleString("pt-BR")} linhas, ${positivas.length.toLocaleString("pt-BR")} com quantidade, total ${fmt(total)}.</p>
-            <p>${sujo ? "Há alteração ainda não salva." : "Contagem salva. O estoque ainda não mudou."}</p>
+            <p>${sujo
+                ? "Há alteração ainda não salva. Salve para gerar ou atualizar o ID da etiqueta."
+                : "Contagem salva. O saldo de " + esc(anoVivo) + " não mudou." + (positivas.length ? " O lote de " + esc(balanco ? balanco.ANO : "") + " já tem ID." : "")}</p>
             <p>${podeSubir ? "Seu cargo pode virar o ano." : "A virada do ano fica só com o administrador."}</p>`;
     }
 
@@ -327,7 +343,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 codigo: item.codigo,
                 armazem: item.armazem,
                 endereco: item.endereco,
-                quantidade: item.quantidade
+                quantidade: item.quantidade,
+                idLote: item.idLote || null
             }));
     }
 
@@ -343,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                <ul>${fora.slice(0, 30).map((f) => `<li>${esc(f.codigo)} · arm ${esc(f.armazem || "—")} · ${esc(f.endereco || "—")} · saldo ${fmt(f.saldo)}</li>`).join("")}</ul>`
             : "<p>Todo endereço com saldo do ano vivo está na contagem.</p>";
         const extra = data.lotes !== undefined
-            ? `<p>A simulação lançaria <strong>${Number(data.lotes).toLocaleString("pt-BR")}</strong> lotes, total ${fmt(data.totalContado)}. Nada foi gravado no estoque.</p>`
+            ? `<p>A virada publica <strong>${Number(data.lotes).toLocaleString("pt-BR")}</strong> lotes no ano novo, total ${fmt(data.totalContado)}. O saldo do ano vivo só muda nessa hora.</p>`
             : "";
         analise.innerHTML = `<p><strong>${esc(titulo)}</strong></p>${extra}${errosHtml}${foraHtml}`;
     }
@@ -381,7 +398,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const previa = !!data.previa;
         const titulo = previa ? "Prévia — ainda não gravada" : "Gravado na virada";
         const quando = previa
-            ? "Estes números são calculados agora. O estoque não mudou e a virada ainda não foi gravada."
+            ? "Estes números são calculados agora. O saldo do ano vivo não mudou e a virada ainda não foi gravada."
             : "Diferença gravada em " + fmtData(data.dtSubida) + " por " + (data.usuarioSubida || "—") + ".";
         resumoComparacao.innerHTML = `<p><strong>${esc(titulo)}</strong>. ${esc(quando)}</p>
             <p>Estoque de <strong>${esc(data.anoVivo ?? "—")}</strong> comparado com a contagem de <strong>${esc(data.anoBalanco ?? "—")}</strong>.
@@ -416,7 +433,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             "Diferença de valor: " + fmtMoeda(t.vlDiferenca),
             Number(t.semCusto) ? Number(t.semCusto).toLocaleString("pt-BR") + " códigos sem custo de nota ficam com valor zero." : "",
             "",
-            "A prévia ainda não está gravada. O número definitivo é recalculado na hora da virada."
+            "A prévia ainda não está gravada. A virada usa os lotes já reservados e liga o ano."
         ].filter((linha) => linha !== "").join("\n");
     }
 
@@ -536,7 +553,14 @@ document.addEventListener("DOMContentLoaded", async function () {
             itens: payloadItens()
         });
         aplicarBalanco(data.balanco);
-        mostrar("Contagem salva. O estoque não foi alterado.", "success");
+        const reservados = (data.balanco.itens || []).filter((item) => item.ID_LOTE).length;
+        const semLote = (data.balanco.itens || []).filter((item) => Number(item.QUANTIDADE) > 0 && !item.ID_LOTE).length;
+        const avisoSem = semLote ? " " + semLote.toLocaleString("pt-BR") + " linhas com quantidade ficaram sem ID." : "";
+        mostrar(
+            "Contagem salva. " + reservados.toLocaleString("pt-BR") + " lotes de " + data.balanco.ANO +
+            " já têm ID. O saldo de " + anoVivo + " não mudou." + avisoSem,
+            semLote ? "info" : "success"
+        );
     }
 
     async function revisar(acao) {
@@ -546,7 +570,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             const data = await api("POST", { acao, id: balanco.ID, usuario: usuario() });
             mostrarAnalise(data, acao === "simular" ? "Simulação" : "Revisão");
             if ((data.erros || []).length) mostrar("A contagem ainda tem pendência.", "error");
-            else mostrar(acao === "simular" ? "Simulação concluída. Nada foi gravado no estoque." : "Revisão concluída.", "success");
+            else mostrar(acao === "simular" ? "Simulação concluída. O saldo do ano vivo não mudou." : "Revisão concluída.", "success");
         } catch (err) {
             mostrar(err.message, "error");
         }
@@ -559,11 +583,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         subirBtn.disabled = true;
         try {
             await salvar();
-            mostrar("Montando o comparativo antes da virada. O estoque ainda não muda.", "info");
+            mostrar("Montando o comparativo antes da virada. O saldo do ano vivo ainda não muda.", "info");
             const comp = await api("POST", { acao: "comparar", id: balanco.ID, usuario: usuario() });
             mostrarComparacao(comp);
             if (!window.confirm(textoVirada(comp))) {
-                mostrar("Virada cancelada. O estoque não mudou. O comparativo acima é só uma prévia.", "info");
+                mostrar("Virada cancelada. O saldo do ano vivo não mudou. O comparativo acima é só uma prévia.", "info");
                 return;
             }
             mostrar("Lançando o saldo...", "info");
@@ -579,7 +603,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 );
                 if (!segue) {
                     mostrarAnalise(err.data, "Confirmação necessária");
-                    mostrar("Subida cancelada. O estoque não mudou.", "info");
+                    mostrar("Subida cancelada. O saldo do ano vivo não mudou.", "info");
                     return;
                 }
                 data = await api("POST", { acao: "subir", id: balanco.ID, usuario: usuario(), confirmarFora: true });
@@ -617,7 +641,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 quantidade: porNome.QUANTIDADE !== undefined && porNome.QUANTIDADE !== ""
                     ? porNome.QUANTIDADE
                     : (porNome.QNT !== undefined ? porNome.QNT : ""),
-                saldoRef: null
+                saldoRef: null,
+                idLote: null
             };
         }).filter((item) => item.codigo);
         if (!novo.length) {
@@ -642,7 +667,8 @@ document.addEventListener("DOMContentLoaded", async function () {
             ARMAZEM: item.armazem,
             ENDERECO: item.endereco,
             QUANTIDADE: numero(item.quantidade),
-            SALDO_ATUAL: item.saldoRef
+            SALDO_ATUAL: item.saldoRef,
+            ID_LOTE: item.idLote || ""
         }));
         const livro = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(livro, XLSX.utils.json_to_sheet(dados), "Contagem");
