@@ -73,6 +73,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/"/g, "&quot;");
   }
 
+  function mensagemEmail(base, email) {
+    if (!email) return base;
+    if (email.enviado) return base + " Aviso enviado ao diretor.";
+    return base + " " + (email.motivo || "O aviso ao diretor não saiu.");
+  }
+
   function aviso(msg, tipo) {
     if (!msg) {
       avisoEl.hidden = true;
@@ -1377,7 +1383,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       preencher(data.data);
       const numero = data.orcamento && data.orcamento.numero ? data.orcamento.numero : "";
-      aviso(data.orcamento && data.orcamento.jaEnviado ? `Já estava no orçamento ${numero}.` : `Enviado. Orçamento ${numero}.`, "ok");
+      const base = data.orcamento && data.orcamento.jaEnviado
+        ? `Já estava no orçamento ${numero}.`
+        : `Enviado. Orçamento ${numero}.`;
+      const email = data.orcamento && data.orcamento.jaEnviado ? null : data.email;
+      aviso(mensagemEmail(base, email), email && email.enviado === false ? "atencao" : "ok");
     } catch (err) {
       aviso(err.message);
     } finally {

@@ -61,6 +61,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/"/g, "&quot;");
   }
 
+  function mensagemEmail(base, email) {
+    if (!email) return base;
+    if (email.enviado) return base + " Aviso enviado ao diretor.";
+    return base + " " + (email.motivo || "O aviso ao diretor não saiu.");
+  }
+
   function aviso(msg, tipo) {
     if (!msg) {
       avisoEl.hidden = true;
@@ -774,10 +780,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     await comOcupacao(async () => {
       let id = ficha && ficha.id;
+      let email;
       if (!id) {
         const salvo = await salvarAtual();
-        preencher(salvo);
-        id = salvo.id;
+        preencher(salvo.data);
+        id = salvo.data.id;
+        email = salvo.email;
         ocuparBotoes();
       }
       for (const file of lista) {
@@ -789,7 +797,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderAnexos();
         ocuparBotoes();
       }
-      aviso(lista.length === 1 ? "Anexo enviado." : "Anexos enviados.", "ok");
+      const base = lista.length === 1 ? "Anexo enviado." : "Anexos enviados.";
+      aviso(mensagemEmail(base, email), email && email.enviado === false ? "atencao" : "ok");
     });
   }
 
@@ -882,8 +891,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const dados = coletar();
     const erro = validar(dados, false);
     if (erro) throw new Error(erro);
-    const resp = await api("POST", "salvar", { body: dados });
-    return resp.data;
+    return api("POST", "salvar", { body: dados });
   }
 
   function ocuparBotoes() {
@@ -991,9 +999,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("btnAdd").addEventListener("click", () => adicionarItem({}));
   document.getElementById("btnSalvar").addEventListener("click", () => comOcupacao(async () => {
-    const data = await salvarAtual();
-    preencher(data);
-    aviso("Orçamento salvo.", "ok");
+    const resp = await salvarAtual();
+    preencher(resp.data);
+    aviso(mensagemEmail("Orçamento salvo.", resp.email), resp.email && resp.email.enviado === false ? "atencao" : "ok");
   }));
   document.getElementById("prazoDias").addEventListener("input", atualizarPrevisao);
   document.getElementById("dataAprov").addEventListener("input", atualizarPrevisao);
@@ -1010,6 +1018,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     campoAprov.value = dataAprovacao;
     atualizarPrevisao();
     const gravar = coletar();
+    gravar.avisarDiretor = false;
     const salvo = await api("POST", "salvar", { body: gravar });
     preencher(salvo.data);
     const decidido = await api("POST", "decidir", {
@@ -1023,6 +1032,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const erro = validar(dados, true);
     if (erro) throw new Error(erro);
     if (!window.confirm("Reprovar este orçamento?")) return;
+    dados.avisarDiretor = false;
     const salvo = await api("POST", "salvar", { body: dados });
     preencher(salvo.data);
     const decidido = await api("POST", "decidir", {
