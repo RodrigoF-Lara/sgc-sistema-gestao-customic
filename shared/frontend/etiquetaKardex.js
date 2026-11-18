@@ -109,7 +109,7 @@
           
           <div class="qr-grande-container">
               <div id="qr-${dados.idMovimento}" class="qr-grande"></div>
-              <div class="codigo-texto">${dados.codigo}</div>
+              <div class="codigo-texto" style="font-size:${tamanhoCodigo(dados.codigo, false)}">${dados.codigo}</div>
           </div>
           
           <div class="info-principal">
@@ -363,11 +363,15 @@
           }
 
           .codigo-texto {
-              font-size: 18pt;
-              font-weight: bold;
-              letter-spacing: 2px;
+              font-size: 56pt;
+              font-weight: 900;
+              letter-spacing: -0.03em;
+              line-height: 0.9;
               color: #111;
-              margin-top: 2mm;
+              margin-top: 1mm;
+              text-align: center;
+              white-space: nowrap;
+              max-width: 100%;
           }
           
           .btn-imprimir {
@@ -628,10 +632,17 @@
       }[c]));
     }
 
-    function tamanhoCodigo(codigo) {
+    function tamanhoCodigo(codigo, inventario) {
       const n = String(codigo || "").length;
-      if (n <= 6) return "48pt";
-      if (n <= 8) return "36pt";
+      if (inventario) {
+        if (n <= 6) return "72pt";
+        if (n <= 8) return "56pt";
+        if (n <= 10) return "42pt";
+        return "32pt";
+      }
+      if (n <= 6) return "56pt";
+      if (n <= 8) return "44pt";
+      if (n <= 10) return "34pt";
       return "26pt";
     }
 
@@ -664,7 +675,7 @@
           </div>
           <div class="miolo">
             ${qr}
-            <div class="codigo-texto" style="font-size:${tamanhoCodigo(dados.codigo)}">${escEtq(dados.codigo)}</div>
+            <div class="codigo-texto" style="font-size:${tamanhoCodigo(dados.codigo, true)}">${escEtq(dados.codigo)}</div>
           </div>
           <div class="info">
             <div class="info-row">
@@ -799,11 +810,11 @@
     }
     .codigo-texto {
       font-weight: 900;
-      letter-spacing: -1px;
-      line-height: 0.9;
+      letter-spacing: -0.04em;
+      line-height: 0.85;
       text-align: center;
-      max-width: 100%;
-      word-break: break-all;
+      width: 100%;
+      white-space: nowrap;
     }
     .info { margin-top: auto; }
     .info-row {
