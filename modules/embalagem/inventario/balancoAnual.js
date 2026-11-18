@@ -210,25 +210,47 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     function chaveLinha(item) {
-        return [item.codigo, item.armazem, item.endereco]
+        const qtd = numero(item.quantidade);
+        return [item.codigo, item.armazem, item.endereco, qtd === null ? "" : String(qtd)]
             .map((parte) => String(parte || "").trim().toUpperCase())
             .join("\u0001");
     }
 
+    function restaurarMarcas(anteriores, novas) {
+        const porLote = new Map();
+        anteriores.forEach((item) => {
+            if (item.idLote) porLote.set(Number(item.idLote), item.marcar === true);
+        });
+        const usadas = new Set();
+        novas.forEach((linha) => {
+            if (linha.idLote && porLote.has(linha.idLote)) {
+                linha.marcar = porLote.get(linha.idLote);
+                usadas.add(linha.idLote);
+            }
+        });
+        const filas = new Map();
+        anteriores.forEach((item) => {
+            if (item.idLote && usadas.has(Number(item.idLote))) return;
+            const fila = filas.get(chaveLinha(item)) || [];
+            fila.push(item.marcar === true);
+            filas.set(chaveLinha(item), fila);
+        });
+        novas.forEach((linha) => {
+            if (linha.idLote && usadas.has(linha.idLote)) return;
+            const fila = filas.get(chaveLinha(linha));
+            if (fila && fila.length) linha.marcar = fila.shift();
+        });
+    }
+
     function aplicarBalanco(novo) {
         const mesmo = balanco && novo && Number(balanco.ID) === Number(novo.ID);
-        const marcas = new Map();
-        if (mesmo) {
-            itens.forEach((item) => {
-                if (item.marcar) marcas.set(chaveLinha(item), true);
-            });
-        }
+        const anteriores = mesmo ? itens.slice() : [];
         balanco = novo;
         itens = (novo.itens || []).map((item) => {
             const codigo = String(item.CODIGO || "").trim().toUpperCase();
             const temFoto = Number(item.TEM_FOTO) === 1;
             if (codigo) fotosConhecidas.set(codigo, temFoto);
-            const linha = {
+            return {
                 codigo,
                 descricao: item.DESCRICAO || "",
                 armazem: item.ARMAZEM || "",
@@ -239,9 +261,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 temFoto,
                 marcar: false
             };
-            linha.marcar = marcas.get(chaveLinha(linha)) === true;
-            return linha;
         });
+        if (anteriores.length) restaurarMarcas(anteriores, itens);
         sujo = false;
         painelContagem.style.display = "block";
         tituloAno.textContent = "Contagem de " + novo.ANO;
@@ -296,11 +317,55 @@ document.addEventListener("DOMContentLoaded", async function () {
         caixa.disabled = marcaveis.length === 0;
     }
 
+    function chaveEndereco(item) {
+        return [item.codigo, item.armazem, item.endereco]
+            .map((parte) => String(parte || "").trim().toUpperCase())
+            .join("\u0001");
+    }
+
+    function diferencasDaGrade() {
+        const grupos = new Map();
+        itens.forEach((item, idx) => {
+            if (!item.codigo) return;
+            const id = chaveEndereco(item);
+            const grupo = grupos.get(id) || [];
+            grupo.push(idx);
+            grupos.set(id, grupo);
+        });
+        const porLinha = new Map();
+        for (const grupo of grupos.values()) {
+            const saldo = itens[grupo[0]].saldoRef;
+            let soma = 0;
+            let completa = saldo !== null;
+            for (const idx of grupo) {
+                const parte = numero(itens[idx].quantidade);
+                if (parte === null || itens[idx].saldoRef === null) completa = false;
+                else soma += parte;
+            }
+            const textoGrupo = completa ? fmt(soma - saldo) : "";
+            grupo.forEach((idx, ordem) => {
+                if (grupo.length < 2) {
+                    const qtd = numero(itens[idx].quantidade);
+                    porLinha.set(idx, {
+                        texto: completa && qtd !== null ? fmt(qtd - itens[idx].saldoRef) : "",
+                        titulo: ""
+                    });
+                    return;
+                }
+                porLinha.set(idx, ordem === 0
+                    ? { texto: textoGrupo, titulo: "Soma das entradas deste endereço menos o saldo atual." }
+                    : { texto: "—", titulo: "A diferença deste endereço está na primeira linha, somando as entradas." });
+            });
+        }
+        return porLinha;
+    }
+
     function render() {
+        const diferencas = diferencasDaGrade();
         const html = linhasVisiveis().map(({ item, idx }) => {
             const qtd = numero(item.quantidade);
             const podeMarcar = qtd !== null && qtd > 0;
-            const dif = item.saldoRef === null || qtd === null ? "" : fmt(qtd - item.saldoRef);
+            const dif = diferencas.get(idx) || { texto: "", titulo: "" };
             return `<tr data-idx="${idx}">
                 <td class="marcar"><input type="checkbox" data-campo="marcar" ${item.marcar && podeMarcar ? "checked" : ""} ${podeMarcar ? "" : "disabled"} aria-label="Marcar etiqueta desta linha" /></td>
                 ${htmlFoto(item.codigo)}
@@ -310,7 +375,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <td><input data-campo="endereco" value="${esc(item.endereco)}" style="width: 140px;" /></td>
                 <td><input data-campo="quantidade" value="${esc(item.quantidade === "" ? "" : fmt(item.quantidade))}" style="width: 110px;" /></td>
                 <td>${item.saldoRef === null ? "—" : fmt(item.saldoRef)}</td>
-                <td>${dif}</td>
+                <td${dif.titulo ? ` title="${esc(dif.titulo)}"` : ""}>${dif.texto}</td>
                 <td style="white-space: nowrap;">
                     <button type="button" data-acao="etiqueta" class="btn-reimprimir" title="${item.idLote ? "Imprimir só esta etiqueta " + item.idLote : "Salve a contagem para gerar o ID"}">
                         <i class="fa-solid fa-print"></i>
@@ -408,7 +473,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const fora = data.fora || [];
         const errosHtml = erros.length
             ? `<ul>${erros.slice(0, 40).map((e) => `<li>${esc(e.mensagem)}</li>`).join("")}</ul>`
-            : "<p>Nenhuma pendência de código, quantidade ou repetição.</p>";
+            : "<p>Nenhuma pendência de código ou quantidade.</p>";
         const foraHtml = fora.length
             ? `<p><strong>${fora.length.toLocaleString("pt-BR")}</strong> endereços com saldo no ano ${esc(data.anoVivo)} não entraram na contagem. Eles não passam para ${esc(data.anoBalanco)}.</p>
                <ul>${fora.slice(0, 30).map((f) => `<li>${esc(f.codigo)} · arm ${esc(f.armazem || "—")} · ${esc(f.endereco || "—")} · saldo ${fmt(f.saldo)}</li>`).join("")}</ul>`
@@ -696,7 +761,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                     ? porNome.QUANTIDADE
                     : (porNome.QNT !== undefined ? porNome.QNT : ""),
                 saldoRef: null,
-                idLote: null,
+                idLote: Number.isInteger(Number(porNome.ID_LOTE)) && Number(porNome.ID_LOTE) > 0 ? Number(porNome.ID_LOTE) : null,
                 marcar: false
             };
         }).filter((item) => item.codigo);
