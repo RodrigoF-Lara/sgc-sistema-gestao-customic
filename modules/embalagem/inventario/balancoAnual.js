@@ -770,15 +770,24 @@ document.addEventListener("DOMContentLoaded", async function () {
             mostrar("Não achei a coluna CODIGO.", "error");
             return;
         }
-        if (itens.length && !window.confirm("Substituir a contagem da tela pela planilha? O que não estiver salvo será descartado.")) return;
-        itens = novo;
+        lerGrade();
+        if (itens.length && !window.confirm(
+            "Acrescentar " + novo.length.toLocaleString("pt-BR") + " linhas à contagem?\n\nAs " +
+            itens.length.toLocaleString("pt-BR") + " linhas que já estão na tela continuam. Nada é apagado."
+        )) return;
+        itens = itens.concat(novo);
         sujo = true;
         render();
         consultarFotos(novo.map((item) => item.codigo))
             .then(() => render())
             .catch((err) => mostrar(err.message, "error"));
         const marcadas = novo.filter((item) => item.marcar).length;
-        mostrar(novo.length.toLocaleString("pt-BR") + " linhas importadas. " + marcadas.toLocaleString("pt-BR") + " estão marcadas para etiqueta. Salve a contagem e use Etiquetas para imprimir o lote.", "info");
+        mostrar(
+            novo.length.toLocaleString("pt-BR") + " linhas acrescentadas. A contagem ficou com " +
+            itens.length.toLocaleString("pt-BR") + " linhas. " +
+            marcadas.toLocaleString("pt-BR") + " linhas novas estão marcadas para etiqueta. Salve para gravar e gerar o ID das novas.",
+            "info"
+        );
     }
 
     function exportar() {
