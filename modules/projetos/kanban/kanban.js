@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let registrosEdit = [];
   let dragId = null;
   let salvandoArraste = false;
+  const thumbs = new Map();
+  let geracaoEnt = 0;
 
   function authHeaders() {
     const h = { "Content-Type": "application/json" };
@@ -136,7 +138,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (filtro && p.status !== filtro) return false;
       if (!q) return true;
       const acoesTxt = (p.acoes || []).map((a) => a.texto).join(" ");
-      return [p.nome, p.descricao, p.responsavel, acoesTxt].join(" ").toLowerCase().includes(q);
+      const entTxt = (p.entregaveis || []).map((e) => e.nome).join(" ");
+      return [p.nome, p.descricao, p.responsavel, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
     });
   }
 
@@ -181,6 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button>
           ${htmlBadges({ prioridadeAlta: p.prioridadeAlta, atrasado: estaAtrasado(p) })}
           ${p.descricao ? `<div class="muted">${escapeHtml(p.descricao)}</div>` : ""}
+          ${(p.entregaveis || []).length ? `<div class="muted"><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</div>` : ""}
           ${htmlAcoes(p)}
         </td>
         <td>${escapeHtml(p.responsavel)}</td>
@@ -238,6 +242,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="kb-meta">
             ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
             ${(p.registros || []).length ? `<span><i class="fa-solid fa-clock-rotate-left"></i> ${(p.registros || []).length} ${(p.registros || []).length === 1 ? "registro" : "registros"}</span>` : ""}
+            ${(p.entregaveis || []).length ? `<span><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</span>` : ""}
             ${htmlDatas(p)}
           </div>
           <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
@@ -337,8 +342,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       atrasado: !!a.atrasado,
     }));
     renderAcoesEditor();
+    abaModal("projeto");
+    renderEntregaveis();
     modal.hidden = false;
     document.getElementById("campoNome").focus();
+  }
+
+  function abaModal(nome) {
+    document.querySelectorAll("[data-modal-tab]").forEach((botao) => {
+      const ativo = botao.dataset.modalTab === nome;
+      botao.classList.toggle("active", ativo);
+      botao.setAttribute("aria-selected", ativo ? "true" : "false");
+    });
+    document.getElementById("panelProjeto").classList.toggle("active", nome === "projeto");
+    document.getElementById("panelEntregaveis").classList.toggle("active", nome === "entregaveis");
   }
 
   function ajustarNiveis(lista) {
@@ -452,6 +469,221 @@ document.addEventListener("DOMContentLoaded", async () => {
   function fecharModal() {
     modal.hidden = true;
     editandoId = null;
+    soltarThumbs();
+  }
+
+  function textoEntregaveis(n) {
+    return n === 1 ? "1 entregável" : `${n} entregáveis`;
+  }
+
+  function textoTamanho(n) {
+    const bytes = Number(n) || 0;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    const mb = (bytes / (1024 * 1024)).toFixed(1).replace(".", ",");
+    return `${mb} MB`;
+  }
+
+  function soltarThumbs(manter) {
+    for (const [id, url] of thumbs) {
+      if (manter && manter.has(id)) continue;
+      URL.revokeObjectURL(url);
+      thumbs.delete(id);
+    }
+  }
+
+  function entregaveisAtuais() {
+    const p = projetos.find((x) => Number(x.id) === Number(editandoId));
+    return p && Array.isArray(p.entregaveis) ? p.entregaveis : [];
+  }
+
+  function aplicarEntregaveis(lista) {
+    const p = projetos.find((x) => Number(x.id) === Number(editandoId));
+    if (p) p.entregaveis = lista;
+    render();
+    renderEntregaveis();
+  }
+
+  async function obterEntregavel(item) {
+    const q = new URLSearchParams({
+      acao: "entregavel",
+      id: String(editandoId),
+      entregavelId: String(item.id),
+    });
+    const nivel = localStorage.getItem("userLevel");
+    if (nivel) q.set("userLevel", nivel);
+    const headers = authHeaders();
+    delete headers["Content-Type"];
+    const res = await fetch(`${API}?${q}`, { headers });
+    if (!res.ok) {
+      let msg = "Não foi possível abrir o entregável.";
+      try {
+        const data = await res.json();
+        if (data.error) msg = data.error;
+      } catch (_) { /* corpo binário */ }
+      throw new Error(msg);
+    }
+    return res.blob();
+  }
+
+  async function abrirEntregavel(item) {
+    const blob = await obterEntregavel(item);
+    const url = URL.createObjectURL(blob);
+    const janela = window.open(url, "_blank", "noopener");
+    if (!janela) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }
+
+  async function baixarEntregavel(item) {
+    const blob = await obterEntregavel(item);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = item.nome || (item.tipo === "PDF" ? "entregavel.pdf" : "foto");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async function carregarThumb(item, geracao) {
+    if (thumbs.has(item.id)) return;
+    try {
+      const blob = await obterEntregavel(item);
+      if (geracao !== geracaoEnt) return;
+      const url = URL.createObjectURL(blob);
+      const img = document.querySelector(`#listaEntregaveis img[data-id="${item.id}"]`);
+      if (!img) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      thumbs.set(item.id, url);
+      img.src = url;
+    } catch (_) { /* Abrir continua disponível */ }
+  }
+
+  function botaoEnt(classe, rotulo, aoClicar) {
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = classe;
+    botao.textContent = rotulo;
+    botao.addEventListener("click", () => {
+      aoClicar().catch((err) => alert(err.message));
+    });
+    return botao;
+  }
+
+  function renderEntregaveis() {
+    const geracao = ++geracaoEnt;
+    const box = document.getElementById("listaEntregaveis");
+    const trava = document.getElementById("entregavelTrava");
+    const add = document.getElementById("btnAddEntregavel");
+    const aba = document.getElementById("tabModalEntregaveis");
+    const lista = entregaveisAtuais();
+    const salvo = !!editandoId;
+    if (trava) trava.hidden = salvo;
+    if (add) add.disabled = !salvo;
+    if (aba) aba.textContent = lista.length ? `Entregáveis (${lista.length})` : "Entregáveis";
+    soltarThumbs(new Set(lista.map((item) => item.id)));
+    box.replaceChildren();
+    if (!lista.length) {
+      const vazio = document.createElement("p");
+      vazio.className = "ent-vazio";
+      vazio.textContent = salvo ? "Nenhuma foto ou PDF ainda." : "Salve o projeto para anexar o material final.";
+      box.appendChild(vazio);
+      return;
+    }
+    const grade = document.createElement("div");
+    grade.className = "ent-grade";
+    lista.forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "ent-card";
+      if (item.tipo === "IMAGEM") {
+        const img = document.createElement("img");
+        img.alt = item.nome || "Foto";
+        img.dataset.id = String(item.id);
+        if (thumbs.has(item.id)) img.src = thumbs.get(item.id);
+        card.appendChild(img);
+        carregarThumb(item, geracao);
+      } else {
+        const ico = document.createElement("div");
+        ico.className = "ent-pdf";
+        ico.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
+        card.appendChild(ico);
+      }
+      const nome = document.createElement("div");
+      nome.className = "ent-nome";
+      nome.textContent = item.nome || (item.tipo === "PDF" ? "PDF" : "Foto");
+      nome.title = nome.textContent;
+      const meta = document.createElement("div");
+      meta.className = "ent-meta";
+      meta.textContent = textoTamanho(item.tamanho);
+      const acoes = document.createElement("div");
+      acoes.className = "ent-botoes";
+      acoes.appendChild(botaoEnt("ent-btn", "Abrir", () => abrirEntregavel(item)));
+      acoes.appendChild(botaoEnt("ent-btn", "Baixar", () => baixarEntregavel(item)));
+      const remover = botaoEnt("ent-ico", "", () => removerEntregavel(item));
+      remover.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      remover.setAttribute("aria-label", "Remover entregável");
+      remover.title = "Remover";
+      acoes.appendChild(remover);
+      card.append(nome, meta, acoes);
+      grade.appendChild(card);
+    });
+    box.appendChild(grade);
+  }
+
+  function lerDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function enviarEntregaveis(files) {
+    if (!editandoId) {
+      alert("Salve o projeto antes de anexar fotos ou PDFs.");
+      return;
+    }
+    const lista = [...files];
+    if (!lista.length) return;
+    for (const file of lista) {
+      const nome = file.name || "Arquivo";
+      if (!file.size) throw new Error(`"${nome}" está vazio.`);
+      if (file.size > 3 * 1024 * 1024) throw new Error(`"${nome}" passa de 3 MB.`);
+    }
+    const add = document.getElementById("btnAddEntregavel");
+    add.disabled = true;
+    try {
+      for (const file of lista) {
+        const data = await lerDataUrl(file);
+        const resp = await api("POST", "entregavel", {
+          body: { id: editandoId, nome: file.name, mime: file.type || "", data },
+        });
+        aplicarEntregaveis(resp.entregaveis || []);
+      }
+    } finally {
+      add.disabled = !editandoId;
+    }
+  }
+
+  async function removerEntregavel(item) {
+    if (!editandoId) return;
+    if (!confirm("Remover este entregável?")) return;
+    const resp = await api("POST", "excluirEntregavel", {
+      body: { id: editandoId, entregavelId: item.id },
+    });
+    aplicarEntregaveis(resp.entregaveis || []);
   }
 
   async function mudarStatus(id, status) {
@@ -658,8 +890,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Escape" && !modal.hidden) fecharModal();
   });
 
+  document.querySelectorAll("[data-modal-tab]").forEach((botao) => {
+    botao.addEventListener("click", () => abaModal(botao.dataset.modalTab));
+  });
+  document.getElementById("btnAddEntregavel").addEventListener("click", () => {
+    if (!editandoId) {
+      alert("Salve o projeto antes de anexar fotos ou PDFs.");
+      return;
+    }
+    const input = document.getElementById("fileEntregavel");
+    input.value = "";
+    input.click();
+  });
+  document.getElementById("fileEntregavel").addEventListener("change", (e) => {
+    enviarEntregaveis(e.target.files || []).catch((err) => alert(err.message));
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const nome = document.getElementById("campoNome").value.trim();
+    if (!nome) {
+      abaModal("projeto");
+      alert("Informe o nome do projeto.");
+      document.getElementById("campoNome").focus();
+      return;
+    }
     const inicio = document.getElementById("campoInicio").value;
     const fim = document.getElementById("campoFim").value;
     if (inicio && fim && inicio > fim) {
@@ -721,7 +976,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnExcluir.addEventListener("click", async () => {
     const p = projetos.find((x) => Number(x.id) === Number(editandoId));
     if (!p) return;
-    if (!confirm(`Excluir o projeto "${p.nome}", as ações e os registros da cronologia? Não dá para desfazer.`)) return;
+    if (!confirm(`Excluir o projeto "${p.nome}", as ações, os registros da cronologia e os entregáveis? Não dá para desfazer.`)) return;
     btnExcluir.disabled = true;
     try {
       await api("DELETE", "projeto", { query: { id: String(p.id) } });

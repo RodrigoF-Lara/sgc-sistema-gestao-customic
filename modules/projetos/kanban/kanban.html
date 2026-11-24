@@ -144,14 +144,27 @@
     .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal[hidden] { display: none !important; }
     .modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 80;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1200;
       display: flex; align-items: center; justify-content: center; padding: 16px;
     }
     .modal form {
-      width: min(640px, 100%); max-height: min(92vh, 860px); overflow: auto;
+      width: min(760px, 100%); max-height: min(92vh, 860px); overflow: auto;
       background: #fff; border-radius: 12px; padding: 18px;
       display: flex; flex-direction: column; gap: 8px;
     }
+    .modal-tabs {
+      display: flex; gap: 4px; border-bottom: 2px solid #dee2e6;
+      position: sticky; top: 0; background: #fff; z-index: 2; margin: 0 0 4px;
+    }
+    button.modal-tab, button.modal-tab:hover {
+      padding: 8px 14px; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px;
+      background: #fff; color: #6c757d; font: inherit; font-weight: 700; cursor: pointer; border-radius: 0;
+    }
+    button.modal-tab.active, button.modal-tab.active:hover {
+      color: var(--cor-principal, #1976d2); border-bottom-color: var(--cor-principal, #1976d2); background: #fff;
+    }
+    .modal-panel { display: none; }
+    .modal-panel.active { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
     .modal h2 { margin: 0 0 6px; }
     .modal label { font-size: 0.82rem; font-weight: 700; color: #455a64; }
     .modal input, .modal textarea, .modal select {
@@ -163,6 +176,29 @@
     }
     .modal .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .ent-topo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ent-trava { color: #ef6c00; font-weight: 600; margin: 0; }
+    .ent-vazio { color: #78909c; margin: 4px 0 0; }
+    .ent-grade { display: flex; flex-wrap: wrap; gap: 10px; }
+    .ent-card {
+      width: 180px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px;
+      display: flex; flex-direction: column; gap: 6px; background: #fff;
+    }
+    .ent-card img, .ent-pdf {
+      width: 100%; height: 110px; border-radius: 6px; background: #f4f6f8; object-fit: cover;
+    }
+    .ent-pdf { display: flex; align-items: center; justify-content: center; color: #c62828; font-size: 2rem; }
+    .ent-nome { font-size: 0.78rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ent-meta { color: #78909c; font-size: 0.75rem; }
+    .ent-botoes { display: flex; gap: 6px; }
+    button.ent-btn, button.ent-btn:hover {
+      flex: 1; padding: 6px 8px; font-size: 0.78rem; background: #fff; color: #263238;
+      border: 1px solid #cfd8dc; border-radius: 8px; cursor: pointer;
+    }
+    button.ent-ico, button.ent-ico:hover {
+      width: 32px; padding: 6px 0; background: #fff; color: #c62828;
+      border: 1px solid #ffcdd2; border-radius: 8px; cursor: pointer;
+    }
     .reg-card {
       border: 1px solid #eceff1; border-radius: 8px; padding: 8px; margin-top: 8px;
       display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center;
@@ -268,7 +304,7 @@
   <div class="main-content">
     <div class="container">
       <h1 class="no-print"><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
-      <p class="hint no-print">Os mesmos projetos na lista e no quadro, com as ações em níveis. Concluído agrupa por mês e ano da data de fim e começa recolhido: clique no mês para abrir. Sem data de fim, o grupo usa a data de cadastro. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer. A aba Cronologia monta a linha do tempo do mês com os registros de cada projeto.</p>
+      <p class="hint no-print">Os mesmos projetos na lista e no quadro, com as ações em níveis. Concluído agrupa por mês e ano da data de fim e começa recolhido: clique no mês para abrir. Sem data de fim, o grupo usa a data de cadastro. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer. A aba Cronologia monta a linha do tempo do mês com os registros de cada projeto. Dentro de cada projeto, a aba Entregáveis guarda fotos e PDFs do projeto final.</p>
 
       <div class="toolbar no-print">
         <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
@@ -329,8 +365,13 @@
   <div class="modal" id="modal" hidden>
     <form id="formProjeto">
       <h2 id="modalTitulo">Novo projeto</h2>
+      <div class="modal-tabs" role="tablist">
+        <button type="button" class="modal-tab active" role="tab" id="tabModalProjeto" data-modal-tab="projeto" aria-selected="true">Projeto</button>
+        <button type="button" class="modal-tab" role="tab" id="tabModalEntregaveis" data-modal-tab="entregaveis" aria-selected="false">Entregáveis</button>
+      </div>
+      <div class="modal-panel active" id="panelProjeto">
       <label for="campoNome">Nome</label>
-      <input id="campoNome" required maxlength="160" />
+      <input id="campoNome" maxlength="160" />
       <label for="campoDesc">Descrição</label>
       <textarea id="campoDesc" rows="6" maxlength="1000"></textarea>
       <label for="campoResp">Responsável</label>
@@ -375,6 +416,16 @@
         </div>
         <p class="hint">Etapa com data. A aba Cronologia desenha o mês a partir daqui. Outra serve para um nome que não está na lista.</p>
         <div id="listaRegistros"></div>
+      </div>
+      </div>
+      <div class="modal-panel" id="panelEntregaveis">
+        <p class="hint">Fotos e PDFs do projeto final. PDF, JPG, PNG, GIF ou WEBP, até 3 MB cada. No máximo 10 fotos e 5 PDFs.</p>
+        <p class="hint ent-trava" id="entregavelTrava" hidden>Salve o projeto antes de anexar fotos ou PDFs.</p>
+        <div class="ent-topo">
+          <button type="button" class="btn" id="btnAddEntregavel"><i class="fa-solid fa-paperclip"></i> Adicionar foto ou PDF</button>
+          <input type="file" id="fileEntregavel" accept="application/pdf,.pdf,image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" multiple hidden />
+        </div>
+        <div id="listaEntregaveis"></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn danger" id="btnExcluir" hidden>Excluir</button>
