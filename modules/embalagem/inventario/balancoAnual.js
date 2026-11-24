@@ -61,6 +61,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const pontos = (texto.match(/\./g) || []).length;
         if (temVirgula && pontos) texto = texto.replace(/\./g, "").replace(",", ".");
         else if (temVirgula) texto = texto.replace(",", ".");
+        else if (/^\d{1,3}(\.\d{3})+$/.test(texto)) texto = texto.replace(/\./g, "");
         else if (pontos > 1) texto = texto.replace(/\./g, "");
         const n = Number(texto);
         return Number.isFinite(n) ? n : null;
@@ -462,7 +463,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 codigo: item.codigo,
                 armazem: item.armazem,
                 endereco: item.endereco,
-                quantidade: item.quantidade,
+                quantidade: numero(item.quantidade),
                 idLote: item.idLote || null
             }));
     }
