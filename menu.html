@@ -47,10 +47,6 @@
             <i class="fa-solid fa-industry"></i>
             <span>Produção</span>
           </button>
-          <button type="button" class="menu-tab" data-tab="personalizadas" role="tab" aria-selected="false">
-            <i class="fa-solid fa-palette"></i>
-            <span>Personalizadas</span>
-          </button>
           <button type="button" class="menu-tab" data-tab="design" role="tab" aria-selected="false">
             <i class="fa-solid fa-pen-ruler"></i>
             <span>Design</span>
@@ -58,10 +54,6 @@
           <button type="button" class="menu-tab" data-tab="comercial" role="tab" aria-selected="false">
             <i class="fa-solid fa-handshake"></i>
             <span>Comercial</span>
-          </button>
-          <button type="button" class="menu-tab" data-tab="projetos" role="tab" aria-selected="false">
-            <i class="fa-solid fa-diagram-project"></i>
-            <span>Gestão de Projetos</span>
           </button>
           <button type="button" class="menu-tab" data-tab="geral" role="tab" aria-selected="false">
             <i class="fa-solid fa-gears"></i>
@@ -156,22 +148,6 @@
                   <span class="menu-card-body">
                     <h2>Racional de compras</h2>
                     <p>Plano de venda por canal e quantidade a comprar</p>
-                  </span>
-                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
-                </a>
-              </div>
-            </div>
-
-            <div class="menu-group">
-              <h3 class="menu-group-title">
-                <i class="fa-solid fa-pen-ruler"></i> Engenharia
-              </h3>
-              <div class="menu-options">
-                <a href="/modules/embalagem/engenharia/engenharia.html" class="menu-option-card" data-link-id="engenharia-embalagens">
-                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-pen-ruler"></i></span>
-                  <span class="menu-card-body">
-                    <h2>Desenvolvimento de embalagens</h2>
-                    <p>Ficha, faca de estudo, prévia 3D e pré-orçamento</p>
                   </span>
                   <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
                 </a>
@@ -312,29 +288,6 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- PERSONALIZADAS                                                -->
-        <!-- ============================================================ -->
-        <div class="menu-panel" data-panel="personalizadas" role="tabpanel" hidden>
-          <section class="menu-section menu-module" data-module="personalizadas">
-            <div class="menu-group">
-              <h3 class="menu-group-title">
-                <i class="fa-solid fa-mobile-screen-button"></i> Capas
-              </h3>
-              <div class="menu-options">
-                <a href="/modules/comercial/pedidos/pedidos.html?fila=1" class="menu-option-card" data-link-id="pedido-capa-producao">
-                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-industry"></i></span>
-                  <span class="menu-card-body">
-                    <h2>Fila de Capas</h2>
-                    <p>Produzir e marcar envio</p>
-                  </span>
-                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
-                </a>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <!-- ============================================================ -->
         <!-- DESIGN                                                        -->
         <!-- ============================================================ -->
         <div class="menu-panel" data-panel="design" role="tabpanel" hidden>
@@ -357,6 +310,54 @@
                   <span class="menu-card-body">
                     <h2>Mockups Finalizados</h2>
                     <p>Somente os SKUs com status finalizada</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-palette"></i> Personalizadas
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/comercial/pedidos/pedidos.html?fila=1" class="menu-option-card" data-link-id="pedido-capa-producao">
+                  <span class="menu-card-icon tone-orange"><i class="fa-solid fa-industry"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Fila de Capas</h2>
+                    <p>Produzir e marcar envio</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-pen-ruler"></i> Engenharia
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/embalagem/engenharia/engenharia.html" class="menu-option-card" data-link-id="engenharia-embalagens">
+                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-pen-ruler"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Desenvolvimento de embalagens</h2>
+                    <p>Ficha, faca de estudo, prévia 3D e pré-orçamento</p>
+                  </span>
+                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="menu-group">
+              <h3 class="menu-group-title">
+                <i class="fa-solid fa-diagram-project"></i> Gestão de Projetos
+              </h3>
+              <div class="menu-options">
+                <a href="/modules/projetos/kanban/kanban.html" class="menu-option-card" data-link-id="projetos-kanban">
+                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-table-columns"></i></span>
+                  <span class="menu-card-body">
+                    <h2>Kanban</h2>
+                    <p>Lista e quadro no estilo to-do</p>
                   </span>
                   <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
                 </a>
@@ -404,29 +405,6 @@
                   <span class="menu-card-body">
                     <h2>Preview de Capas</h2>
                     <p>Simular arte na faca (sem gravar pedido)</p>
-                  </span>
-                  <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
-                </a>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- GESTÃO DE PROJETOS                                            -->
-        <!-- ============================================================ -->
-        <div class="menu-panel" data-panel="projetos" role="tabpanel" hidden>
-          <section class="menu-section menu-module" data-module="projetos">
-            <div class="menu-group">
-              <h3 class="menu-group-title">
-                <i class="fa-solid fa-table-columns"></i> Projetos
-              </h3>
-              <div class="menu-options">
-                <a href="/modules/projetos/kanban/kanban.html" class="menu-option-card" data-link-id="projetos-kanban">
-                  <span class="menu-card-icon tone-indigo"><i class="fa-solid fa-table-columns"></i></span>
-                  <span class="menu-card-body">
-                    <h2>Kanban</h2>
-                    <p>Lista e quadro no estilo to-do</p>
                   </span>
                   <i class="fa-solid fa-chevron-right menu-card-arrow"></i>
                 </a>
