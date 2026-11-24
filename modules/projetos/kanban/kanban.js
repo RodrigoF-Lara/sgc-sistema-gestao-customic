@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     { id: "CANCELADO", titulo: "Cancelado", tom: "cancelado", recolhida: true },
   ];
   const colunasAbertas = new Set();
+  const mesesAbertos = new Set();
 
   const board = document.getElementById("board");
   const tbody = document.getElementById("tbody");
@@ -197,6 +198,73 @@ document.addEventListener("DOMContentLoaded", async () => {
     return !!(busca.value.trim() && qtd);
   }
 
+  function chaveMes(p) {
+    const iso = fimDe(p) || (p && p.cadastro) || "";
+    const m = /^(\d{4})-(\d{2})/.exec(String(iso));
+    return m ? `${m[1]}-${m[2]}` : "sem-data";
+  }
+
+  function rotuloMes(chave) {
+    if (chave === "sem-data") return "Sem data";
+    const [ano, mes] = chave.split("-");
+    const nome = new Date(Number(ano), Number(mes) - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
+    return `${nome} de ${ano}`;
+  }
+
+  function mesAntes(a, b) {
+    if (a === b) return false;
+    if (a === "sem-data") return false;
+    if (b === "sem-data") return true;
+    return a > b;
+  }
+
+  function mesAberto(chave) {
+    if (filtroStatus.value === "CONCLUIDO" || busca.value.trim()) return true;
+    return mesesAbertos.has(chave);
+  }
+
+  function htmlCard(p) {
+    return `
+      <article class="kb-card" data-id="${p.id}">
+        <button type="button" class="kb-handle" draggable="true" title="Arrastar" aria-label="Arrastar ${escapeHtml(p.nome)}">
+          <i class="fa-solid fa-grip-vertical"></i>
+        </button>
+        <div class="kb-main">
+          <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
+          ${htmlBadges({ prioridadeAlta: p.prioridadeAlta, atrasado: estaAtrasado(p) })}
+          ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
+          ${htmlAcoes(p)}
+          <div class="kb-meta">
+            ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
+            ${htmlDatas(p)}
+          </div>
+          <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
+        </div>
+      </article>`;
+  }
+
+  function htmlMeses(cards) {
+    const grupos = new Map();
+    for (const p of cards) {
+      const chave = chaveMes(p);
+      if (!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave).push(p);
+    }
+    const chaves = [...grupos.keys()].sort((a, b) => (mesAntes(a, b) ? -1 : mesAntes(b, a) ? 1 : 0));
+    return chaves.map((chave) => {
+      const lista = grupos.get(chave);
+      const aberta = mesAberto(chave);
+      return `
+        <section class="kb-mes${aberta ? " aberta" : ""}" data-mes="${chave}">
+          <button type="button" class="kb-mes-head" data-mes-toggle="${chave}" aria-expanded="${aberta ? "true" : "false"}" title="${aberta ? "Recolher" : "Mostrar"}">
+            <span class="kb-mes-titulo">${escapeHtml(rotuloMes(chave))}</span>
+            <span class="kb-head-side"><span class="kb-count">${lista.length}</span><i class="fa-solid fa-chevron-down kb-chevron" aria-hidden="true"></i></span>
+          </button>
+          <div class="kb-mes-cards">${lista.map(htmlCard).join("")}</div>
+        </section>`;
+    }).join("");
+  }
+
   function renderKanban() {
     const itens = visiveis();
     board.innerHTML = COLUNAS.map((col) => {
@@ -204,24 +272,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .filter((p) => p.status === col.id)
         .sort((a, b) => a.ordem - b.ordem || a.id - b.id);
       const aberta = colunaVisivel(col, cards.length);
-      const html = cards.map((p) => `
-        <article class="kb-card" data-id="${p.id}">
-          <button type="button" class="kb-handle" draggable="true" title="Arrastar" aria-label="Arrastar ${escapeHtml(p.nome)}">
-            <i class="fa-solid fa-grip-vertical"></i>
-          </button>
-          <div class="kb-main">
-            <h3><button type="button" class="nome-btn" data-edit="${p.id}">${escapeHtml(p.nome)}</button></h3>
-            ${htmlBadges({ prioridadeAlta: p.prioridadeAlta, atrasado: estaAtrasado(p) })}
-            ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
-            ${htmlAcoes(p)}
-            <div class="kb-meta">
-              ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
-              ${htmlDatas(p)}
-            </div>
-            <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
-          </div>
-        </article>
-      `).join("");
+      const html = col.id === "CONCLUIDO" ? htmlMeses(cards) : cards.map(htmlCard).join("");
       const head = col.recolhida
         ? `<button type="button" class="kb-col-head" data-toggle="${col.id}" aria-expanded="${aberta ? "true" : "false"}" title="${aberta ? "Recolher" : "Mostrar"}">
             <h2>${col.titulo}</h2>
@@ -346,6 +397,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .reduce((m, x) => Math.max(m, Number(x.ordem) || 0), -1) + 1;
     p.status = status;
     p.ordem = ordem;
+    if (status === "CONCLUIDO") mesesAbertos.add(chaveMes(p));
     render();
     try {
       await api("POST", "mover", { body: { itens: [{ id: p.id, status, ordem }] } });
@@ -399,16 +451,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       p.status = item.status;
       p.ordem = item.ordem;
     }
-    renderLista();
-    board.querySelectorAll(".kb-col").forEach((col) => {
-      const lista = col.querySelector(".kb-cards");
-      const n = lista.querySelectorAll(".kb-card").length;
-      const badge = col.querySelector(".kb-count");
-      if (badge) badge.textContent = String(n);
-      const vazio = lista.querySelector(".empty");
-      if (n && vazio) vazio.remove();
-      if (!n && !vazio) lista.insertAdjacentHTML("beforeend", `<div class="empty">Nenhum projeto</div>`);
+    const mexeConcluido = mudou.some((item) => {
+      const velho = antes.find((p) => Number(p.id) === item.id);
+      return item.status === "CONCLUIDO" || (velho && velho.status === "CONCLUIDO");
     });
+    if (mexeConcluido) {
+      for (const item of mudou) {
+        if (item.status !== "CONCLUIDO") continue;
+        const p = projetos.find((x) => Number(x.id) === item.id);
+        if (p) mesesAbertos.add(chaveMes(p));
+      }
+      render();
+    } else {
+      renderLista();
+      board.querySelectorAll(".kb-col").forEach((col) => {
+        const lista = col.querySelector(".kb-cards");
+        const n = lista.querySelectorAll(".kb-card").length;
+        const badge = col.querySelector(".kb-count");
+        if (badge) badge.textContent = String(n);
+        const vazio = lista.querySelector(":scope > .empty");
+        if (n && vazio) vazio.remove();
+        if (!n && !vazio) lista.insertAdjacentHTML("beforeend", `<div class="empty">Nenhum projeto</div>`);
+      });
+    }
     try {
       await api("POST", "mover", { body: { itens: mudou } });
     } catch (err) {
@@ -520,6 +585,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const idx = projetos.findIndex((p) => Number(p.id) === Number(salvo.id));
       if (idx >= 0) projetos[idx] = salvo;
       else projetos.push(salvo);
+      if (salvo.status === "CONCLUIDO") mesesAbertos.add(chaveMes(salvo));
       fecharModal();
       render();
     } catch (err) {
@@ -622,7 +688,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btn) btn.setAttribute("aria-expanded", "true");
   }
 
+  function garantirMes(col, chave) {
+    const wrap = col.querySelector(":scope > .kb-cards");
+    let mes = wrap.querySelector(`:scope > .kb-mes[data-mes="${CSS.escape(chave)}"]`);
+    if (!mes) {
+      mes = document.createElement("section");
+      mes.className = "kb-mes";
+      mes.dataset.mes = chave;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "kb-mes-head";
+      btn.dataset.mesToggle = chave;
+      btn.innerHTML = `<span class="kb-mes-titulo">${escapeHtml(rotuloMes(chave))}</span><span class="kb-head-side"><span class="kb-count">0</span><i class="fa-solid fa-chevron-down kb-chevron" aria-hidden="true"></i></span>`;
+      const lista = document.createElement("div");
+      lista.className = "kb-mes-cards";
+      mes.append(btn, lista);
+      const ancora = [...wrap.querySelectorAll(":scope > .kb-mes")].find((el) => mesAntes(chave, el.dataset.mes));
+      if (ancora) wrap.insertBefore(mes, ancora);
+      else wrap.appendChild(mes);
+      const vazio = wrap.querySelector(":scope > .empty");
+      if (vazio) vazio.remove();
+    }
+    mes.classList.add("aberta");
+    const btn = mes.querySelector(".kb-mes-head");
+    if (btn) {
+      btn.setAttribute("aria-expanded", "true");
+      btn.title = "Recolher";
+    }
+    return mes.querySelector(".kb-mes-cards");
+  }
+
+  function atualizarContagem(col) {
+    const total = col.querySelectorAll(".kb-card").length;
+    const badge = col.querySelector(":scope > .kb-col-head .kb-count");
+    if (badge) badge.textContent = String(total);
+    col.querySelectorAll(":scope > .kb-cards > .kb-mes").forEach((mes) => {
+      const n = mes.querySelectorAll(".kb-card").length;
+      const conta = mes.querySelector(".kb-count");
+      if (conta) conta.textContent = String(n);
+    });
+  }
+
   board.addEventListener("click", (e) => {
+    const mesBtn = e.target.closest("[data-mes-toggle]");
+    if (mesBtn && board.contains(mesBtn)) {
+      const mes = mesBtn.closest(".kb-mes");
+      if (!mes) return;
+      const chave = mes.dataset.mes;
+      const aberta = mes.classList.toggle("aberta");
+      if (aberta) mesesAbertos.add(chave);
+      else mesesAbertos.delete(chave);
+      mesBtn.setAttribute("aria-expanded", aberta ? "true" : "false");
+      mesBtn.title = aberta ? "Recolher" : "Mostrar";
+      return;
+    }
     const toggle = e.target.closest("[data-toggle]");
     if (!toggle || !board.contains(toggle)) return;
     const col = toggle.closest(".kb-col");
@@ -644,12 +763,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     col.classList.add("over");
     abrirParaArraste(col);
-    const lista = col.querySelector(".kb-cards");
     const card = board.querySelector(`.kb-card[data-id="${dragId}"]`);
-    if (!card || !lista) return;
-    const apos = cardApos(lista, e.clientY);
-    if (apos) lista.insertBefore(card, apos);
-    else lista.appendChild(card);
+    if (!card) return;
+    const origem = card.closest(".kb-col");
+    let lista;
+    let posicionar = true;
+    if (col.dataset.col === "CONCLUIDO") {
+      const projeto = projetos.find((x) => Number(x.id) === dragId);
+      lista = garantirMes(col, chaveMes(projeto || {}));
+      const mesCard = lista.closest(".kb-mes");
+      const sobre = e.target.closest(".kb-mes");
+      posicionar = !sobre || sobre === mesCard;
+    } else {
+      lista = col.querySelector(":scope > .kb-cards");
+    }
+    if (!lista) return;
+    if (posicionar) {
+      const apos = cardApos(lista, e.clientY);
+      if (apos) lista.insertBefore(card, apos);
+      else lista.appendChild(card);
+    } else if (!lista.contains(card)) {
+      lista.appendChild(card);
+    }
+    board.querySelectorAll(".kb-mes").forEach((mes) => {
+      if (!mes.querySelector(".kb-card")) mes.remove();
+    });
+    atualizarContagem(col);
+    if (origem && origem !== col) atualizarContagem(origem);
   });
 
   board.addEventListener("drop", (e) => {

@@ -69,6 +69,16 @@
     .kb-chevron { color: #90a4ae; font-size: 0.75rem; transition: transform 0.15s ease; }
     .kb-col.recolhida.aberta .kb-chevron { transform: rotate(180deg); }
     .kb-cards { display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
+    button.kb-mes-head {
+      width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      border: none; background: #e8f5e9; color: #1b5e20; font: inherit; font-size: 0.82rem; font-weight: 700;
+      padding: 6px 8px; border-radius: 8px; cursor: pointer; text-align: left;
+    }
+    button.kb-mes-head:hover { background: #c8e6c9; color: #1b5e20; }
+    .kb-mes-titulo { min-width: 0; }
+    .kb-mes-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .kb-mes:not(.aberta) > .kb-mes-cards { display: none; }
+    .kb-mes.aberta > .kb-mes-head .kb-chevron { transform: rotate(180deg); }
     .kb-card {
       background: #fff; border-radius: 10px; padding: 10px 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       display: flex; align-items: flex-start; gap: 8px;
@@ -167,7 +177,7 @@
   <div class="main-content">
     <div class="container">
       <h1><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
-      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer.</p>
+      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Concluído agrupa por mês e ano da data de fim e começa recolhido: clique no mês para abrir. Sem data de fim, o grupo usa a data de cadastro. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer.</p>
 
       <div class="toolbar">
         <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
