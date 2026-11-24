@@ -163,12 +163,103 @@
     }
     .modal .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .reg-card {
+      border: 1px solid #eceff1; border-radius: 8px; padding: 8px; margin-top: 8px;
+      display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center;
+    }
+    .reg-card input, .reg-card select { width: 100%; box-sizing: border-box; }
+    .reg-card .largo { grid-column: 1 / 3; }
+    .reg-card .ico {
+      grid-row: 1 / span 2; align-self: start; width: 30px; height: 30px; padding: 0;
+      border: 1px solid #cfd8dc; background: #fff; color: #455a64; border-radius: 6px; cursor: pointer;
+    }
+    .reg-card .ico:hover { background: #f4f7f8; color: #455a64; }
+    .reg-cores { display: flex; gap: 6px; align-items: center; }
+    .reg-cor {
+      width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; padding: 0;
+      box-shadow: 0 0 0 1px #cfd8dc; cursor: pointer;
+    }
+    .reg-cor.on { box-shadow: 0 0 0 2px #1a2744; }
+    .reg-cor:hover { background: inherit; }
+    .crono-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .crono-bar input[type="month"] { border: 1px solid #cfd8dc; border-radius: 8px; padding: 8px 10px; font: inherit; }
+    .crono-folha { background: #fff; color: #1a2744; }
+    .crono-top {
+      display: flex; justify-content: space-between; gap: 12px; align-items: center;
+      background: #1a2744; color: #fff; padding: 14px 18px; border-radius: 10px;
+    }
+    .crono-top strong { letter-spacing: 0.04em; }
+    .crono-folha h2 { margin: 22px 0 4px; font-size: 1.35rem; }
+    .crono-lead { margin: 0 0 8px; color: #607d8b; }
+    .crono-legenda { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 0.78rem; color: #455a64; margin: 8px 0 12px; }
+    .crono-legenda i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+    .gantt { --dias: 31; overflow-x: auto; }
+    .gantt-head, .gantt-row { display: grid; grid-template-columns: minmax(140px, 180px) minmax(640px, 1fr); }
+    .gantt-head { display: grid; }
+    .gantt-head > span, .gantt-row > .gantt-nome { grid-column: 1; }
+    .gantt-numeros, .gantt-letras, .gantt-faixa { grid-column: 2; min-width: 0; }
+    .gantt-head { align-items: end; }
+    .gantt-numeros, .gantt-letras, .gantt-fundos { display: grid; grid-template-columns: repeat(var(--dias), minmax(16px, 1fr)); }
+    .gantt-dia, .gantt-letra { text-align: center; font-size: 0.62rem; color: #607d8b; min-height: 16px; }
+    .gantt-dia { display: flex; flex-direction: column; align-items: center; }
+    .gantt-dia em { font-style: normal; font-size: 0.55rem; color: #ef6c00; }
+    .gantt-dia.fds, .gantt-letra.fds, .gantt-fundos i.fds { background: #eef1f4; }
+    .gantt-dia.fer, .gantt-letra.fer, .gantt-fundos i.fer { background: #ffe0b2; }
+    .gantt-nome { font-size: 0.82rem; font-weight: 700; padding: 10px 8px 10px 0; align-self: center; }
+    .gantt-faixa { position: relative; height: 72px; border-top: 1px solid #eceff1; }
+    .gantt-fundos { position: absolute; inset: 0; }
+    .gantt-fundos i { display: block; }
+    .gantt-barra {
+      position: absolute; top: 30px; height: 16px; border-radius: 99px; color: #fff;
+      font-size: 0.62rem; font-weight: 700; text-align: center; line-height: 16px; overflow: hidden;
+    }
+    .gantt-ponto {
+      position: absolute; top: 31px; width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.08); transform: translateX(-50%);
+    }
+    .gantt-quando { position: absolute; top: 8px; transform: translateX(-50%); font-size: 0.62rem; color: #455a64; white-space: nowrap; }
+    .crono-prod { margin-top: 22px; break-inside: avoid; }
+    .crono-prod h3 { margin: 0 0 4px; }
+    .crono-total { margin: 0 0 6px; color: #546e7a; }
+    .crono-destaque { margin: 2px 0; color: #c62828; font-weight: 700; font-size: 0.86rem; }
+    .crono-linha { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: 8px 0 12px; }
+    .crono-ev { flex: 1 0 120px; max-width: 180px; text-align: center; }
+    .crono-ev.sozinho { margin: 0 auto; }
+    .crono-quando { font-size: 0.78rem; font-weight: 700; }
+    .crono-dot { width: 14px; height: 14px; border-radius: 50%; display: block; margin: 6px auto; border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.06); }
+    .crono-pill { display: inline-block; color: #fff; border-radius: 999px; padding: 2px 8px; font-size: 0.68rem; font-weight: 700; }
+    .crono-ev strong { display: block; margin-top: 4px; font-size: 0.82rem; }
+    .crono-ev p { margin: 2px 0 0; font-size: 0.75rem; color: #546e7a; }
+    .crono-meio {
+      flex: 0 0 74px; margin-top: 28px; border: 1.5px solid #b0bec5; border-radius: 8px;
+      background: #fff; text-align: center; font-size: 0.72rem; padding: 3px 4px; line-height: 1.2;
+    }
+    .crono-meio small { display: block; font-weight: 600; }
+    .crono-tabela { overflow-x: auto; }
+    .crono-tabela table { width: 100%; border-collapse: collapse; background: #fff; }
+    .crono-tabela th, .crono-tabela td { border: 1px solid #cfd8dc; padding: 8px 10px; text-align: left; vertical-align: top; font-size: 0.82rem; }
+    .crono-tabela thead th { background: #1a2744; color: #fff; }
+    .crono-tabela tbody th { background: #f7f9fb; }
+    .crono-tabela tbody tr:first-child td { background: #e8f5e9; }
+    .crono-fonte { margin-top: 18px; color: #90a4ae; font-size: 0.75rem; }
     @media (max-width: 800px) {
       .kb-col { flex-basis: 86vw; max-width: none; }
       .kb-col.recolhida:not(.aberta) { flex-basis: auto; width: auto; }
       .kb-col.recolhida.aberta { flex-basis: 86vw; max-width: none; }
       .datas-projeto { grid-template-columns: 1fr; }
       .toolbar input[type="search"] { min-width: 0; width: 100%; }
+      .reg-card { grid-template-columns: 1fr; }
+      .reg-card .largo, .reg-card .ico { grid-column: auto; grid-row: auto; }
+    }
+    @media print {
+      body.imprimindo-crono #sidebar-container,
+      body.imprimindo-crono .no-print,
+      body.imprimindo-crono #panelKanban,
+      body.imprimindo-crono #panelLista { display: none !important; }
+      body.imprimindo-crono .main-content { margin: 0 !important; width: auto !important; }
+      body.imprimindo-crono #panelCrono { display: block !important; }
+      body.imprimindo-crono .crono-linha { overflow: visible; }
+      @page { size: A4 landscape; margin: 10mm; }
     }
   </style>
 </head>
@@ -176,10 +267,10 @@
   <div id="sidebar-container" class="sidebar"></div>
   <div class="main-content">
     <div class="container">
-      <h1><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
-      <p class="hint">Os mesmos projetos na lista e no quadro, com as ações em níveis. Concluído agrupa por mês e ano da data de fim e começa recolhido: clique no mês para abrir. Sem data de fim, o grupo usa a data de cadastro. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer.</p>
+      <h1 class="no-print"><i class="fa-solid fa-table-columns"></i> Kanban de projetos</h1>
+      <p class="hint no-print">Os mesmos projetos na lista e no quadro, com as ações em níveis. Concluído agrupa por mês e ano da data de fim e começa recolhido: clique no mês para abrir. Sem data de fim, o grupo usa a data de cadastro. Pausado e Cancelado ficam recolhidos: clique no título para abrir. O selo Atrasado do projeto acende quando a data de fim já passou, ou quando a de início passou e ele ainda está em A fazer. A aba Cronologia monta a linha do tempo do mês com os registros de cada projeto.</p>
 
-      <div class="toolbar">
+      <div class="toolbar no-print">
         <input type="search" id="busca" placeholder="Buscar nome, descrição ou responsável" />
         <select id="filtroStatus" aria-label="Filtrar status">
           <option value="">Todos os status</option>
@@ -192,12 +283,15 @@
         <button type="button" class="btn primary" id="btnNovo"><i class="fa-solid fa-plus"></i> Novo projeto</button>
       </div>
 
-      <div class="req-tabs" role="tablist">
+      <div class="req-tabs no-print" role="tablist">
         <button type="button" class="req-tab active" data-tab="kanban" id="tabKanban">
           <i class="fa-solid fa-table-columns"></i> Kanban
         </button>
         <button type="button" class="req-tab" data-tab="lista" id="tabLista">
           <i class="fa-solid fa-list"></i> Lista
+        </button>
+        <button type="button" class="req-tab" data-tab="crono" id="tabCrono">
+          <i class="fa-solid fa-timeline"></i> Cronologia
         </button>
       </div>
 
@@ -220,6 +314,14 @@
             <tbody id="tbody"></tbody>
           </table>
         </div>
+      </div>
+      <div class="req-panel" id="panelCrono">
+        <div class="crono-bar no-print">
+          <label for="cronoMes">Mês</label>
+          <input type="month" id="cronoMes" />
+          <button type="button" class="btn" id="btnCronoPrint"><i class="fa-solid fa-print"></i> Imprimir / PDF</button>
+        </div>
+        <div id="crono"></div>
       </div>
     </div>
   </div>
@@ -266,6 +368,14 @@
         <p class="hint">Checklist em níveis. A seta da direita desce um nível (até o 3) e a da esquerda sobe. Alta e Atrasado marcam a ação, separado das datas do projeto.</p>
         <div id="listaAcoes"></div>
       </div>
+      <div class="acoes-editor">
+        <div class="acoes-head">
+          <label>Registros da cronologia</label>
+          <button type="button" class="btn" id="btnAddRegistro"><i class="fa-solid fa-plus"></i> Adicionar registro</button>
+        </div>
+        <p class="hint">Etapa com data. A aba Cronologia desenha o mês a partir daqui. Outra serve para um nome que não está na lista.</p>
+        <div id="listaRegistros"></div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn danger" id="btnExcluir" hidden>Excluir</button>
         <button type="button" class="btn" id="btnCancelar">Cancelar</button>
@@ -276,6 +386,7 @@
 
   <script src="/shared/frontend/permissoes.js"></script>
   <script src="/shared/frontend/layout.js"></script>
+  <script src="/modules/projetos/kanban/cronologia.js"></script>
   <script src="/modules/projetos/kanban/kanban.js"></script>
 </body>
 </html>

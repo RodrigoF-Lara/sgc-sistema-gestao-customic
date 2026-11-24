@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let projetos = [];
   let editandoId = null;
   let acoesEdit = [];
+  let registrosEdit = [];
   let dragId = null;
   let salvandoArraste = false;
 
@@ -236,6 +237,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${htmlAcoes(p)}
           <div class="kb-meta">
             ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
+            ${(p.registros || []).length ? `<span><i class="fa-solid fa-clock-rotate-left"></i> ${(p.registros || []).length} ${(p.registros || []).length === 1 ? "registro" : "registros"}</span>` : ""}
             ${htmlDatas(p)}
           </div>
           <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
@@ -291,6 +293,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   function render() {
     renderLista();
     renderKanban();
+    renderCrono();
+  }
+
+  function renderCrono() {
+    const box = document.getElementById("crono");
+    const mes = document.getElementById("cronoMes");
+    if (!box || !mes || !window.SGCCronologia) return;
+    if (!mes.value) mes.value = hojeIso().slice(0, 7);
+    box.innerHTML = window.SGCCronologia.htmlRelatorio(projetos, mes.value);
   }
 
   function abrirModal(projeto) {
@@ -307,6 +318,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       : (filtroStatus.value || "A FAZER");
     document.getElementById("campoPrioridade").checked = !!(projeto && projeto.prioridadeAlta);
     btnExcluir.hidden = !projeto;
+    registrosEdit = (projeto && Array.isArray(projeto.registros) ? projeto.registros : []).map((r) => ({
+      id: r.id,
+      data: r.data || "",
+      etapa: r.etapa || "pesquisa",
+      rotulo: r.rotulo || "",
+      titulo: r.titulo || "",
+      texto: r.texto || "",
+      cor: r.cor || "",
+    }));
+    renderRegistrosEditor();
     acoesEdit = (projeto && Array.isArray(projeto.acoes) ? projeto.acoes : []).map((a) => ({
       id: a.id,
       texto: a.texto || "",
@@ -381,6 +402,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAcoesEditor();
     const foco = document.querySelector(`#listaAcoes [data-texto="${idx}"]`);
     if (foco) foco.focus();
+  }
+
+  function opcoesEtapa(atual) {
+    const etapas = window.SGCCronologia ? window.SGCCronologia.ETAPAS : [];
+    return etapas.map((e) => `<option value="${e.id}" ${e.id === atual ? "selected" : ""}>${escapeHtml(e.nome)}</option>`).join("");
+  }
+
+  function lerRegistrosForm() {
+    registrosEdit.forEach((_, i) => {
+      const data = document.querySelector(`#listaRegistros [data-reg-data="${i}"]`);
+      const etapa = document.querySelector(`#listaRegistros [data-reg-etapa="${i}"]`);
+      const rotulo = document.querySelector(`#listaRegistros [data-reg-rotulo="${i}"]`);
+      const titulo = document.querySelector(`#listaRegistros [data-reg-titulo="${i}"]`);
+      const texto = document.querySelector(`#listaRegistros [data-reg-texto="${i}"]`);
+      if (!registrosEdit[i]) return;
+      if (data) registrosEdit[i].data = data.value;
+      if (etapa) registrosEdit[i].etapa = etapa.value;
+      if (rotulo) registrosEdit[i].rotulo = rotulo.value;
+      if (titulo) registrosEdit[i].titulo = titulo.value;
+      if (texto) registrosEdit[i].texto = texto.value;
+    });
+  }
+
+  function renderRegistrosEditor() {
+    const box = document.getElementById("listaRegistros");
+    if (!box) return;
+    if (!registrosEdit.length) {
+      box.innerHTML = `<p class="acao-vazia">Nenhum registro ainda.</p>`;
+      return;
+    }
+    const cores = (window.SGCCronologia ? window.SGCCronologia.ETAPAS : []).map((e) => e.cor);
+    box.innerHTML = registrosEdit.map((r, i) => `
+      <div class="reg-card">
+        <input type="date" data-reg-data="${i}" value="${escapeHtml(r.data)}" aria-label="Data do registro ${i + 1}" />
+        <select data-reg-etapa="${i}" aria-label="Etapa do registro ${i + 1}">${opcoesEtapa(r.etapa)}</select>
+        <button type="button" class="ico" data-reg-remover="${i}" title="Remover registro" aria-label="Remover registro">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <input class="largo" data-reg-rotulo="${i}" maxlength="80" value="${escapeHtml(r.rotulo)}" placeholder="Nome da etapa" ${r.etapa === "outro" ? "" : "hidden"} />
+        <div class="reg-cores largo" ${r.etapa === "outro" ? "" : "hidden"}>
+          ${cores.map((cor) => `<button type="button" class="reg-cor${(r.cor || "#607d8b") === cor ? " on" : ""}" data-reg-cor="${i}" data-cor="${cor}" style="background:${cor}" aria-label="Cor ${cor}"></button>`).join("")}
+        </div>
+        <input class="largo" data-reg-titulo="${i}" maxlength="120" value="${escapeHtml(r.titulo)}" placeholder="Título, ex.: Faca enviada" />
+        <input class="largo" data-reg-texto="${i}" maxlength="500" value="${escapeHtml(r.texto)}" placeholder="O que aconteceu" />
+      </div>`).join("");
   }
 
   function fecharModal() {
@@ -488,10 +554,55 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.querySelectorAll(".req-tab").forEach((t) => t.classList.toggle("active", t === tab));
       document.getElementById("panelKanban").classList.toggle("active", tab.dataset.tab === "kanban");
       document.getElementById("panelLista").classList.toggle("active", tab.dataset.tab === "lista");
+      document.getElementById("panelCrono").classList.toggle("active", tab.dataset.tab === "crono");
     });
   });
 
   document.getElementById("btnNovo").addEventListener("click", () => abrirModal(null));
+  document.getElementById("btnAddRegistro").addEventListener("click", () => {
+    if (registrosEdit.length >= 80) {
+      alert("No máximo 80 registros.");
+      return;
+    }
+    lerRegistrosForm();
+    registrosEdit.push({ data: hojeIso(), etapa: "pesquisa", rotulo: "", titulo: "", texto: "", cor: "" });
+    renderRegistrosEditor();
+    const foco = document.querySelector(`#listaRegistros [data-reg-titulo="${registrosEdit.length - 1}"]`);
+    if (foco) foco.focus();
+  });
+  document.getElementById("listaRegistros").addEventListener("input", () => lerRegistrosForm());
+  document.getElementById("listaRegistros").addEventListener("change", (e) => {
+    if (!e.target.matches("[data-reg-etapa]")) return;
+    lerRegistrosForm();
+    const i = Number(e.target.dataset.regEtapa);
+    if (registrosEdit[i] && registrosEdit[i].etapa === "outro" && !registrosEdit[i].cor) {
+      registrosEdit[i].cor = "#607d8b";
+    }
+    renderRegistrosEditor();
+  });
+  document.getElementById("listaRegistros").addEventListener("click", (e) => {
+    const cor = e.target.closest("[data-cor]");
+    const remover = e.target.closest("[data-reg-remover]");
+    if (!cor && !remover) return;
+    lerRegistrosForm();
+    if (cor) {
+      const i = Number(cor.dataset.regCor);
+      if (registrosEdit[i]) registrosEdit[i].cor = cor.dataset.cor;
+    } else {
+      registrosEdit.splice(Number(remover.dataset.regRemover), 1);
+    }
+    renderRegistrosEditor();
+  });
+  document.getElementById("cronoMes").addEventListener("change", () => renderCrono());
+  document.getElementById("btnCronoPrint").addEventListener("click", () => {
+    document.body.classList.add("imprimindo-crono");
+    const limpar = () => {
+      document.body.classList.remove("imprimindo-crono");
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    window.print();
+  });
   document.getElementById("btnAddAcao").addEventListener("click", () => inserirAcao(acoesEdit.length - 1));
   document.getElementById("listaAcoes").addEventListener("input", (e) => {
     const texto = e.target.closest("[data-texto]");
@@ -558,6 +669,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btn = document.getElementById("btnSalvar");
     btn.disabled = true;
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
+    lerRegistrosForm();
     const body = {
       id: editandoId || undefined,
       nome: document.getElementById("campoNome").value,
@@ -578,6 +690,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           atrasado: !!a.atrasado,
         }))
         .filter((a) => String(a.texto || "").trim()),
+      registros: registrosEdit
+        .filter((r) => String(r.titulo || "").trim() || String(r.texto || "").trim())
+        .map((r) => ({
+          id: r.id || undefined,
+          data: r.data,
+          etapa: r.etapa || "pesquisa",
+          rotulo: r.rotulo,
+          titulo: r.titulo,
+          texto: r.texto,
+          cor: r.cor,
+        })),
     };
     try {
       const data = await api("POST", "salvar", { body });
@@ -598,7 +721,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnExcluir.addEventListener("click", async () => {
     const p = projetos.find((x) => Number(x.id) === Number(editandoId));
     if (!p) return;
-    if (!confirm(`Excluir o projeto "${p.nome}" e as ações? Não dá para desfazer.`)) return;
+    if (!confirm(`Excluir o projeto "${p.nome}", as ações e os registros da cronologia? Não dá para desfazer.`)) return;
     btnExcluir.disabled = true;
     try {
       await api("DELETE", "projeto", { query: { id: String(p.id) } });
