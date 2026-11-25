@@ -138,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (filtro && p.status !== filtro) return false;
       if (!q) return true;
       const acoesTxt = (p.acoes || []).map((a) => a.texto).join(" ");
-      const entTxt = (p.entregaveis || []).map((e) => e.nome).join(" ");
+      const entTxt = (p.entregaveis || []).map((e) => `${e.nome || ""} ${e.url || ""}`).join(" ");
       return [p.nome, p.descricao, p.responsavel, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
     });
   }
@@ -527,6 +527,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function abrirEntregavel(item) {
+    if (item.tipo === "LINK") {
+      let destino;
+      try { destino = new URL(item.url); } catch (_) { destino = null; }
+      if (!destino || (destino.protocol !== "https:" && destino.protocol !== "http:")) {
+        throw new Error("Link inválido.");
+      }
+      const link = document.createElement("a");
+      link.href = destino.href;
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return;
+    }
     const blob = await obterEntregavel(item);
     const url = URL.createObjectURL(blob);
     const janela = window.open(url, "_blank", "noopener");
@@ -591,6 +606,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const salvo = !!editandoId;
     if (trava) trava.hidden = salvo;
     if (add) add.disabled = !salvo;
+    const campoLink = document.getElementById("campoLinkEnt");
+    const btnLink = document.getElementById("btnAddLink");
+    if (campoLink) campoLink.disabled = !salvo;
+    if (btnLink) btnLink.disabled = !salvo;
     if (aba) aba.textContent = lista.length ? `Entregáveis (${lista.length})` : "Entregáveis";
     soltarThumbs(new Set(lista.map((item) => item.id)));
     box.replaceChildren();
@@ -613,6 +632,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (thumbs.has(item.id)) img.src = thumbs.get(item.id);
         card.appendChild(img);
         carregarThumb(item, geracao);
+      } else if (item.tipo === "LINK") {
+        const ico = document.createElement("div");
+        ico.className = "ent-linkico";
+        ico.innerHTML = '<i class="fa-solid fa-link"></i>';
+        card.appendChild(ico);
       } else {
         const ico = document.createElement("div");
         ico.className = "ent-pdf";
@@ -621,15 +645,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       const nome = document.createElement("div");
       nome.className = "ent-nome";
-      nome.textContent = item.nome || (item.tipo === "PDF" ? "PDF" : "Foto");
-      nome.title = nome.textContent;
+      nome.textContent = item.nome || (item.tipo === "LINK" ? "Link" : item.tipo === "PDF" ? "PDF" : "Foto");
+      nome.title = item.url || nome.textContent;
       const meta = document.createElement("div");
       meta.className = "ent-meta";
-      meta.textContent = textoTamanho(item.tamanho);
+      meta.textContent = item.tipo === "LINK" ? "Link" : textoTamanho(item.tamanho);
       const acoes = document.createElement("div");
       acoes.className = "ent-botoes";
       acoes.appendChild(botaoEnt("ent-btn", "Abrir", () => abrirEntregavel(item)));
-      acoes.appendChild(botaoEnt("ent-btn", "Baixar", () => baixarEntregavel(item)));
+      if (item.tipo !== "LINK") acoes.appendChild(botaoEnt("ent-btn", "Baixar", () => baixarEntregavel(item)));
       const remover = botaoEnt("ent-ico", "", () => removerEntregavel(item));
       remover.innerHTML = '<i class="fa-solid fa-trash"></i>';
       remover.setAttribute("aria-label", "Remover entregável");
@@ -660,7 +684,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const file of lista) {
       const nome = file.name || "Arquivo";
       if (!file.size) throw new Error(`"${nome}" está vazio.`);
-      if (file.size > 3 * 1024 * 1024) throw new Error(`"${nome}" passa de 3 MB.`);
+      if (file.size > 3 * 1024 * 1024) {
+        const ehPdf = /\.pdf$/i.test(nome) || file.type === "application/pdf";
+        if (ehPdf) {
+          throw new Error(`"${nome}" passa de 3 MB. PDF desse tamanho não entra como arquivo. Cole o link do OneDrive ou do SharePoint no campo abaixo.`);
+        }
+        throw new Error(`"${nome}" passa de 3 MB.`);
+      }
     }
     const add = document.getElementById("btnAddEntregavel");
     add.disabled = true;
@@ -674,6 +704,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } finally {
       add.disabled = !editandoId;
+    }
+  }
+
+  async function enviarLink() {
+    if (!editandoId) {
+      alert("Salve o projeto antes de anexar fotos ou PDFs.");
+      return;
+    }
+    const campo = document.getElementById("campoLinkEnt");
+    const url = campo.value.trim();
+    if (!url) {
+      alert("Cole o link do PDF.");
+      campo.focus();
+      return;
+    }
+    const btn = document.getElementById("btnAddLink");
+    btn.disabled = true;
+    try {
+      const resp = await api("POST", "entregavelLink", { body: { id: editandoId, url } });
+      campo.value = "";
+      aplicarEntregaveis(resp.entregaveis || []);
+    } finally {
+      btn.disabled = !editandoId;
     }
   }
 
@@ -904,6 +957,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("fileEntregavel").addEventListener("change", (e) => {
     enviarEntregaveis(e.target.files || []).catch((err) => alert(err.message));
+  });
+  document.getElementById("btnAddLink").addEventListener("click", () => {
+    enviarLink().catch((err) => alert(err.message));
+  });
+  document.getElementById("campoLinkEnt").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      enviarLink().catch((err) => alert(err.message));
+    }
   });
 
   form.addEventListener("submit", async (e) => {

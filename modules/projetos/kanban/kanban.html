@@ -177,6 +177,12 @@
     .modal .marca-projeto input { width: 16px; height: 16px; padding: 0; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
     .ent-topo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ent-link { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ent-link input { flex: 1 1 220px; min-width: 0; }
+    .ent-linkico {
+      display: flex; align-items: center; justify-content: center; color: #1565c0; font-size: 2rem;
+      width: 100%; height: 110px; border-radius: 6px; background: #f4f6f8;
+    }
     .ent-trava { color: #ef6c00; font-weight: 600; margin: 0; }
     .ent-vazio { color: #78909c; margin: 4px 0 0; }
     .ent-grade { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -419,11 +425,15 @@
       </div>
       </div>
       <div class="modal-panel" id="panelEntregaveis">
-        <p class="hint">Fotos e PDFs do projeto final. PDF, JPG, PNG, GIF ou WEBP, até 3 MB cada. No máximo 10 fotos e 5 PDFs.</p>
-        <p class="hint ent-trava" id="entregavelTrava" hidden>Salve o projeto antes de anexar fotos ou PDFs.</p>
+        <p class="hint">Fotos e PDFs de até 3 MB (JPG, PNG, GIF, WEBP ou PDF). No máximo 10 fotos e 5 PDFs. PDF maior, como os de 200 MB, entra pelo link do OneDrive ou do SharePoint.</p>
+        <p class="hint ent-trava" id="entregavelTrava" hidden>Salve o projeto antes de anexar fotos, PDFs ou links.</p>
         <div class="ent-topo">
           <button type="button" class="btn" id="btnAddEntregavel"><i class="fa-solid fa-paperclip"></i> Adicionar foto ou PDF</button>
           <input type="file" id="fileEntregavel" accept="application/pdf,.pdf,image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" multiple hidden />
+        </div>
+        <div class="ent-link">
+          <input id="campoLinkEnt" type="text" inputmode="url" maxlength="2000" placeholder="Link do PDF grande (OneDrive, SharePoint...)" autocomplete="off" />
+          <button type="button" class="btn" id="btnAddLink"><i class="fa-solid fa-link"></i> Adicionar link</button>
         </div>
         <div id="listaEntregaveis"></div>
       </div>
