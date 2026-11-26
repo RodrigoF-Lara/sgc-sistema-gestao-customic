@@ -433,6 +433,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   function abrirModal(projeto) {
     editandoId = projeto ? projeto.id : null;
     document.getElementById("modalTitulo").textContent = projeto ? "Editar projeto" : "Novo projeto";
+    const blocoComecar = document.getElementById("blocoComecar");
+    if (projeto) {
+      blocoComecar.hidden = true;
+    } else {
+      blocoComecar.hidden = false;
+      renderSelComecar();
+      document.getElementById("selComecar").value = "";
+    }
+    document.getElementById("campoModelo").checked = !!(projeto && projeto.modelo);
     document.getElementById("campoNome").value = projeto ? projeto.nome : "";
     document.getElementById("campoDesc").value = projeto ? projeto.descricao || "" : "";
     document.getElementById("campoResp").value = projeto ? projeto.responsavel || "" : "";
@@ -538,79 +547,53 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (el && acoesEdit[i]) acoesEdit[i].texto = el.value;
   }
 
-  function renderSelModelo() {
-    const sel = document.getElementById("selModelo");
+  function renderSelComecar() {
+    const sel = document.getElementById("selComecar");
     if (!sel) return;
-    const atual = sel.value;
-    const opcoes = [`<option value="">Usar modelo</option>`].concat(modelos.map((m) => (
+    const opcoes = [`<option value="">Em branco</option>`].concat(modelos.map((m) => (
       `<option value="${m.id}">${escapeHtml(m.nome)}</option>`
     )));
     sel.innerHTML = opcoes.join("");
-    if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
   }
 
-  function aplicarModelo(modelo) {
-    acoesEdit.forEach((_, i) => lerTextoAcao(i));
-    const temTexto = acoesEdit.some((a) => String(a.texto || "").trim());
-    if (temTexto && !confirm(`Substituir as ações atuais pelo modelo "${modelo.nome}"?`)) return;
-    acoesEdit = (modelo.itens || []).map((a) => ({
-      texto: a.texto,
-      nivel: a.nivel || 1,
+  function preencherDoModelo(modelo) {
+    const legado = !!modelo.legado;
+    document.getElementById("campoNome").value = modelo.nome || "";
+    document.getElementById("campoDesc").value = legado ? "" : (modelo.descricao || "");
+    document.getElementById("campoResp").value = legado ? "" : (modelo.responsavel || "");
+    responsavelUsuario = legado ? "" : (modelo.responsavelUsuario || "");
+    sincronizarResponsavel(false);
+    document.getElementById("campoEquipe").value = "";
+    equipeEdit = legado ? [] : (Array.isArray(modelo.equipe) ? modelo.equipe : []).map((e) => ({
+      nome: e.nome || "",
+      usuario: e.usuario || "",
+    }));
+    renderEquipe();
+    document.getElementById("campoCadastro").value = hojeIso();
+    document.getElementById("campoInicio").value = "";
+    document.getElementById("campoFim").value = "";
+    const statusSel = document.getElementById("campoStatus");
+    if (legado) {
+      statusSel.value = filtroStatus.value || "A FAZER";
+      document.getElementById("campoPrioridade").checked = false;
+    } else {
+      const status = modelo.status || "A FAZER";
+      statusSel.value = [...statusSel.options].some((o) => o.value === status) ? status : "A FAZER";
+      document.getElementById("campoPrioridade").checked = !!modelo.prioridadeAlta;
+    }
+    document.getElementById("campoModelo").checked = false;
+    registrosEdit = [];
+    renderRegistrosEditor();
+    const lista = Array.isArray(modelo.acoes) ? modelo.acoes : (modelo.itens || []);
+    acoesEdit = lista.map((a) => ({
+      texto: a.texto || "",
+      nivel: Math.min(3, Math.max(1, Number(a.nivel) || 1)),
       feito: false,
       prioridadeAlta: !!a.prioridadeAlta,
       atrasado: !!a.atrasado,
     }));
     ajustarNiveis(acoesEdit);
     renderAcoesEditor();
-  }
-
-  async function tornarModelo() {
-    acoesEdit.forEach((_, i) => lerTextoAcao(i));
-    const uteis = acoesEdit.filter((a) => String(a.texto || "").trim());
-    if (!uteis.length) {
-      alert("Inclua ao menos uma ação antes de criar o modelo.");
-      return;
-    }
-    const nome = prompt("Nome do modelo");
-    if (nome == null) return;
-    const titulo = nome.trim();
-    if (!titulo) {
-      alert("Informe o nome do modelo.");
-      return;
-    }
-    const body = {
-      nome: titulo,
-      acoes: uteis.map((a) => ({
-        texto: a.texto,
-        nivel: a.nivel,
-        prioridadeAlta: a.prioridadeAlta,
-        atrasado: a.atrasado,
-      })),
-    };
-    try {
-      const resp = await api("POST", "salvarTemplate", { body });
-      modelos = resp.templates || [];
-    } catch (err) {
-      if (!/já existe um modelo/i.test(err.message)) throw err;
-      if (!confirm(`Já existe o modelo "${titulo}". Substituir por esta lista?`)) return;
-      const resp = await api("POST", "salvarTemplate", { body: { ...body, substituir: true } });
-      modelos = resp.templates || [];
-    }
-    renderSelModelo();
-  }
-
-  async function apagarModelo() {
-    const sel = document.getElementById("selModelo");
-    const id = Number(sel.value);
-    const modelo = modelos.find((m) => Number(m.id) === id);
-    if (!modelo) {
-      alert("Escolha o modelo que quer apagar.");
-      return;
-    }
-    if (!confirm(`Apagar o modelo "${modelo.nome}"? Os projetos que já usaram essa lista não mudam.`)) return;
-    const resp = await api("POST", "excluirTemplate", { body: { id: modelo.id } });
-    modelos = resp.templates || [];
-    renderSelModelo();
   }
 
   function inserirAcao(depoisDe) {
@@ -1140,17 +1123,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     equipeEdit.splice(Number(botao.dataset.equipeRemover), 1);
     renderEquipe();
   });
-  document.getElementById("btnTornarModelo").addEventListener("click", () => {
-    tornarModelo().catch((err) => alert(err.message));
-  });
-  document.getElementById("btnApagarModelo").addEventListener("click", () => {
-    apagarModelo().catch((err) => alert(err.message));
-  });
-  document.getElementById("selModelo").addEventListener("change", (e) => {
-    const id = Number(e.target.value);
-    e.target.value = "";
-    const modelo = modelos.find((m) => Number(m.id) === id);
-    if (modelo) aplicarModelo(modelo);
+  document.getElementById("selComecar").addEventListener("change", (e) => {
+    const id = e.target.value;
+    if (!id) {
+      abrirModal(null);
+      return;
+    }
+    const modelo = modelos.find((m) => String(m.id) === String(id));
+    if (modelo) preencherDoModelo(modelo);
   });
   document.getElementById("listaAcoes").addEventListener("input", (e) => {
     const texto = e.target.closest("[data-texto]");
@@ -1302,6 +1282,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       fim,
       status: document.getElementById("campoStatus").value,
       prioridadeAlta: document.getElementById("campoPrioridade").checked,
+      modelo: document.getElementById("campoModelo").checked,
       acoes: acoesEdit
         .map((a) => ({
           id: a.id || undefined,
@@ -1326,6 +1307,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
     try {
       const data = await api("POST", "salvar", { body });
+      if (Array.isArray(data.templates)) modelos = data.templates;
       const salvo = data.projeto;
       const idx = projetos.findIndex((p) => Number(p.id) === Number(salvo.id));
       if (idx >= 0) projetos[idx] = salvo;
@@ -1343,11 +1325,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnExcluir.addEventListener("click", async () => {
     const p = projetos.find((x) => Number(x.id) === Number(editandoId));
     if (!p) return;
-    if (!confirm(`Excluir o projeto "${p.nome}", as ações, os registros da cronologia e os entregáveis? Não dá para desfazer.`)) return;
+    if (!confirm(`Excluir o projeto "${p.nome}", as ações, os registros da cronologia, os entregáveis e o modelo ligado a ele? Não dá para desfazer.`)) return;
     btnExcluir.disabled = true;
     try {
-      await api("DELETE", "projeto", { query: { id: String(p.id) } });
+      const data = await api("DELETE", "projeto", { query: { id: String(p.id) } });
       projetos = projetos.filter((x) => Number(x.id) !== Number(p.id));
+      if (Array.isArray(data.templates)) modelos = data.templates;
+      else modelos = modelos.filter((m) => Number(m.projetoId) !== Number(p.id));
       fecharModal();
       render();
     } catch (err) {
@@ -1569,7 +1553,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     modelos = mods.templates || [];
     usuariosSgc = pessoas.usuarios || [];
     preencherUsuarios();
-    renderSelModelo();
     render();
     const aberto = Number(new URLSearchParams(location.search).get("projeto"));
     if (aberto) {
