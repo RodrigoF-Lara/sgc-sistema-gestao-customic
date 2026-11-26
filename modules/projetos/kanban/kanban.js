@@ -1351,6 +1351,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAcoesEditor();
   });
   document.getElementById("btnCancelar").addEventListener("click", fecharModal);
+  document.getElementById("btnFecharProjeto").addEventListener("click", fecharModal);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) fecharModal();
   });

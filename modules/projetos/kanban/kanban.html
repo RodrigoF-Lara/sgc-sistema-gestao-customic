@@ -172,10 +172,15 @@
       width: 100%; height: 100%; max-height: none; overflow: hidden;
       background: #fff; border-radius: 0; padding: 16px 22px 12px;
       display: flex; flex-direction: column; gap: 8px; box-sizing: border-box;
-      position: relative;
     }
+    .modal-topo {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex: 0 0 auto;
+    }
+    .modal-topo h2 { margin: 0; }
     .modal-miolo {
       flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; gap: 18px;
+      position: relative;
     }
     .modal-corpo {
       flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto;
@@ -456,9 +461,12 @@
 
   <div class="modal" id="modal" hidden>
     <form id="formProjeto">
+      <div class="modal-topo">
+        <h2 id="modalTitulo">Novo projeto</h2>
+        <button type="button" class="com-fechar" id="btnFecharProjeto" aria-label="Fechar projeto">&times;</button>
+      </div>
       <div class="modal-miolo">
       <div class="modal-corpo">
-      <h2 id="modalTitulo">Novo projeto</h2>
       <div id="blocoComecar" hidden>
         <label for="selComecar">Começar de</label>
         <select id="selComecar" aria-label="Começar de"></select>
