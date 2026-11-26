@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnExcluir = document.getElementById("btnExcluir");
 
   let projetos = [];
+  let modelos = [];
   let editandoId = null;
   let acoesEdit = [];
   let registrosEdit = [];
@@ -394,6 +395,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           <input type="text" data-texto="${i}" maxlength="300" value="${escapeHtml(a.texto)}" placeholder="Descreva a ação" ${termoIdDoTexto(a.texto) ? "readonly" : ""} />
           <button type="button" class="marca${a.prioridadeAlta ? " on alta" : ""}" data-prioridade="${i}" aria-pressed="${a.prioridadeAlta ? "true" : "false"}">Alta</button>
           <button type="button" class="marca${a.atrasado ? " on atraso" : ""}" data-atraso="${i}" aria-pressed="${a.atrasado ? "true" : "false"}">Atrasado</button>
+          <button type="button" class="ico" data-duplicar="${i}" title="Duplicar ação" aria-label="Duplicar ação">
+            <i class="fa-solid fa-copy"></i>
+          </button>
           <button type="button" class="ico" data-remover="${i}" title="Remover ação" aria-label="Remover ação">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -404,6 +408,81 @@ document.addEventListener("DOMContentLoaded", async () => {
   function lerTextoAcao(i) {
     const el = document.querySelector(`#listaAcoes [data-texto="${i}"]`);
     if (el && acoesEdit[i]) acoesEdit[i].texto = el.value;
+  }
+
+  function renderSelModelo() {
+    const sel = document.getElementById("selModelo");
+    if (!sel) return;
+    const atual = sel.value;
+    const opcoes = [`<option value="">Usar modelo</option>`].concat(modelos.map((m) => (
+      `<option value="${m.id}">${escapeHtml(m.nome)}</option>`
+    )));
+    sel.innerHTML = opcoes.join("");
+    if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
+  }
+
+  function aplicarModelo(modelo) {
+    acoesEdit.forEach((_, i) => lerTextoAcao(i));
+    const temTexto = acoesEdit.some((a) => String(a.texto || "").trim());
+    if (temTexto && !confirm(`Substituir as ações atuais pelo modelo "${modelo.nome}"?`)) return;
+    acoesEdit = (modelo.itens || []).map((a) => ({
+      texto: a.texto,
+      nivel: a.nivel || 1,
+      feito: false,
+      prioridadeAlta: !!a.prioridadeAlta,
+      atrasado: !!a.atrasado,
+    }));
+    ajustarNiveis(acoesEdit);
+    renderAcoesEditor();
+  }
+
+  async function tornarModelo() {
+    acoesEdit.forEach((_, i) => lerTextoAcao(i));
+    const uteis = acoesEdit.filter((a) => String(a.texto || "").trim());
+    if (!uteis.length) {
+      alert("Inclua ao menos uma ação antes de criar o modelo.");
+      return;
+    }
+    const nome = prompt("Nome do modelo");
+    if (nome == null) return;
+    const titulo = nome.trim();
+    if (!titulo) {
+      alert("Informe o nome do modelo.");
+      return;
+    }
+    const body = {
+      nome: titulo,
+      acoes: uteis.map((a) => ({
+        texto: a.texto,
+        nivel: a.nivel,
+        prioridadeAlta: a.prioridadeAlta,
+        atrasado: a.atrasado,
+      })),
+    };
+    try {
+      const resp = await api("POST", "salvarTemplate", { body });
+      modelos = resp.templates || [];
+    } catch (err) {
+      if (!/já existe um modelo/i.test(err.message)) throw err;
+      if (!confirm(`Já existe o modelo "${titulo}". Substituir por esta lista?`)) return;
+      const resp = await api("POST", "salvarTemplate", { body: { ...body, substituir: true } });
+      modelos = resp.templates || [];
+    }
+    renderSelModelo();
+  }
+
+  async function apagarModelo() {
+    const sel = document.getElementById("selModelo");
+    const id = Number(sel.value);
+    const modelo = modelos.find((m) => Number(m.id) === id);
+    if (!modelo) {
+      alert("Escolha o modelo que quer apagar.");
+      return;
+    }
+    if (!confirm(`Apagar o modelo "${modelo.nome}"? Os projetos que já usaram essa lista não mudam.`)) return;
+    const resp = await api("POST", "excluirTemplate", { body: { id: modelo.id } });
+    modelos = resp.templates || [];
+    renderSelModelo();
   }
 
   function inserirAcao(depoisDe) {
@@ -910,6 +989,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.print();
   });
   document.getElementById("btnAddAcao").addEventListener("click", () => inserirAcao(acoesEdit.length - 1));
+  document.getElementById("btnTornarModelo").addEventListener("click", () => {
+    tornarModelo().catch((err) => alert(err.message));
+  });
+  document.getElementById("btnApagarModelo").addEventListener("click", () => {
+    apagarModelo().catch((err) => alert(err.message));
+  });
+  document.getElementById("selModelo").addEventListener("change", (e) => {
+    const id = Number(e.target.value);
+    e.target.value = "";
+    const modelo = modelos.find((m) => Number(m.id) === id);
+    if (modelo) aplicarModelo(modelo);
+  });
   document.getElementById("listaAcoes").addEventListener("input", (e) => {
     const texto = e.target.closest("[data-texto]");
     if (!texto) return;
@@ -952,9 +1043,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const descer = e.target.closest("[data-descer]");
     const subir = e.target.closest("[data-subir]");
     const remover = e.target.closest("[data-remover]");
+    const duplicar = e.target.closest("[data-duplicar]");
     const prioridade = e.target.closest("[data-prioridade]");
     const atraso = e.target.closest("[data-atraso]");
-    if (!descer && !subir && !remover && !prioridade && !atraso) return;
+    if (!descer && !subir && !remover && !duplicar && !prioridade && !atraso) return;
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
     if (prioridade) {
       const i = Number(prioridade.dataset.prioridade);
@@ -970,6 +1062,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else if (subir) {
       const i = Number(subir.dataset.subir);
       if (acoesEdit[i] && acoesEdit[i].nivel > 1) acoesEdit[i].nivel -= 1;
+      ajustarNiveis(acoesEdit);
+    } else if (duplicar) {
+      if (acoesEdit.length >= 40) {
+        alert("No máximo 40 ações.");
+        return;
+      }
+      const i = Number(duplicar.dataset.duplicar);
+      const origem = acoesEdit[i];
+      if (!origem) return;
+      acoesEdit.splice(i + 1, 0, {
+        texto: origem.texto,
+        nivel: origem.nivel,
+        feito: false,
+        prioridadeAlta: !!origem.prioridadeAlta,
+        atrasado: !!origem.atrasado,
+      });
       ajustarNiveis(acoesEdit);
     } else if (remover) {
       acoesEdit.splice(Number(remover.dataset.remover), 1);
@@ -1297,8 +1405,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
-    const data = await api("GET", "listar");
+    const [data, mods] = await Promise.all([
+      api("GET", "listar"),
+      api("GET", "templates").catch(() => ({ templates: [] })),
+    ]);
     projetos = data.projetos || [];
+    modelos = mods.templates || [];
+    renderSelModelo();
     render();
   } catch (err) {
     tbody.innerHTML = `<tr><td class="empty" colspan="6">${escapeHtml(err.message)}</td></tr>`;
