@@ -206,6 +206,38 @@
       display: flex; gap: 8px; justify-content: flex-end; flex: 0 0 auto;
       margin: 0; padding-top: 10px; border-top: 1px solid #eceff1; background: #fff;
     }
+    .modal-corpo.modo-comentarios { overflow: hidden; }
+    .modal-corpo.modo-comentarios #panelComentarios.active {
+      flex: 1 1 auto; min-height: 0; overflow: hidden;
+    }
+    .comentarios { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+    .comentarios-lista { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: 4px; }
+    .com-dia {
+      display: flex; align-items: center; gap: 10px; margin: 14px 0 8px;
+      color: #78909c; font-size: 0.78rem; text-align: center;
+    }
+    .com-dia::before, .com-dia::after { content: ""; flex: 1; height: 1px; background: #eceff1; }
+    .com-item { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; }
+    .com-avatar {
+      flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: #e3f2fd; color: #1565c0; font-weight: 700; font-size: 0.85rem;
+    }
+    .com-corpo { flex: 1; min-width: 0; }
+    .com-topo { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: baseline; }
+    .com-topo strong { font-size: 0.88rem; }
+    .com-topo time, .com-login { color: #90a4ae; font-size: 0.75rem; }
+    .com-item p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .com-item button, .com-item button:hover {
+      width: auto; height: auto; margin-left: auto; padding: 0 4px; border: none;
+      background: transparent; color: #90a4ae; font: inherit; font-size: 0.75rem; cursor: pointer;
+    }
+    .com-escrever { display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid #eceff1; padding-top: 10px; }
+    .com-escrever[hidden] { display: none; }
+    .modal .com-escrever textarea {
+      flex: 1 1 auto; min-height: 64px; height: 64px; max-height: 140px; width: auto;
+    }
+    .com-escrever .btn { flex: 0 0 auto; }
     .ent-topo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .ent-link { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .ent-link input { flex: 1 1 220px; min-width: 0; }
@@ -412,6 +444,7 @@
       <div class="modal-tabs" role="tablist">
         <button type="button" class="modal-tab active" role="tab" id="tabModalProjeto" data-modal-tab="projeto" aria-selected="true">Projeto</button>
         <button type="button" class="modal-tab" role="tab" id="tabModalEntregaveis" data-modal-tab="entregaveis" aria-selected="false">Entregáveis</button>
+        <button type="button" class="modal-tab" role="tab" id="tabModalComentarios" data-modal-tab="comentarios" aria-selected="false">Comentários</button>
       </div>
       <div class="modal-panel active" id="panelProjeto">
       <label for="campoNome">Nome</label>
@@ -483,6 +516,16 @@
           <button type="button" class="btn" id="btnAddLink"><i class="fa-solid fa-link"></i> Adicionar link</button>
         </div>
         <div id="listaEntregaveis"></div>
+      </div>
+      <div class="modal-panel" id="panelComentarios">
+        <div class="comentarios">
+          <div id="listaComentarios" class="comentarios-lista"></div>
+          <p class="hint com-trava" id="comentarioTrava" hidden>Salve o projeto antes de comentar.</p>
+          <div class="com-escrever" id="blocoComentario">
+            <textarea id="campoComentario" maxlength="1000" rows="3" placeholder="Escreva um comentário..."></textarea>
+            <button type="button" class="btn primary" id="btnComentar">Comentar</button>
+          </div>
+        </div>
       </div>
       </div>
       <div class="modal-actions">

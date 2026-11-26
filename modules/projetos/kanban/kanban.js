@@ -259,7 +259,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const acoesTxt = (p.acoes || []).map((a) => a.texto).join(" ");
       const entTxt = (p.entregaveis || []).map((e) => `${e.nome || ""} ${e.url || ""}`).join(" ");
       const equipeTxt = (p.equipe || []).map((e) => `${e.nome || ""} ${e.usuario || ""}`).join(" ");
-      return [p.nome, p.descricao, p.responsavel, p.responsavelUsuario, equipeTxt, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
+      const comTxt = (p.comentarios || []).map((c) => `${c.texto || ""} ${c.autor || ""}`).join(" ");
+      return [p.nome, p.descricao, p.responsavel, p.responsavelUsuario, equipeTxt, acoesTxt, entTxt, comTxt].join(" ").toLowerCase().includes(q);
     });
   }
 
@@ -305,6 +306,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${htmlBadges({ prioridadeAlta: p.prioridadeAlta, atrasado: estaAtrasado(p) })}
           ${p.descricao ? `<div class="muted">${escapeHtml(p.descricao)}</div>` : ""}
           ${(p.entregaveis || []).length ? `<div class="muted"><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</div>` : ""}
+          ${(p.comentarios || []).length ? `<div class="muted"><i class="fa-solid fa-comment"></i> ${textoComentarios((p.comentarios || []).length)}</div>` : ""}
           ${htmlAcoes(p)}
         </td>
         <td>${escapeHtml(rotuloPessoa(p.responsavel, p.responsavelUsuario))}${(p.equipe || []).length ? `<div class="muted">${htmlEquipe(p)}</div>` : ""}</td>
@@ -364,6 +366,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             ${htmlEquipe(p)}
             ${(p.registros || []).length ? `<span><i class="fa-solid fa-clock-rotate-left"></i> ${(p.registros || []).length} ${(p.registros || []).length === 1 ? "registro" : "registros"}</span>` : ""}
             ${(p.entregaveis || []).length ? `<span><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</span>` : ""}
+            ${(p.comentarios || []).length ? `<span><i class="fa-solid fa-comment"></i> ${textoComentarios((p.comentarios || []).length)}</span>` : ""}
             ${htmlDatas(p)}
           </div>
           <select class="status-sel" data-id="${p.id}" aria-label="Status de ${escapeHtml(p.nome)}">${opcoesStatus(p.status)}</select>
@@ -482,6 +485,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAcoesEditor();
     abaModal("projeto");
     renderEntregaveis();
+    renderComentarios();
+    const campoComentario = document.getElementById("campoComentario");
+    if (campoComentario) campoComentario.value = "";
     modal.hidden = false;
     document.getElementById("campoNome").focus();
   }
@@ -494,6 +500,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     document.getElementById("panelProjeto").classList.toggle("active", nome === "projeto");
     document.getElementById("panelEntregaveis").classList.toggle("active", nome === "entregaveis");
+    document.getElementById("panelComentarios").classList.toggle("active", nome === "comentarios");
+    document.querySelector(".modal-corpo").classList.toggle("modo-comentarios", nome === "comentarios");
+    if (nome === "comentarios") {
+      const lista = document.getElementById("listaComentarios");
+      if (lista) lista.scrollTop = lista.scrollHeight;
+    }
   }
 
   function ajustarNiveis(lista) {
@@ -685,6 +697,121 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function textoEntregaveis(n) {
     return n === 1 ? "1 entregável" : `${n} entregáveis`;
+  }
+
+  function textoComentarios(n) {
+    return n === 1 ? "1 comentário" : `${n} comentários`;
+  }
+
+  function tempoRelativo(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const seg = Math.round((Date.now() - d.getTime()) / 1000);
+    if (seg < 45) return "agora";
+    const min = Math.round(seg / 60);
+    if (min < 60) return min <= 1 ? "há 1 min" : `há ${min} min`;
+    const horas = Math.round(min / 60);
+    if (horas < 24) return horas === 1 ? "há 1 hora" : `há ${horas} horas`;
+    const dias = Math.round(horas / 24);
+    if (dias < 30) return dias === 1 ? "há 1 dia" : `há ${dias} dias`;
+    const meses = Math.round(dias / 30);
+    if (meses < 12) return meses === 1 ? "há 1 mês" : `há ${meses} meses`;
+    const anos = Math.round(dias / 365);
+    return anos <= 1 ? "há 1 ano" : `há ${anos} anos`;
+  }
+
+  function diaComentario(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function comentarioMeu(c) {
+    const eu = usuario().trim().toLowerCase();
+    if (!eu) return false;
+    return String(c.usuario || "").trim().toLowerCase() === eu
+      || String(c.autor || "").trim().toLowerCase() === eu;
+  }
+
+  function renderComentarios() {
+    const box = document.getElementById("listaComentarios");
+    const trava = document.getElementById("comentarioTrava");
+    const bloco = document.getElementById("blocoComentario");
+    const aba = document.getElementById("tabModalComentarios");
+    const projeto = projetos.find((p) => Number(p.id) === Number(editandoId));
+    const lista = projeto && Array.isArray(projeto.comentarios) ? projeto.comentarios : [];
+    const salvo = !!editandoId;
+    if (trava) trava.hidden = salvo;
+    if (bloco) bloco.hidden = !salvo;
+    if (aba) aba.textContent = lista.length ? `Comentários (${lista.length})` : "Comentários";
+    if (!box) return;
+    if (!lista.length) {
+      box.innerHTML = `<p class="acao-vazia">${salvo ? "Nenhum comentário ainda." : "Salve o projeto para comentar."}</p>`;
+      return;
+    }
+    let dia = "";
+    box.innerHTML = lista.map((c) => {
+      const rotulo = diaComentario(c.criadoEm);
+      const quebra = rotulo && rotulo !== dia ? `<div class="com-dia"><span>${escapeHtml(rotulo)}</span></div>` : "";
+      dia = rotulo || dia;
+      const nome = c.autor || c.usuario || "SGC";
+      const inicial = escapeHtml(String(nome).trim().charAt(0).toUpperCase() || "?");
+      const login = c.usuario && c.usuario.toLowerCase() !== String(nome).toLowerCase()
+        ? `<span class="com-login">@${escapeHtml(c.usuario)}</span>` : "";
+      const apagar = comentarioMeu(c)
+        ? `<button type="button" data-comentario-apagar="${c.id}" aria-label="Apagar comentário">Apagar</button>` : "";
+      return `
+        ${quebra}
+        <article class="com-item">
+          <span class="com-avatar" aria-hidden="true">${inicial}</span>
+          <div class="com-corpo">
+            <div class="com-topo">
+              <strong>${escapeHtml(nome)}</strong>
+              ${login}
+              <time datetime="${escapeHtml(c.criadoEm || "")}">${escapeHtml(tempoRelativo(c.criadoEm))}</time>
+              ${apagar}
+            </div>
+            <p>${escapeHtml(c.texto)}</p>
+          </div>
+        </article>`;
+    }).join("");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function enviarComentario() {
+    if (!editandoId) {
+      alert("Salve o projeto antes de comentar.");
+      return;
+    }
+    const campo = document.getElementById("campoComentario");
+    const texto = campo.value.trim();
+    if (!texto) {
+      campo.focus();
+      return;
+    }
+    const btn = document.getElementById("btnComentar");
+    btn.disabled = true;
+    try {
+      const data = await api("POST", "comentar", { body: { id: editandoId, texto } });
+      const projeto = projetos.find((p) => Number(p.id) === Number(editandoId));
+      if (projeto) projeto.comentarios = data.comentarios || [];
+      campo.value = "";
+      renderComentarios();
+      render();
+      abaModal("comentarios");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function apagarComentario(id) {
+    if (!editandoId || !confirm("Apagar este comentário?")) return;
+    const data = await api("POST", "excluirComentario", { body: { id: editandoId, comentarioId: id } });
+    const projeto = projetos.find((p) => Number(p.id) === Number(editandoId));
+    if (projeto) projeto.comentarios = data.comentarios || [];
+    renderComentarios();
+    render();
+    abaModal("comentarios");
   }
 
   function textoTamanho(n) {
@@ -1242,6 +1369,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btnAddLink").addEventListener("click", () => {
     enviarLink().catch((err) => alert(err.message));
   });
+  document.getElementById("btnComentar").addEventListener("click", () => {
+    enviarComentario().catch((err) => alert(err.message));
+  });
+  document.getElementById("campoComentario").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      enviarComentario().catch((err) => alert(err.message));
+    }
+  });
+  document.getElementById("listaComentarios").addEventListener("click", (e) => {
+    const botao = e.target.closest("[data-comentario-apagar]");
+    if (!botao) return;
+    apagarComentario(Number(botao.dataset.comentarioApagar)).catch((err) => alert(err.message));
+  });
   document.getElementById("campoLinkEnt").addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -1309,6 +1450,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await api("POST", "salvar", { body });
       if (Array.isArray(data.templates)) modelos = data.templates;
       const salvo = data.projeto;
+      if (!Array.isArray(salvo.comentarios)) {
+        const anterior = projetos.find((p) => Number(p.id) === Number(salvo.id));
+        salvo.comentarios = anterior && anterior.comentarios ? anterior.comentarios : [];
+      }
       const idx = projetos.findIndex((p) => Number(p.id) === Number(salvo.id));
       if (idx >= 0) projetos[idx] = salvo;
       else projetos.push(salvo);
@@ -1325,7 +1470,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnExcluir.addEventListener("click", async () => {
     const p = projetos.find((x) => Number(x.id) === Number(editandoId));
     if (!p) return;
-    if (!confirm(`Excluir o projeto "${p.nome}", as ações, os registros da cronologia, os entregáveis e o modelo ligado a ele? Não dá para desfazer.`)) return;
+    if (!confirm(`Excluir o projeto "${p.nome}", as ações, os registros da cronologia, os entregáveis, os comentários e o modelo ligado a ele? Não dá para desfazer.`)) return;
     btnExcluir.disabled = true;
     try {
       const data = await api("DELETE", "projeto", { query: { id: String(p.id) } });
