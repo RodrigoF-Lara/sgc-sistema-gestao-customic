@@ -172,9 +172,13 @@
       width: 100%; height: 100%; max-height: none; overflow: hidden;
       background: #fff; border-radius: 0; padding: 16px 22px 12px;
       display: flex; flex-direction: column; gap: 8px; box-sizing: border-box;
+      position: relative;
+    }
+    .modal-miolo {
+      flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; gap: 18px;
     }
     .modal-corpo {
-      flex: 1 1 auto; min-height: 0; overflow: auto;
+      flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto;
       display: flex; flex-direction: column; gap: 8px;
     }
     .modal-tabs {
@@ -206,9 +210,23 @@
       display: flex; gap: 8px; justify-content: flex-end; flex: 0 0 auto;
       margin: 0; padding-top: 10px; border-top: 1px solid #eceff1; background: #fff;
     }
-    .modal-corpo.modo-comentarios { overflow: hidden; }
-    .modal-corpo.modo-comentarios #panelComentarios.active {
-      flex: 1 1 auto; min-height: 0; overflow: hidden;
+    #tabModalComentarios.aberto,
+    #tabModalComentarios.aberto:hover {
+      color: var(--cor-principal, #1976d2);
+      border-bottom-color: var(--cor-principal, #1976d2);
+    }
+    .comentarios-lateral {
+      flex: 0 0 440px; width: 440px; min-height: 0;
+      display: flex; flex-direction: column; gap: 8px;
+      border-left: 1px solid #eceff1; padding-left: 16px;
+      background: #fff;
+    }
+    .comentarios-lateral[hidden] { display: none; }
+    .com-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .com-head strong { font-size: 1rem; }
+    .com-fechar, .com-fechar:hover {
+      width: 32px; height: 32px; padding: 0; border: none; border-radius: 8px;
+      background: transparent; color: #607d8b; font: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer;
     }
     .comentarios { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
     .comentarios-lista { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: 4px; }
@@ -351,6 +369,12 @@
       .kb-col.recolhida:not(.aberta) { flex-basis: auto; width: auto; }
       .kb-col.recolhida.aberta { flex-basis: 86vw; max-width: none; }
       .datas-projeto { grid-template-columns: 1fr; }
+      .comentarios-lateral {
+        position: absolute; top: 0; right: 0; bottom: 0; z-index: 5;
+        width: min(100%, 420px); flex-basis: auto;
+        margin: 0; padding: 12px 14px;
+        box-shadow: -8px 0 24px rgba(0,0,0,0.12);
+      }
       .toolbar input[type="search"] { min-width: 0; width: 100%; }
       .reg-card { grid-template-columns: 1fr; }
       .reg-card .largo, .reg-card .ico { grid-column: auto; grid-row: auto; }
@@ -432,6 +456,7 @@
 
   <div class="modal" id="modal" hidden>
     <form id="formProjeto">
+      <div class="modal-miolo">
       <div class="modal-corpo">
       <h2 id="modalTitulo">Novo projeto</h2>
       <div id="blocoComecar" hidden>
@@ -444,7 +469,7 @@
       <div class="modal-tabs" role="tablist">
         <button type="button" class="modal-tab active" role="tab" id="tabModalProjeto" data-modal-tab="projeto" aria-selected="true">Projeto</button>
         <button type="button" class="modal-tab" role="tab" id="tabModalEntregaveis" data-modal-tab="entregaveis" aria-selected="false">Entregáveis</button>
-        <button type="button" class="modal-tab" role="tab" id="tabModalComentarios" data-modal-tab="comentarios" aria-selected="false">Comentários</button>
+        <button type="button" class="modal-tab" id="tabModalComentarios" aria-expanded="false">Comentários</button>
       </div>
       <div class="modal-panel active" id="panelProjeto">
       <label for="campoNome">Nome</label>
@@ -517,7 +542,12 @@
         </div>
         <div id="listaEntregaveis"></div>
       </div>
-      <div class="modal-panel" id="panelComentarios">
+      </div>
+      <aside id="painelComentarios" class="comentarios-lateral" hidden>
+        <div class="com-head">
+          <strong>Comentários</strong>
+          <button type="button" class="com-fechar" id="btnFecharComentarios" aria-label="Fechar comentários">&times;</button>
+        </div>
         <div class="comentarios">
           <div id="listaComentarios" class="comentarios-lista"></div>
           <p class="hint com-trava" id="comentarioTrava" hidden>Salve o projeto antes de comentar.</p>
@@ -526,7 +556,7 @@
             <button type="button" class="btn primary" id="btnComentar">Comentar</button>
           </div>
         </div>
-      </div>
+      </aside>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn danger" id="btnExcluir" hidden>Excluir</button>

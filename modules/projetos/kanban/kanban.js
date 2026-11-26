@@ -486,6 +486,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     abaModal("projeto");
     renderEntregaveis();
     renderComentarios();
+    painelComentarios(false);
     const campoComentario = document.getElementById("campoComentario");
     if (campoComentario) campoComentario.value = "";
     modal.hidden = false;
@@ -500,12 +501,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     document.getElementById("panelProjeto").classList.toggle("active", nome === "projeto");
     document.getElementById("panelEntregaveis").classList.toggle("active", nome === "entregaveis");
-    document.getElementById("panelComentarios").classList.toggle("active", nome === "comentarios");
-    document.querySelector(".modal-corpo").classList.toggle("modo-comentarios", nome === "comentarios");
-    if (nome === "comentarios") {
-      const lista = document.getElementById("listaComentarios");
-      if (lista) lista.scrollTop = lista.scrollHeight;
-    }
+  }
+
+  function painelComentarios(aberto) {
+    const painel = document.getElementById("painelComentarios");
+    const botao = document.getElementById("tabModalComentarios");
+    if (!painel || !botao) return;
+    painel.hidden = !aberto;
+    botao.classList.toggle("aberto", aberto);
+    botao.setAttribute("aria-expanded", aberto ? "true" : "false");
+    if (!aberto) return;
+    const lista = document.getElementById("listaComentarios");
+    if (lista) lista.scrollTop = lista.scrollHeight;
   }
 
   function ajustarNiveis(lista) {
@@ -798,7 +805,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       campo.value = "";
       renderComentarios();
       render();
-      abaModal("comentarios");
+      painelComentarios(true);
     } finally {
       btn.disabled = false;
     }
@@ -811,7 +818,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (projeto) projeto.comentarios = data.comentarios || [];
     renderComentarios();
     render();
-    abaModal("comentarios");
+    painelComentarios(true);
   }
 
   function textoTamanho(n) {
@@ -1354,6 +1361,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll("[data-modal-tab]").forEach((botao) => {
     botao.addEventListener("click", () => abaModal(botao.dataset.modalTab));
   });
+  document.getElementById("tabModalComentarios").addEventListener("click", () => {
+    const painel = document.getElementById("painelComentarios");
+    painelComentarios(painel.hidden);
+  });
+  document.getElementById("btnFecharComentarios").addEventListener("click", () => painelComentarios(false));
   document.getElementById("btnAddEntregavel").addEventListener("click", () => {
     if (!editandoId) {
       alert("Salve o projeto antes de anexar fotos ou PDFs.");
