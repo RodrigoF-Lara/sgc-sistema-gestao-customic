@@ -390,7 +390,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             <i class="fa-solid fa-arrow-right"></i>
           </button>
           <input type="checkbox" data-feito="${i}" ${a.feito ? "checked" : ""} aria-label="Concluir ação ${i + 1}" />
-          <input type="text" data-texto="${i}" maxlength="300" value="${escapeHtml(a.texto)}" placeholder="Descreva a ação" />
+          <select data-termo="${i}" aria-label="Termo da ação ${i + 1}">${opcoesTermo(a.texto)}</select>
+          <input type="text" data-texto="${i}" maxlength="300" value="${escapeHtml(a.texto)}" placeholder="Descreva a ação" ${termoIdDoTexto(a.texto) ? "readonly" : ""} />
           <button type="button" class="marca${a.prioridadeAlta ? " on alta" : ""}" data-prioridade="${i}" aria-pressed="${a.prioridadeAlta ? "true" : "false"}">Alta</button>
           <button type="button" class="marca${a.atrasado ? " on atraso" : ""}" data-atraso="${i}" aria-pressed="${a.atrasado ? "true" : "false"}">Atrasado</button>
           <button type="button" class="ico" data-remover="${i}" title="Remover ação" aria-label="Remover ação">
@@ -419,6 +420,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAcoesEditor();
     const foco = document.querySelector(`#listaAcoes [data-texto="${idx}"]`);
     if (foco) foco.focus();
+  }
+
+  function etapasAcao() {
+    return window.SGCCronologia ? window.SGCCronologia.ETAPAS : [];
+  }
+
+  function termoIdDoTexto(texto) {
+    const nome = String(texto || "").trim().toLowerCase();
+    if (!nome) return "";
+    const etapa = etapasAcao().find((e) => e.id !== "outro" && e.nome.toLowerCase() === nome);
+    return etapa ? etapa.id : "";
+  }
+
+  function opcoesTermo(texto) {
+    const atual = termoIdDoTexto(texto);
+    const livre = `<option value="" ${atual ? "" : "selected"}>Texto livre</option>`;
+    const etapas = etapasAcao().map((e) => (
+      `<option value="${e.id}" ${e.id === atual ? "selected" : ""}>${escapeHtml(e.nome)}</option>`
+    )).join("");
+    return livre + etapas;
   }
 
   function opcoesEtapa(atual) {
@@ -896,6 +917,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (acoesEdit[i]) acoesEdit[i].texto = texto.value;
   });
   document.getElementById("listaAcoes").addEventListener("change", (e) => {
+    const termo = e.target.closest("[data-termo]");
+    if (termo) {
+      const i = Number(termo.dataset.termo);
+      const acao = acoesEdit[i];
+      const input = document.querySelector(`#listaAcoes [data-texto="${i}"]`);
+      if (!acao || !input) return;
+      const etapa = etapasAcao().find((item) => item.id === termo.value);
+      if (etapa && etapa.id !== "outro") {
+        acao.texto = etapa.nome;
+        input.value = etapa.nome;
+        input.readOnly = true;
+        return;
+      }
+      input.readOnly = false;
+      if (etapa && etapa.id === "outro" && termoIdDoTexto(input.value)) {
+        input.value = "";
+        acao.texto = "";
+      }
+      input.focus();
+      return;
+    }
     const box = e.target.closest("[data-feito]");
     if (!box) return;
     const i = Number(box.dataset.feito);
