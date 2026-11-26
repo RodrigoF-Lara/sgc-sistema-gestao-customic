@@ -306,6 +306,7 @@ function inicializarSidebarMobile() {
     'inventario-finalizado': { icon: 'fa fa-check-square',     cor: '#0891b2', label: 'Inventário Finalizado'  },
     'nf-lancada':            { icon: 'fa fa-file-text',        cor: '#ea580c', label: 'NF Lançada'             },
     'nf-armazenada':         { icon: 'fa fa-building',         cor: '#059669', label: 'NF Armazenada'          },
+    'projeto-atualizado':    { icon: 'fa fa-tasks',            cor: '#1976d2', label: 'Projeto'                },
   };
 
   function linkInterno(url) {

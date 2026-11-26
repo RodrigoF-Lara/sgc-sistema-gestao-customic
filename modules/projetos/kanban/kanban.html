@@ -101,6 +101,7 @@
     .kb-card p { margin: 0; color: #546e7a; font-size: 0.85rem; line-height: 1.35; overflow-wrap: anywhere; }
     .kb-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 0.78rem; color: #607d8b; }
     .kb-meta span { white-space: nowrap; }
+    .kb-meta span.equipe, .muted .equipe { white-space: normal; }
     .datas-projeto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .datas-projeto label { display: block; margin-bottom: 4px; }
     .kb-card .status-sel { width: 100%; max-width: 100%; box-sizing: border-box; }
@@ -150,6 +151,20 @@
     .marca-projeto { display: flex; flex-wrap: wrap; gap: 8px 16px; }
     .marca-projeto label { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; }
     .marca-projeto input { width: 16px; height: 16px; padding: 0; }
+    .equipe-add { display: flex; gap: 8px; align-items: center; }
+    .equipe-add input { flex: 1 1 180px; width: auto; min-width: 0; }
+    .equipe-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .equipe-chip {
+      display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+      border: 1px solid #cfd8dc; background: #f7f9fb; color: #37474f;
+      border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 0.84rem;
+    }
+    .equipe-chip.sgc { background: #e3f2fd; border-color: #90caf9; color: #0d47a1; }
+    .equipe-chip .login { font-size: 0.75rem; font-weight: 700; }
+    .equipe-chip button, .equipe-chip button:hover {
+      width: 22px; height: 22px; padding: 0; border: none; border-radius: 999px;
+      background: transparent; color: inherit; font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+    }
     .modal[hidden] { display: none !important; }
     .modal {
       position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1200;
@@ -390,6 +405,14 @@
       <textarea id="campoDesc" rows="6" maxlength="1000"></textarea>
       <label for="campoResp">Responsável</label>
       <input id="campoResp" maxlength="100" />
+      <label for="campoEquipe">Equipe de apoio</label>
+      <p class="hint">Quem apoia o projeto, além do responsável. Escolha um usuário do SGC para o nome ficar marcado e essa pessoa receber as atualizações no sino. Um nome sem cadastro também pode ser escrito.</p>
+      <div id="listaEquipe"></div>
+      <div class="equipe-add">
+        <input id="campoEquipe" list="listaUsuariosSgc" maxlength="120" placeholder="Nome ou usuário do SGC" autocomplete="off" />
+        <datalist id="listaUsuariosSgc"></datalist>
+        <button type="button" class="btn" id="btnAddEquipe">Adicionar</button>
+      </div>
       <div class="datas-projeto">
         <div>
           <label for="campoCadastro">Data de cadastro</label>

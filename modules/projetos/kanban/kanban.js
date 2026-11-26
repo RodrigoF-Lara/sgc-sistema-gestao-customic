@@ -25,7 +25,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let projetos = [];
   let modelos = [];
+  let usuariosSgc = [];
   let editandoId = null;
+  let equipeEdit = [];
   let acoesEdit = [];
   let registrosEdit = [];
   let dragId = null;
@@ -122,6 +124,88 @@ document.addEventListener("DOMContentLoaded", async () => {
     return partes.join("");
   }
 
+  function htmlEquipe(p) {
+    const lista = Array.isArray(p.equipe) ? p.equipe.filter((e) => e && e.nome) : [];
+    if (!lista.length) return "";
+    const titulo = lista.map((e) => (e.usuario ? `${e.nome} (${e.usuario})` : e.nome)).join(", ");
+    const visivel = lista.map((e) => {
+      if (e.usuario && String(e.usuario).toLowerCase() !== String(e.nome || "").toLowerCase()) {
+        return `${e.nome} (@${e.usuario})`;
+      }
+      return e.nome;
+    }).join(", ");
+    return `<span class="equipe" title="${escapeHtml(titulo)}"><i class="fa-solid fa-users"></i> ${escapeHtml(visivel)}</span>`;
+  }
+
+  function rotuloUsuario(u) {
+    if (u.nome && u.nome.toLowerCase() !== String(u.usuario || "").toLowerCase()) {
+      return `${u.nome} (${u.usuario})`;
+    }
+    return u.usuario;
+  }
+
+  function preencherUsuarios() {
+    const lista = document.getElementById("listaUsuariosSgc");
+    if (!lista) return;
+    lista.innerHTML = usuariosSgc.map((u) => `<option value="${escapeHtml(rotuloUsuario(u))}"></option>`).join("");
+  }
+
+  function resolverPessoa(bruto) {
+    const texto = String(bruto || "").trim();
+    if (!texto) return null;
+    const composto = texto.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (composto) {
+      const login = composto[2].trim().toLowerCase();
+      const achou = usuariosSgc.find((u) => String(u.usuario).toLowerCase() === login);
+      if (achou) return { nome: composto[1].trim() || achou.nome, usuario: achou.usuario };
+    }
+    const porLogin = usuariosSgc.find((u) => String(u.usuario).toLowerCase() === texto.toLowerCase());
+    if (porLogin) return { nome: porLogin.nome, usuario: porLogin.usuario };
+    const porNome = usuariosSgc.filter((u) => String(u.nome || "").toLowerCase() === texto.toLowerCase());
+    if (porNome.length === 1) return { nome: porNome[0].nome, usuario: porNome[0].usuario };
+    return { nome: texto.slice(0, 120), usuario: "" };
+  }
+
+  function renderEquipe() {
+    const box = document.getElementById("listaEquipe");
+    if (!box) return;
+    if (!equipeEdit.length) {
+      box.innerHTML = `<p class="acao-vazia">Nenhuma pessoa na equipe de apoio.</p>`;
+      return;
+    }
+    box.innerHTML = `<div class="equipe-chips">${equipeEdit.map((e, i) => `
+      <span class="equipe-chip${e.usuario ? " sgc" : ""}" ${e.usuario ? `title="Recebe atualizações no SGC"` : ""}>
+        <span>${escapeHtml(e.nome)}</span>
+        ${e.usuario && e.usuario.toLowerCase() !== e.nome.toLowerCase() ? `<span class="login">@${escapeHtml(e.usuario)}</span>` : ""}
+        <button type="button" data-equipe-remover="${i}" aria-label="Remover ${escapeHtml(e.nome)}">&times;</button>
+      </span>`).join("")}</div>`;
+  }
+
+  function adicionarPessoa(silencioso) {
+    const campo = document.getElementById("campoEquipe");
+    const pessoa = resolverPessoa(campo.value);
+    if (!pessoa) return;
+    if (equipeEdit.length >= 20) {
+      alert("No máximo 20 pessoas na equipe de apoio.");
+      return;
+    }
+    const dup = equipeEdit.some((e) => (
+      pessoa.usuario
+        ? e.usuario && e.usuario.toLowerCase() === pessoa.usuario.toLowerCase()
+        : !e.usuario && e.nome.toLowerCase() === pessoa.nome.toLowerCase()
+    ));
+    if (dup) {
+      if (!silencioso) alert("Essa pessoa já está na equipe.");
+      else campo.value = "";
+      if (!silencioso) campo.focus();
+      return;
+    }
+    equipeEdit.push(pessoa);
+    campo.value = "";
+    renderEquipe();
+    campo.focus();
+  }
+
   function htmlBadges(item, curto) {
     const partes = [];
     if (item.prioridadeAlta) {
@@ -140,7 +224,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!q) return true;
       const acoesTxt = (p.acoes || []).map((a) => a.texto).join(" ");
       const entTxt = (p.entregaveis || []).map((e) => `${e.nome || ""} ${e.url || ""}`).join(" ");
-      return [p.nome, p.descricao, p.responsavel, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
+      const equipeTxt = (p.equipe || []).map((e) => `${e.nome || ""} ${e.usuario || ""}`).join(" ");
+      return [p.nome, p.descricao, p.responsavel, equipeTxt, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
     });
   }
 
@@ -188,7 +273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${(p.entregaveis || []).length ? `<div class="muted"><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</div>` : ""}
           ${htmlAcoes(p)}
         </td>
-        <td>${escapeHtml(p.responsavel)}</td>
+        <td>${escapeHtml(p.responsavel)}${(p.equipe || []).length ? `<div class="muted">${htmlEquipe(p)}</div>` : ""}</td>
         <td>${fmtData(p.cadastro) || "—"}</td>
         <td class="${atrasoInicio(p) ? "atrasado" : ""}">${fmtData(p.inicio) || "—"}</td>
         <td class="${atrasoFim(p) ? "atrasado" : ""}">${fmtData(fimDe(p)) || "—"}</td>
@@ -242,6 +327,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${htmlAcoes(p)}
           <div class="kb-meta">
             ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
+            ${htmlEquipe(p)}
             ${(p.registros || []).length ? `<span><i class="fa-solid fa-clock-rotate-left"></i> ${(p.registros || []).length} ${(p.registros || []).length === 1 ? "registro" : "registros"}</span>` : ""}
             ${(p.entregaveis || []).length ? `<span><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</span>` : ""}
             ${htmlDatas(p)}
@@ -316,6 +402,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("campoNome").value = projeto ? projeto.nome : "";
     document.getElementById("campoDesc").value = projeto ? projeto.descricao || "" : "";
     document.getElementById("campoResp").value = projeto ? projeto.responsavel || "" : "";
+    document.getElementById("campoEquipe").value = "";
+    equipeEdit = (projeto && Array.isArray(projeto.equipe) ? projeto.equipe : []).map((e) => ({
+      nome: e.nome || "",
+      usuario: e.usuario || "",
+    }));
+    renderEquipe();
     document.getElementById("campoCadastro").value = projeto ? (projeto.cadastro || "") : hojeIso();
     document.getElementById("campoInicio").value = projeto ? (projeto.inicio || "") : "";
     document.getElementById("campoFim").value = projeto ? (fimDe(projeto) || "") : "";
@@ -989,6 +1081,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.print();
   });
   document.getElementById("btnAddAcao").addEventListener("click", () => inserirAcao(acoesEdit.length - 1));
+  document.getElementById("btnAddEquipe").addEventListener("click", adicionarPessoa);
+  document.getElementById("campoEquipe").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    adicionarPessoa();
+  });
+  document.getElementById("campoEquipe").addEventListener("change", () => {
+    const pessoa = resolverPessoa(document.getElementById("campoEquipe").value);
+    if (pessoa && pessoa.usuario) adicionarPessoa();
+  });
+  document.getElementById("listaEquipe").addEventListener("click", (e) => {
+    const botao = e.target.closest("[data-equipe-remover]");
+    if (!botao) return;
+    equipeEdit.splice(Number(botao.dataset.equipeRemover), 1);
+    renderEquipe();
+  });
   document.getElementById("btnTornarModelo").addEventListener("click", () => {
     tornarModelo().catch((err) => alert(err.message));
   });
@@ -1135,6 +1243,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const btn = document.getElementById("btnSalvar");
     btn.disabled = true;
+    if (document.getElementById("campoEquipe").value.trim()) adicionarPessoa(true);
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
     lerRegistrosForm();
     const body = {
@@ -1142,6 +1251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       nome: document.getElementById("campoNome").value,
       descricao: document.getElementById("campoDesc").value,
       responsavel: document.getElementById("campoResp").value,
+      equipe: equipeEdit.map((e) => ({ nome: e.nome, usuario: e.usuario || "" })),
       cadastro: document.getElementById("campoCadastro").value,
       inicio,
       fim,
@@ -1405,14 +1515,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
-    const [data, mods] = await Promise.all([
+    const [data, mods, pessoas] = await Promise.all([
       api("GET", "listar"),
       api("GET", "templates").catch(() => ({ templates: [] })),
+      api("GET", "usuarios").catch(() => ({ usuarios: [] })),
     ]);
     projetos = data.projetos || [];
     modelos = mods.templates || [];
+    usuariosSgc = pessoas.usuarios || [];
+    preencherUsuarios();
     renderSelModelo();
     render();
+    const aberto = Number(new URLSearchParams(location.search).get("projeto"));
+    if (aberto) {
+      const alvo = projetos.find((p) => Number(p.id) === aberto);
+      if (alvo) abrirModal(alvo);
+    }
   } catch (err) {
     tbody.innerHTML = `<tr><td class="empty" colspan="6">${escapeHtml(err.message)}</td></tr>`;
     board.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
