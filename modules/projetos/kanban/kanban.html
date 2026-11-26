@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
     .hint { color: #546e7a; margin-top: -6px; }
+    .hint.sgc { color: #1565c0; font-weight: 700; }
     .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
     .toolbar input[type="search"], .toolbar select {
       border: 1px solid #cfd8dc; border-radius: 8px; padding: 8px 10px; font: inherit; background: #fff;
@@ -404,7 +405,8 @@
       <label for="campoDesc">Descrição</label>
       <textarea id="campoDesc" rows="6" maxlength="1000"></textarea>
       <label for="campoResp">Responsável</label>
-      <input id="campoResp" maxlength="100" />
+      <input id="campoResp" list="listaUsuariosSgc" maxlength="100" placeholder="Nome ou usuário do SGC" autocomplete="off" />
+      <p class="hint" id="marcaResp">Escolha um usuário do SGC para receber as atualizações, ou escreva um nome.</p>
       <label for="campoEquipe">Equipe de apoio</label>
       <p class="hint">Quem apoia o projeto, além do responsável. Escolha um usuário do SGC para o nome ficar marcado e essa pessoa receber as atualizações no sino. Um nome sem cadastro também pode ser escrito.</p>
       <div id="listaEquipe"></div>

@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let usuariosSgc = [];
   let editandoId = null;
   let equipeEdit = [];
+  let responsavelUsuario = "";
   let acoesEdit = [];
   let registrosEdit = [];
   let dragId = null;
@@ -137,6 +138,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `<span class="equipe" title="${escapeHtml(titulo)}"><i class="fa-solid fa-users"></i> ${escapeHtml(visivel)}</span>`;
   }
 
+  function rotuloPessoa(nome, usuario) {
+    if (!nome) return "";
+    if (usuario && String(usuario).toLowerCase() !== String(nome).toLowerCase()) return `${nome} (@${usuario})`;
+    return nome;
+  }
+
   function rotuloUsuario(u) {
     if (u.nome && u.nome.toLowerCase() !== String(u.usuario || "").toLowerCase()) {
       return `${u.nome} (${u.usuario})`;
@@ -164,6 +171,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     const porNome = usuariosSgc.filter((u) => String(u.nome || "").toLowerCase() === texto.toLowerCase());
     if (porNome.length === 1) return { nome: porNome[0].nome, usuario: porNome[0].usuario };
     return { nome: texto.slice(0, 120), usuario: "" };
+  }
+
+  function sincronizarResponsavel(aoSair) {
+    const campo = document.getElementById("campoResp");
+    const marca = document.getElementById("marcaResp");
+    let pessoa = resolverPessoa(campo.value);
+    if (aoSair && pessoa && pessoa.usuario) {
+      const atual = campo.value.trim();
+      const composto = atual.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      if (composto || atual.toLowerCase() === pessoa.usuario.toLowerCase()) {
+        campo.value = pessoa.nome.slice(0, 100);
+        pessoa = resolverPessoa(campo.value);
+      }
+    }
+    responsavelUsuario = pessoa && pessoa.usuario ? pessoa.usuario : "";
+    if (!marca) return;
+    marca.classList.toggle("sgc", !!responsavelUsuario);
+    if (responsavelUsuario) {
+      const login = responsavelUsuario.toLowerCase() === String(pessoa.nome || "").toLowerCase()
+        ? "Usuário do SGC. Recebe as atualizações no sino."
+        : `Usuário do SGC @${responsavelUsuario}. Recebe as atualizações no sino.`;
+      marca.textContent = login;
+    } else if (campo.value.trim()) {
+      marca.textContent = "Nome sem cadastro no SGC. Não recebe aviso.";
+    } else {
+      marca.textContent = "Escolha um usuário do SGC para receber as atualizações, ou escreva um nome.";
+    }
   }
 
   function renderEquipe() {
@@ -225,7 +259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const acoesTxt = (p.acoes || []).map((a) => a.texto).join(" ");
       const entTxt = (p.entregaveis || []).map((e) => `${e.nome || ""} ${e.url || ""}`).join(" ");
       const equipeTxt = (p.equipe || []).map((e) => `${e.nome || ""} ${e.usuario || ""}`).join(" ");
-      return [p.nome, p.descricao, p.responsavel, equipeTxt, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
+      return [p.nome, p.descricao, p.responsavel, p.responsavelUsuario, equipeTxt, acoesTxt, entTxt].join(" ").toLowerCase().includes(q);
     });
   }
 
@@ -273,7 +307,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${(p.entregaveis || []).length ? `<div class="muted"><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</div>` : ""}
           ${htmlAcoes(p)}
         </td>
-        <td>${escapeHtml(p.responsavel)}${(p.equipe || []).length ? `<div class="muted">${htmlEquipe(p)}</div>` : ""}</td>
+        <td>${escapeHtml(rotuloPessoa(p.responsavel, p.responsavelUsuario))}${(p.equipe || []).length ? `<div class="muted">${htmlEquipe(p)}</div>` : ""}</td>
         <td>${fmtData(p.cadastro) || "—"}</td>
         <td class="${atrasoInicio(p) ? "atrasado" : ""}">${fmtData(p.inicio) || "—"}</td>
         <td class="${atrasoFim(p) ? "atrasado" : ""}">${fmtData(fimDe(p)) || "—"}</td>
@@ -326,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${p.descricao ? `<p>${escapeHtml(p.descricao)}</p>` : ""}
           ${htmlAcoes(p)}
           <div class="kb-meta">
-            ${p.responsavel ? `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.responsavel)}</span>` : ""}
+            ${p.responsavel ? `<span title="${escapeHtml(p.responsavelUsuario ? `${p.responsavel} (${p.responsavelUsuario})` : p.responsavel)}"><i class="fa-solid fa-user"></i> ${escapeHtml(rotuloPessoa(p.responsavel, p.responsavelUsuario))}</span>` : ""}
             ${htmlEquipe(p)}
             ${(p.registros || []).length ? `<span><i class="fa-solid fa-clock-rotate-left"></i> ${(p.registros || []).length} ${(p.registros || []).length === 1 ? "registro" : "registros"}</span>` : ""}
             ${(p.entregaveis || []).length ? `<span><i class="fa-solid fa-paperclip"></i> ${textoEntregaveis((p.entregaveis || []).length)}</span>` : ""}
@@ -402,6 +436,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("campoNome").value = projeto ? projeto.nome : "";
     document.getElementById("campoDesc").value = projeto ? projeto.descricao || "" : "";
     document.getElementById("campoResp").value = projeto ? projeto.responsavel || "" : "";
+    responsavelUsuario = projeto ? projeto.responsavelUsuario || "" : "";
+    sincronizarResponsavel(false);
     document.getElementById("campoEquipe").value = "";
     equipeEdit = (projeto && Array.isArray(projeto.equipe) ? projeto.equipe : []).map((e) => ({
       nome: e.nome || "",
@@ -1081,6 +1117,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.print();
   });
   document.getElementById("btnAddAcao").addEventListener("click", () => inserirAcao(acoesEdit.length - 1));
+  document.getElementById("campoResp").addEventListener("input", () => sincronizarResponsavel(false));
+  document.getElementById("campoResp").addEventListener("change", () => sincronizarResponsavel(true));
+  document.getElementById("campoResp").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    sincronizarResponsavel(true);
+  });
   document.getElementById("btnAddEquipe").addEventListener("click", adicionarPessoa);
   document.getElementById("campoEquipe").addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
@@ -1243,6 +1286,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const btn = document.getElementById("btnSalvar");
     btn.disabled = true;
+    sincronizarResponsavel(true);
     if (document.getElementById("campoEquipe").value.trim()) adicionarPessoa(true);
     acoesEdit.forEach((_, i) => lerTextoAcao(i));
     lerRegistrosForm();
@@ -1251,6 +1295,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       nome: document.getElementById("campoNome").value,
       descricao: document.getElementById("campoDesc").value,
       responsavel: document.getElementById("campoResp").value,
+      responsavelUsuario,
       equipe: equipeEdit.map((e) => ({ nome: e.nome, usuario: e.usuario || "" })),
       cadastro: document.getElementById("campoCadastro").value,
       inicio,
